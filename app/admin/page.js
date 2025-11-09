@@ -493,7 +493,7 @@ export default function AdminDashboard() {
 
                         }`}>
 
-                          Rp {activity.totalAmount.toLocaleString('id-ID')}
+                          Rp {activity.totalAmount ? activity.totalAmount.toLocaleString('id-ID') : '0'}
 
                         </td>
 

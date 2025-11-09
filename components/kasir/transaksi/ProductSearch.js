@@ -16,7 +16,7 @@ const ProductSearch = ({
   total, // Accept total as a prop
 }) => {
   return (
-    <div className="lg:col-span-2">
+    <div className="lg:col-span-2"> {/* Reverted to original class */}
       <div className={`rounded-lg shadow p-6 mb-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
         <div className="relative">
           <input
@@ -39,8 +39,8 @@ const ProductSearch = ({
         <TotalDisplay total={total} darkMode={darkMode} />
       </div>
 
-      <div className={`rounded-lg shadow overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-        <div className="divide-y max-h-96 overflow-y-auto styled-scrollbar">
+      <div className={`rounded-lg shadow overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}> {/* Reverted to original class */}
+        <div className="divide-y max-h-96 overflow-y-auto styled-scrollbar"> {/* Reverted to original class */}
           {isProductListLoading && (
             <div className="p-4 text-center flex justify-center items-center">
               <Loader className="animate-spin mr-2" size={20} />

@@ -90,27 +90,44 @@ model Member {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt()
 
-  sales Sale[]
+  sales       Sale[]
+  receivables Receivable[]
 }
 
 model Sale {
-  id          String   @id @default(cuid())
-  cashierId   String
-  attendantId String?
-  memberId    String?
-  date        DateTime @default(now())
-  total       Int      // total sebelum diskon member
-  discount    Int      // diskon member
-  additionalDiscount Int @default(0) // Diskon tambahan manual
-  tax         Int      // pajak opsional
-  payment     Int      // jumlah yang dibayar
-  change      Int      // kembalian
-  createdAt   DateTime @default(now())
+  id                 String   @id @default(cuid())
+  cashierId          String
+  attendantId        String?
+  memberId           String?
+  date               DateTime @default(now())
+  total              Int      // total sebelum diskon member
+  discount           Int      // diskon member
+  additionalDiscount Int      @default(0) // Diskon tambahan manual
+  tax                Int      // pajak opsional
+  payment            Int      // jumlah yang dibayar
+  change             Int      // kembalian
+  status             String   @default("PAID") // PAID, UNPAID
+  createdAt          DateTime @default(now())
 
-  cashier    User     @relation("CashierSales", fields: [cashierId], references: [id], onDelete: Restrict)
-  attendant  User?    @relation("AttendantSales", fields: [attendantId], references: [id], onDelete: Restrict)
-  member     Member?  @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  cashier     User          @relation("CashierSales", fields: [cashierId], references: [id], onDelete: Restrict)
+  attendant   User?         @relation("AttendantSales", fields: [attendantId], references: [id], onDelete: Restrict)
+  member      Member?       @relation(fields: [memberId], references: [id], onDelete: Restrict)
   saleDetails SaleDetail[]
+  receivable  Receivable?
+}
+
+model Receivable {
+  id         String   @id @default(cuid())
+  saleId     String   @unique
+  sale       Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  memberId   String
+  member     Member   @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  amountDue  Int
+  amountPaid Int      @default(0)
+  status     String   // UNPAID, PARTIALLY_PAID, PAID
+  dueDate    DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt()
 }
 
 model SaleDetail {
@@ -161,4 +178,13 @@ model PurchaseItem {
 
   purchase      Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   product       Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+}
+
+model SuspendedSale {
+  id        String   @id @default(cuid())
+  name      String?
+  cartItems String   // Stored as a JSON string
+  memberId  String?
+  notes     String?
+  createdAt DateTime @default(now())
 }

@@ -250,6 +250,7 @@ async function main() {
     create: {
       name: 'Admin Toko',
       username: 'admin',
+      employeeNumber: 'EMP001',
       password: adminPassword,
       role: 'ADMIN',
     },
@@ -261,6 +262,7 @@ async function main() {
     create: {
       name: 'Kasir Utama',
       username: 'kasir',
+      employeeNumber: 'EMP002',
       password: cashierPassword,
       role: 'CASHIER',
     },
@@ -272,8 +274,23 @@ async function main() {
     create: {
       name: 'Pelayan Toko',
       username: 'pelayan',
+      employeeNumber: 'EMP003',
       password: attendantPassword,
       role: 'ATTENDANT',
+    },
+  });
+
+  // Create a simple cashier user for easy testing
+  const simpleCashierPassword = await bcrypt.hash('123', 10);
+  const simpleCashierUser = await prisma.user.upsert({
+    where: { username: 'U001' },
+    update: {},
+    create: {
+      name: 'Kasir Sederhana',
+      username: 'U001',
+      employeeNumber: 'EMP004',
+      password: simpleCashierPassword,
+      role: 'CASHIER',
     },
   });
 

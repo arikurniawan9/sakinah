@@ -12,7 +12,7 @@ export async function POST(request) {
   }
 
   try {
-    const { cashierId, memberId, items, total, payment, change } = await request.json();
+    const { cashierId, memberId, items, total, payment, change, additionalDiscount, discount, tax, transactionType = 'PAID' } = await request.json();
 
     if (!cashierId || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -25,9 +25,16 @@ export async function POST(request) {
       const cashier = await tx.user.findUnique({ where: { id: cashierId } });
       if (!cashier) throw new Error('Cashier not found');
 
+      let member = null;
       if (memberId) {
-        const member = await tx.member.findUnique({ where: { id: memberId } });
+        member = await tx.member.findUnique({ where: { id: memberId } });
         if (!member) throw new Error('Member not found');
+      }
+
+      if (transactionType === 'UNPAID') {
+        if (!member || member.name === 'Pelanggan Umum') {
+          throw new Error('Transaksi hutang harus memiliki member yang spesifik, bukan "Pelanggan Umum".');
+        }
       }
 
       const productIds = items.map((item) => item.productId);
@@ -42,16 +49,33 @@ export async function POST(request) {
         }
       }
 
-      const sale = await tx.sale.create({
-        data: {
-          cashierId,
-          memberId: memberId || null,
-          total: Math.round(total),
-          payment: Math.round(payment),
-          change: Math.round(change),
-          date: new Date(),
-        },
-      });
+      const saleData = {
+        cashierId,
+        memberId: memberId || null,
+        total: Math.round(total),
+        additionalDiscount: Math.round(additionalDiscount || 0),
+        discount: Math.round(discount || 0),
+        tax: Math.round(tax || 0),
+        date: new Date(),
+        status: transactionType, // PAID or UNPAID
+        payment: Math.round(payment), // Store partial payment as well
+        change: transactionType === 'PAID' ? Math.round(change) : 0, // No change for unpaid
+      };
+
+      const sale = await tx.sale.create({ data: saleData });
+
+      if (transactionType === 'UNPAID') {
+        const partialPayment = Math.round(payment);
+        await tx.receivable.create({
+          data: {
+            saleId: sale.id,
+            memberId: member.id,
+            amountDue: Math.round(total),
+            amountPaid: partialPayment,
+            status: partialPayment > 0 ? 'PARTIALLY_PAID' : 'UNPAID',
+          }
+        });
+      }
 
       await Promise.all(items.map(item => 
         tx.saleDetail.create({
@@ -79,6 +103,7 @@ export async function POST(request) {
           cashier: true,
           member: true,
           saleDetails: { include: { product: true } },
+          receivable: true, // Include receivable data
         },
       });
     });

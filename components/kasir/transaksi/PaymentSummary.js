@@ -1,9 +1,22 @@
 // components/kasir/transaksi/PaymentSummary.js
 'use client';
 
-import { CreditCard } from 'lucide-react';
+import { CreditCard, Save } from 'lucide-react';
 
-const PaymentSummary = ({ calculation, payment, setPayment, processPayment, loading, darkMode }) => {
+const PaymentSummary = ({ 
+  calculation, 
+  payment, 
+  setPayment, 
+  initiatePaidPayment, 
+  initiateUnpaidPayment,
+  loading, 
+  darkMode, 
+  additionalDiscount, 
+  setAdditionalDiscount, 
+  sessionStatus,
+  selectedMember,
+  selectedAttendant 
+}) => {
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -11,6 +24,14 @@ const PaymentSummary = ({ calculation, payment, setPayment, processPayment, load
       minimumFractionDigits: 0,
     }).format(amount);
   };
+
+  const grandTotal = calculation?.grandTotal || 0;
+  const hasCalculation = !!calculation;
+
+  // Logic for disabling buttons
+  const isPaidDisabled = loading || !hasCalculation || payment < grandTotal || !selectedAttendant;
+  const isUnpaidDisabled = loading || !hasCalculation || !selectedMember || selectedMember.name === 'Pelanggan Umum' || payment >= grandTotal;
+
 
   return (
     <>
@@ -34,9 +55,15 @@ const PaymentSummary = ({ calculation, payment, setPayment, processPayment, load
                 <span>-{formatCurrency(calculation.memberDiscount || 0)}</span>
               </div>
             )}
+            {additionalDiscount > 0 && (
+              <div className={`flex justify-between ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
+                <span>Diskon Tambahan:</span>
+                <span>-{formatCurrency(additionalDiscount)}</span>
+              </div>
+            )}
             <div className={`flex justify-between font-bold text-lg border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'} pt-2 mt-2`}>
               <span className={`${darkMode ? 'text-white' : 'text-gray-900'}`}>Total:</span>
-              <span className={`${darkMode ? 'text-purple-300' : 'text-purple-700'}`}>{formatCurrency(calculation.grandTotal || 0)}</span>
+              <span className={`${darkMode ? 'text-purple-300' : 'text-purple-700'}`}>{formatCurrency(grandTotal)}</span>
             </div>
           </div>
         </div>
@@ -45,6 +72,21 @@ const PaymentSummary = ({ calculation, payment, setPayment, processPayment, load
       <div className={`rounded-lg shadow p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
         <h2 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Pembayaran</h2>
         <div className="space-y-4">
+          <div>
+            <label htmlFor="additionalDiscount" className={`block text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'} mb-1`}>
+              Diskon Tambahan
+            </label>
+            <input
+              type="number"
+              id="additionalDiscount"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'
+              }`}
+              value={additionalDiscount}
+              onChange={(e) => setAdditionalDiscount(Number(e.target.value))}
+              placeholder="Masukkan diskon tambahan"
+            />
+          </div>
           <div>
             <label htmlFor="payment" className={`block text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'} mb-1`}>
               Jumlah Bayar
@@ -59,6 +101,11 @@ const PaymentSummary = ({ calculation, payment, setPayment, processPayment, load
               onChange={(e) => setPayment(Number(e.target.value))}
               placeholder="Masukkan jumlah pembayaran"
             />
+             {calculation && payment > 0 && payment < grandTotal && (
+              <p className="mt-2 text-xs text-red-500">
+                Kurang {formatCurrency(grandTotal - payment)}
+              </p>
+            )}
           </div>
 
           {calculation && (
@@ -66,29 +113,52 @@ const PaymentSummary = ({ calculation, payment, setPayment, processPayment, load
               <div className="flex justify-between font-medium">
                 <span className={`${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Kembalian:</span>
                 <span className={`${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  {formatCurrency(Math.max(0, payment - (calculation.grandTotal || 0)))}
+                  {formatCurrency(Math.max(0, payment - grandTotal))}
                 </span>
               </div>
             </div>
           )}
 
-          <button
-            onClick={processPayment}
-            disabled={loading || !calculation || payment < (calculation?.grandTotal || 0)}
-            className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Memproses...
-              </>
-            ) : (
-              <>
-                <CreditCard className="h-4 w-4 mr-2" />
-                Proses Pembayaran
-              </>
-            )}
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={initiateUnpaidPayment}
+              disabled={isUnpaidDisabled}
+              className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Memproses...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Simpan sebagai Hutang
+                </>
+              )}
+            </button>
+            <button
+              onClick={initiatePaidPayment}
+              disabled={isPaidDisabled}
+              className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Memproses...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Bayar Lunas
+                </>
+              )}
+            </button>
+          </div>
+          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1 px-2">
+            <span>(Alt+S)</span>
+            <span>(Alt+Enter)</span>
+          </div>
         </div>
       </div>
     </>

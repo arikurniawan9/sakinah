@@ -65,6 +65,8 @@ const TransactionHeader = () => {
         </Tooltip>
         <div className="text-right pl-2">
           <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Halo, {session?.user?.name}</p>
+          <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>ID: {session?.user?.id}</p>
+          <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No. Pegawai: {session?.user?.employeeNumber}</p>
           <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Kasir</p>
         </div>
       </div>

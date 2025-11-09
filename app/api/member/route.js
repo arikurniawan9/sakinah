@@ -32,10 +32,10 @@ export async function GET(request) {
     const where = search
       ? {
           OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { phone: { contains: search, mode: 'insensitive' } },
-            { address: { contains: search, mode: 'insensitive' } },
-            { membershipType: { contains: search, mode: 'insensitive' } },
+            { name: { contains: search } },
+            { phone: { contains: search } },
+            { address: { contains: search } },
+            { membershipType: { contains: search } },
           ],
         }
       : {};

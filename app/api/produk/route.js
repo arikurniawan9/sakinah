@@ -41,12 +41,12 @@ export async function GET(request) {
     const offset = (page - 1) * limit;
 
     const where = {
-      ...(productCode && { productCode: { equals: productCode, mode: 'insensitive' } }),
+      ...(productCode && { productCode: { equals: productCode } }),
       ...(categoryId && { categoryId }),
       ...(search && !productCode && {
         OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { productCode: { contains: search, mode: 'insensitive' } },
+          { name: { contains: search } },
+          { productCode: { contains: search } },
         ],
       }),
     };

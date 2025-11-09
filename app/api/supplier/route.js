@@ -29,10 +29,10 @@ export async function GET(request) {
     const where = search
       ? {
           OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { address: { contains: search, mode: 'insensitive' } },
-            { phone: { contains: search, mode: 'insensitive' } },
-            { email: { contains: search, mode: 'insensitive' } },
+            { name: { contains: search } },
+            { address: { contains: search } },
+            { phone: { contains: search } },
+            { email: { contains: search } },
           ],
         }
       : {};
@@ -73,7 +73,7 @@ export async function POST(request) {
     const data = supplierSchema.parse(body);
     
     const existingSupplier = await prisma.supplier.findFirst({
-      where: { name: { equals: data.name, mode: 'insensitive' } },
+      where: { name: { equals: data.name } },
     });
     
     if (existingSupplier) {
@@ -105,7 +105,7 @@ export async function PUT(request) {
     
     const existingSupplier = await prisma.supplier.findFirst({
       where: {
-        name: { equals: data.name, mode: 'insensitive' },
+        name: { equals: data.name },
         id: { not: id },
       },
     });

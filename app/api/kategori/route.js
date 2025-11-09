@@ -27,8 +27,8 @@ export async function GET(request) {
     const where = search 
       ? {
           OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { description: { contains: search, mode: 'insensitive' } },
+            { name: { contains: search } },
+            { description: { contains: search } },
           ],
         }
       : {};
@@ -72,7 +72,7 @@ export async function POST(request) {
     const { name, description } = categorySchema.parse(body);
     
     const existingCategory = await prisma.category.findFirst({
-      where: { name: { equals: name, mode: 'insensitive' } },
+      where: { name: { equals: name } },
     });
     
     if (existingCategory) {
@@ -118,7 +118,7 @@ export async function PUT(request) {
     
     const existingCategory = await prisma.category.findFirst({
       where: { 
-        name: { equals: name, mode: 'insensitive' },
+        name: { equals: name },
         id: { not: id },
       },
     });

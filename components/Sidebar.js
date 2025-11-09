@@ -132,17 +132,17 @@ const Sidebar = ({ children }) => {
     return true;
   });
 
-  const sidebarWidth = isCollapsed ? 'w-20' : 'w-56';
-  const mainContentMargin = 'ml-0'; // Main content will not have a left margin from a non-fixed sidebar
+  const sidebarWidthClass = isCollapsed ? 'w-20' : 'w-56';
+  const mainContentLeftMargin = isMobile ? 'ml-0' : (isCollapsed ? 'ml-20' : 'ml-56'); // Dynamic left margin
 
   return (
-    <div className={`flex ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}> {/* Removed h-screen here */}
+    <div className={`flex min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}> {/* Added min-h-screen */}
       {/* Sidebar */}
       <div
-        className={`inset-y-0 left-0 z-40 flex flex-col ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg transition-all duration-300 ease-in-out ${
+        className={`fixed inset-y-0 left-0 z-40 flex flex-col ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg transition-all duration-300 ease-in-out ${
           isMobile
             ? `w-56 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`
-            : `${sidebarWidth}`
+            : `${sidebarWidthClass}`
         }`}
       >
         {/* Logo */}
@@ -236,8 +236,8 @@ const Sidebar = ({ children }) => {
         ></div>
       )}
 
-      {/* Main content */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${mainContentMargin}`}> {/* Removed !isMobile ? mainContentMargin : 'ml-0' */}
+      {/* Main content wrapper */}
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${mainContentLeftMargin}`}>
         {/* Top Header */}
         <header className={`flex items-center justify-between h-16 px-4 border-b ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} z-30`}>
           {/* Left side: Mobile Menu Toggle & Desktop Sidebar Toggle */}
@@ -330,14 +330,17 @@ const Sidebar = ({ children }) => {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pb-16"> {/* Added pb-16 for fixed footer */}
           {children}
-          {/* Footer */}
-          <footer className={`py-4 text-right text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'} border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'} mt-8`}>
-            Copyright @2025 by Ari Kurniawan.
-          </footer>
         </div>
       </div>
+
+      {/* Fixed Footer */}
+      <footer className={`fixed bottom-0 left-0 right-0 z-50 py-4 px-4 text-right text-sm ${darkMode ? 'bg-gray-800 text-gray-400 border-gray-700' : 'bg-white text-gray-600 border-gray-200'} border-t`}>
+        <span className={`${isMobile ? 'ml-0' : (isCollapsed ? 'ml-20' : 'ml-56')} transition-all duration-300`}>
+          Copyright @2025 by Ari Kurniawan.
+        </span>
+      </footer>
     </div>
   );
 };

@@ -125,7 +125,7 @@ const CategoryTable = ({
                     <Tooltip content="Edit kategori">
                       <button
                         onClick={() => handleEdit(category)}
-                        className="p-2 rounded-full text-gray-400 hover:bg-gray-100 hover:text-blue-500 dark:hover:bg-gray-600"
+                        className="p-2 rounded-full text-purple-600 hover:text-purple-800 hover:bg-purple-100 dark:text-purple-400 dark:hover:text-purple-300 dark:hover:bg-gray-700"
                       >
                         <Edit className="h-4 w-4" />
                       </button>
@@ -133,7 +133,7 @@ const CategoryTable = ({
                     <Tooltip content="Hapus kategori">
                       <button
                         onClick={() => handleDelete(category.id)}
-                        className="p-2 rounded-full text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:hover:bg-gray-600"
+                        className="p-2 rounded-full text-red-600 hover:text-red-800 hover:bg-red-100 dark:text-red-500 dark:hover:text-red-400 dark:hover:bg-gray-700"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

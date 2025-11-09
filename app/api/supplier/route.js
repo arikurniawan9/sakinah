@@ -2,8 +2,21 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { z } from 'zod';
 
-// GET /api/supplier - Get all suppliers with pagination, search, and filtering
+// Zod Schemas for Supplier
+const supplierSchema = z.object({
+  name: z.string().trim().min(1, { message: 'Nama supplier wajib diisi' }),
+  address: z.string().trim().optional().nullable(),
+  phone: z.string().trim().optional().nullable(),
+  email: z.string().trim().email({ message: 'Format email tidak valid' }).optional().nullable(),
+});
+
+const supplierUpdateSchema = supplierSchema.extend({
+  id: z.string().min(1, { message: 'ID supplier wajib disediakan' }),
+});
+
+// GET /api/supplier - Get all suppliers with pagination and search
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -13,42 +26,25 @@ export async function GET(request) {
     
     const offset = (page - 1) * limit;
     
-    let suppliers;
-    let totalCount;
+    const where = search
+      ? {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { address: { contains: search, mode: 'insensitive' } },
+            { phone: { contains: search, mode: 'insensitive' } },
+            { email: { contains: search, mode: 'insensitive' } },
+          ],
+        }
+      : {};
 
-    if (search) {
-      const searchLower = `%${search.toLowerCase()}%`;
-      
-      // Fetch suppliers with raw query for case-insensitive search
-      suppliers = await prisma.$queryRaw`
-        SELECT * FROM Supplier
-        WHERE LOWER(name) LIKE ${searchLower} 
-           OR LOWER(address) LIKE ${searchLower}
-           OR LOWER(phone) LIKE ${searchLower}
-           OR LOWER(email) LIKE ${searchLower}
-        ORDER BY createdAt DESC
-        LIMIT ${limit} OFFSET ${offset}
-      `;
-
-      // Count total suppliers matching the search with raw query
-      const countResult = await prisma.$queryRaw`
-        SELECT COUNT(*) as count FROM Supplier
-        WHERE LOWER(name) LIKE ${searchLower} 
-           OR LOWER(address) LIKE ${searchLower}
-           OR LOWER(phone) LIKE ${searchLower}
-           OR LOWER(email) LIKE ${searchLower}
-      `;
-      totalCount = Number(countResult[0].count);
-
-    } else {
-      // Standard Prisma findMany when no search term
-      suppliers = await prisma.supplier.findMany({
-        skip: offset,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-      });
-      totalCount = await prisma.supplier.count();
-    }
+    const suppliers = await prisma.supplier.findMany({
+      where,
+      skip: offset,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    const totalCount = await prisma.supplier.count({ where });
     
     return NextResponse.json({
       suppliers,
@@ -61,10 +57,7 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error('Error fetching suppliers:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch suppliers' }, 
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Gagal mengambil data supplier' }, { status: 500 });
   }
 }
 
@@ -76,43 +69,26 @@ export async function POST(request) {
   }
 
   try {
-    const data = await request.json();
+    const body = await request.json();
+    const data = supplierSchema.parse(body);
     
-    if (!data.name || data.name.trim() === '') {
-      return NextResponse.json(
-        { error: 'Nama supplier wajib diisi' }, 
-        { status: 400 }
-      );
-    }
-    
-    const existingSupplier = await prisma.$queryRaw`
-      SELECT * FROM Supplier WHERE LOWER(name) = LOWER(${data.name.trim()})
-    `;
-    
-    if (existingSupplier && existingSupplier.length > 0) {
-      return NextResponse.json(
-        { error: 'Nama supplier sudah digunakan' }, 
-        { status: 400 }
-      );
-    }
-    
-    const supplier = await prisma.supplier.create({
-      data: {
-        ...data,
-        name: data.name.trim(),
-        address: data.address?.trim() || null,
-        phone: data.phone?.trim() || null,
-        email: data.email?.trim() || null,
-      },
+    const existingSupplier = await prisma.supplier.findFirst({
+      where: { name: { equals: data.name, mode: 'insensitive' } },
     });
     
-    return NextResponse.json(supplier);
+    if (existingSupplier) {
+      return NextResponse.json({ error: 'Nama supplier sudah digunakan' }, { status: 409 });
+    }
+    
+    const supplier = await prisma.supplier.create({ data });
+    
+    return NextResponse.json(supplier, { status: 201 });
   } catch (error) {
     console.error('Error creating supplier:', error);
-    return NextResponse.json(
-      { error: 'Failed to create supplier' }, 
-      { status: 500 }
-    );
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.errors[0].message }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'Gagal membuat supplier' }, { status: 500 });
   }
 }
 
@@ -124,59 +100,35 @@ export async function PUT(request) {
   }
 
   try {
-    const data = await request.json();
+    const body = await request.json();
+    const { id, ...data } = supplierUpdateSchema.parse(body);
     
-    if (!data.id) {
-      return NextResponse.json(
-        { error: 'ID supplier wajib disediakan' }, 
-        { status: 400 }
-      );
-    }
+    const existingSupplier = await prisma.supplier.findFirst({
+      where: {
+        name: { equals: data.name, mode: 'insensitive' },
+        id: { not: id },
+      },
+    });
     
-    if (!data.name || data.name.trim() === '') {
-      return NextResponse.json(
-        { error: 'Nama supplier wajib diisi' }, 
-        { status: 400 }
-      );
-    }
-    
-    const existingSupplier = await prisma.$queryRaw`
-      SELECT * FROM Supplier WHERE LOWER(name) = LOWER(${data.name.trim()}) AND id != ${data.id}
-    `;
-    
-    if (existingSupplier && existingSupplier.length > 0) {
-      return NextResponse.json(
-        { error: 'Nama supplier sudah digunakan' }, 
-        { status: 400 }
-      );
+    if (existingSupplier) {
+      return NextResponse.json({ error: 'Nama supplier sudah digunakan' }, { status: 409 });
     }
     
     const updatedSupplier = await prisma.supplier.update({
-      where: { id: data.id },
-      data: {
-        ...data,
-        name: data.name.trim(),
-        address: data.address?.trim() || null,
-        phone: data.phone?.trim() || null,
-        email: data.email?.trim() || null,
-      },
+      where: { id },
+      data,
     });
     
     return NextResponse.json(updatedSupplier);
   } catch (error) {
     console.error('Error updating supplier:', error);
-    
-    if (error.code === 'P2025') {
-      return NextResponse.json(
-        { error: 'Supplier tidak ditemukan' }, 
-        { status: 404 }
-      );
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.errors[0].message }, { status: 400 });
     }
-    
-    return NextResponse.json(
-      { error: 'Failed to update supplier' }, 
-      { status: 500 }
-    );
+    if (error.code === 'P2025') {
+      return NextResponse.json({ error: 'Supplier tidak ditemukan' }, { status: 404 });
+    }
+    return NextResponse.json({ error: 'Gagal memperbarui supplier' }, { status: 500 });
   }
 }
 
@@ -191,68 +143,46 @@ export async function DELETE(request) {
     const { searchParams } = new URL(request.url);
     let idsToDelete = [];
 
-    // Try to get IDs from request body (for multiple deletions)
-    const requestBody = await request.json().catch(() => ({})); // Handle case where body is empty or not JSON
-    if (requestBody.ids && Array.isArray(requestBody.ids) && requestBody.ids.length > 0) {
-      idsToDelete = requestBody.ids;
-    } else {
-      // If not in body, try to get a single ID from query params (for single deletion)
-      const singleId = searchParams.get('id');
-      if (singleId) {
-        idsToDelete = [singleId];
+    try {
+      const body = await request.json();
+      if (body.ids && Array.isArray(body.ids)) {
+        idsToDelete = body.ids;
       }
+    } catch (e) {
+      // Ignore if body is empty
     }
 
     if (idsToDelete.length === 0) {
-      return NextResponse.json(
-        { error: 'ID supplier atau array ID harus disediakan' }, 
-        { status: 400 }
-      );
+      const singleId = searchParams.get('id');
+      if (singleId) idsToDelete = [singleId];
     }
 
-    const suppliersWithProducts = await prisma.product.findMany({
-      where: {
-        supplierId: { in: idsToDelete },
-      },
-      select: {
-        supplierId: true,
-      },
+    if (idsToDelete.length === 0) {
+      return NextResponse.json({ error: 'ID supplier harus disediakan' }, { status: 400 });
+    }
+
+    const productCount = await prisma.product.count({
+      where: { supplierId: { in: idsToDelete } },
     });
 
-    if (suppliersWithProducts.length > 0) {
-      const supplierIds = [...new Set(suppliersWithProducts.map((p) => p.supplierId))];
+    if (productCount > 0) {
       return NextResponse.json(
-        { 
-          error: 'Tidak dapat menghapus supplier karena beberapa supplier masih memiliki produk terkait', 
-          problematicIds: supplierIds,
-        }, 
+        { error: `Tidak dapat menghapus karena ${productCount} produk masih terkait dengan supplier ini.` },
         { status: 400 }
       );
     }
     
-    const deletedSuppliers = await prisma.supplier.deleteMany({
-      where: {
-        id: { in: idsToDelete },
-      },
+    const { count } = await prisma.supplier.deleteMany({
+      where: { id: { in: idsToDelete } },
     });
+
+    if (count === 0) {
+      return NextResponse.json({ error: 'Supplier tidak ditemukan' }, { status: 404 });
+    }
     
-    return NextResponse.json({ 
-      message: `Berhasil menghapus ${deletedSuppliers.count} supplier`,
-      deletedCount: deletedSuppliers.count,
-    });
+    return NextResponse.json({ message: `Berhasil menghapus ${count} supplier.` });
   } catch (error) {
     console.error('Error deleting suppliers:', error);
-    
-    if (error.code === 'P2025') {
-      return NextResponse.json(
-        { error: 'Supplier tidak ditemukan' }, 
-        { status: 404 }
-      );
-    }
-    
-    return NextResponse.json(
-      { error: 'Failed to delete suppliers' }, 
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Gagal menghapus supplier' }, { status: 500 });
   }
 }

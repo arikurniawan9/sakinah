@@ -24,12 +24,12 @@ export default function CategoryManagementPage() {
     categories,
     loading,
     error: tableError,
+    setError: setTableError,
     searchTerm,
     setSearchTerm,
     pagination,
     setPagination,
     fetchCategories,
-    setError: setTableError,
   } = useCategoryTable();
 
   const {
@@ -52,6 +52,7 @@ export default function CategoryManagementPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
 
   const handleDelete = (id) => {
     if (!isAdmin) return;
@@ -69,27 +70,22 @@ export default function CategoryManagementPage() {
     if (!itemToDelete || !isAdmin) return;
     setIsDeleting(true);
 
-    const isMultiple = Array.isArray(itemToDelete);
+    const idsToDelete = Array.isArray(itemToDelete) ? itemToDelete : [itemToDelete];
     const url = '/api/kategori';
     const options = {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: isMultiple ? itemToDelete : [itemToDelete] }),
+      body: JSON.stringify({ ids: idsToDelete }),
     };
 
     try {
       const response = await fetch(url, options);
       const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || 'Gagal menghapus kategori');
-      }
-
+      if (!response.ok) throw new Error(result.error || 'Gagal menghapus kategori');
+      
       await fetchCategories();
-      const successMsg = `Berhasil menghapus ${isMultiple ? itemToDelete.length : 1} kategori.`;
-      setSuccessMessage(successMsg);
-      if (isMultiple) {
-        clearSelection();
-      }
+      setSuccessMessage(`Berhasil menghapus ${idsToDelete.length} kategori.`);
+      if (Array.isArray(itemToDelete)) clearSelection();
     } catch (err) {
       setTableError(err.message);
     } finally {
@@ -99,12 +95,45 @@ export default function CategoryManagementPage() {
     }
   };
 
+  const handleExport = async () => {
+    setExportLoading(true);
+    try {
+      // Fetch all categories without pagination for export
+      const response = await fetch('/api/kategori?limit=0');
+      if (!response.ok) throw new Error('Gagal mengambil data untuk export');
+      const data = await response.json();
+
+      let csvContent = 'Nama,Deskripsi,Tanggal Dibuat,Tanggal Diubah\n';
+      data.categories.forEach(category => {
+        const name = `"${(category.name || '').replace(/"/g, '""')}"`;
+        const description = `"${(category.description || '').replace(/"/g, '""')}"`;
+        const createdAt = `"${new Date(category.createdAt).toLocaleString('id-ID')}"`;
+        const updatedAt = `"${new Date(category.updatedAt).toLocaleString('id-ID')}"`;
+        csvContent += `${name},${description},${createdAt},${updatedAt}\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `kategori-${new Date().toISOString().slice(0, 10)}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setSuccessMessage('Data kategori berhasil diekspor.');
+    } catch (err) {
+      setTableError('Gagal mengekspor data: ' + err.message);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   return (
     <ProtectedRoute requiredRole="ADMIN">
       <Sidebar>
         <main className={`flex-1 p-4 sm:p-6 lg:p-8 min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
           <div className="max-w-7xl mx-auto">
-            {/* Page Header */}
             <div className="mb-8">
               <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 Manajemen Kategori
@@ -114,20 +143,21 @@ export default function CategoryManagementPage() {
               </p>
             </div>
 
-            {/* Main Content Card */}
             <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} border overflow-hidden`}>
               <div className="p-4 sm:p-6">
-                {/* Toolbar */}
                 <CategoryToolbar
                   searchTerm={searchTerm}
                   setSearchTerm={setSearchTerm}
+                  itemsPerPage={pagination.limit}
+                  setItemsPerPage={(value) => setPagination(p => ({ ...p, limit: value, page: 1 }))}
                   onAddNew={openModalForCreate}
                   onDeleteMultiple={handleDeleteMultiple}
                   selectedRowsCount={selectedRows.length}
+                  onExport={handleExport}
+                  exportLoading={exportLoading}
                   isAdmin={isAdmin}
                 />
 
-                {/* Alerts */}
                 {tableError && (
                   <div className="flex items-center p-4 my-4 rounded-lg bg-red-500/10 text-red-400">
                     <AlertTriangle className="h-5 w-5 mr-3" />
@@ -141,7 +171,6 @@ export default function CategoryManagementPage() {
                   </div>
                 )}
 
-                {/* Table */}
                 <CategoryTable
                   categories={categories}
                   loading={loading}
@@ -154,7 +183,6 @@ export default function CategoryManagementPage() {
                 />
               </div>
               
-              {/* Pagination */}
               {pagination.totalPages > 1 && (
                 <Pagination
                   currentPage={pagination.page}
@@ -167,7 +195,6 @@ export default function CategoryManagementPage() {
             </div>
           </div>
 
-          {/* Modals */}
           {isAdmin && (
             <>
               <CategoryModal

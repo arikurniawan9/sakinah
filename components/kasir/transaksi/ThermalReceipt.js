@@ -23,6 +23,7 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
 
   const {
     id,
+    invoiceNumber,
     subTotal,
     grandTotal,
     totalDiscount,
@@ -61,7 +62,7 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
       
       <div className="my-2 border-t border-b border-black py-1">
         <div className="flex justify-between text-xs">
-          <span>No: {limitText(id, 10)}</span>
+          <span>No: {limitText(invoiceNumber || id, 15)}</span>
           <span>{new Date(date).toLocaleString('id-ID', { 
             day: '2-digit', 
             month: '2-digit', 

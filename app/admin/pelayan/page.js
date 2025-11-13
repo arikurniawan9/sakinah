@@ -1,7 +1,7 @@
 // app/admin/pelayan/page.js
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import { useDarkMode } from '../../../components/DarkModeContext';
 
@@ -9,11 +9,12 @@ import { usePelayanTable } from '../../../lib/hooks/usePelayanTable';
 import { usePelayanForm } from '../../../lib/hooks/usePelayanForm';
 import { useTableSelection } from '../../../lib/hooks/useTableSelection';
 
-import PelayanTable from '../../../components/pelayan/PelayanTable';
+import PelayanView from '../../../components/pelayan/PelayanView';
 import PelayanModal from '../../../components/pelayan/PelayanModal';
 import PelayanToolbar from '../../../components/pelayan/PelayanToolbar';
-import Pagination from '../../../components/produk/Pagination'; // Reusing existing Pagination
-import ConfirmationModal from '../../../components/ConfirmationModal'; // Reusing existing ConfirmationModal
+import Pagination from '../../../components/produk/Pagination';
+import ConfirmationModal from '../../../components/ConfirmationModal';
+import FloatingAddButton from '../../../components/FloatingAddButton';
 
 export default function AttendantManagement() {
   const { darkMode } = useDarkMode();
@@ -53,10 +54,11 @@ export default function AttendantManagement() {
 
   const [importLoading, setImportLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [view, setView] = useState('table'); // 'grid' or 'table'
 
   // State for delete confirmation modal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState(null); // Can be a single ID (string) or multiple IDs (array)
+  const [itemToDelete, setItemToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = (id) => {
@@ -122,7 +124,7 @@ export default function AttendantManagement() {
       const data = await response.json();
 
       let csvContent = 'Nama,Username,Role,Tanggal Dibuat,Tanggal Diubah\n';
-      data.users.forEach(user => { // API returns 'users'
+      data.users.forEach(user => {
         const name = `"${user.name.split('"').join('""')}"`;
         const username = `"${user.username.split('"').join('""')}"`;
         const role = `"${user.role}"`;
@@ -139,6 +141,8 @@ export default function AttendantManagement() {
         link.setAttribute('download', 'pelayan.csv');
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
+        link.style.visibility = 'hidden';
+        link.click();
         document.body.removeChild(link);
       }
       setFormSuccess('Data pelayan berhasil diekspor');
@@ -158,7 +162,7 @@ export default function AttendantManagement() {
     if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls') && !file.name.toLowerCase().endsWith('.csv')) {
       setTableError('Silakan pilih file Excel (.xlsx, .xls) atau CSV (.csv)');
       setTimeout(() => setTableError(''), 5000);
-      e.target.value = ''; // Reset file input
+      e.target.value = '';
       return;
     }
 
@@ -169,7 +173,6 @@ export default function AttendantManagement() {
     try {
       setFormSuccess(`Memproses file ${file.name}...`);
       
-      // Send file to server for processing
       const response = await fetch('/api/pelayan/import', {
         method: 'POST',
         body: formData
@@ -181,15 +184,14 @@ export default function AttendantManagement() {
         throw new Error(result.error || 'Gagal mengimport pelayan');
       }
       
-      // Refresh data
       fetchAttendants();
       
       setFormSuccess(result.message || `Berhasil mengimport ${result.importedCount || 0} pelayan`);
-      e.target.value = ''; // Reset file input
+      e.target.value = '';
       setTimeout(() => setFormSuccess(''), 5000);
     } catch (err) {
       setTableError('Terjadi kesalahan saat import: ' + err.message);
-      e.target.value = ''; // Reset file input
+      e.target.value = '';
       setTimeout(() => setTableError(''), 7000);
     } finally {
       setImportLoading(false);
@@ -210,7 +212,6 @@ export default function AttendantManagement() {
               setSearchTerm={setSearchTerm}
               itemsPerPage={itemsPerPage}
               setItemsPerPage={setItemsPerPage}
-              onAddNew={openModalForCreate}
               onDeleteMultiple={handleDeleteMultiple}
               selectedRowsCount={selectedRows.length}
               onExport={handleExport}
@@ -218,6 +219,8 @@ export default function AttendantManagement() {
               importLoading={importLoading}
               exportLoading={exportLoading}
               darkMode={darkMode}
+              view={view}
+              setView={setView}
             />
 
             {tableError && (
@@ -230,14 +233,13 @@ export default function AttendantManagement() {
                 {formError}
               </div>
             )}
-            {(formSuccess || (formSuccess === '' && !formError)) && ( // Display formSuccess if it exists or if it's empty and no formError
+            {formSuccess && formSuccess.trim() !== '' && (
               <div className={`my-4 p-4 ${darkMode ? 'bg-green-900/30 border-green-700 text-green-200' : 'bg-green-50 border-green-200 text-green-700'} rounded-md`}>
                 {formSuccess}
               </div>
             )}
 
-            <PelayanTable
-              key={attendants.length}
+            <PelayanView
               attendants={attendants}
               loading={loading}
               darkMode={darkMode}
@@ -246,6 +248,7 @@ export default function AttendantManagement() {
               handleSelectRow={handleSelectRow}
               handleEdit={openModalForEdit}
               handleDelete={handleDelete}
+              view={view}
             />
           </div>
           <Pagination
@@ -253,7 +256,7 @@ export default function AttendantManagement() {
             totalPages={totalPages}
             setCurrentPage={setCurrentPage}
             itemsPerPage={itemsPerPage}
-            totalProducts={totalAttendants} // Renamed from totalProducts to totalAttendants
+            totalProducts={totalAttendants}
             darkMode={darkMode}
           />
         </div>
@@ -281,6 +284,8 @@ export default function AttendantManagement() {
           darkMode={darkMode}
           isLoading={isDeleting}
         />
+        
+        <FloatingAddButton onClick={openModalForCreate} darkMode={darkMode} />
       </main>
     </ProtectedRoute>
   );

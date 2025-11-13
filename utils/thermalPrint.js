@@ -80,7 +80,7 @@ export const printThermalReceipt = (receiptData) => {
           
           <div class="my-2 border-t border-b py-1">
             <div class="flex justify-between text-xs">
-              <span>No: ${limitTextForPrint(receiptData.id, 10)}</span>
+              <span>No. Invoice: ${receiptData.invoiceNumber}</span>
               <span>${new Date(receiptData.date).toLocaleString('id-ID', { 
                 day: '2-digit', 
                 month: '2-digit', 

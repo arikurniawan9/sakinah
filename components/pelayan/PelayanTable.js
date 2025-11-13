@@ -1,6 +1,7 @@
 import React from 'react';
+import Link from 'next/link';
 import Tooltip from '../Tooltip';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, Info } from 'lucide-react';
 
 const PelayanTable = ({
   attendants,
@@ -138,6 +139,17 @@ const PelayanTable = ({
                     >
                       <Edit className="h-4 w-4" />
                     </button>
+                  </Tooltip>
+                  <Tooltip content="Lihat Detail">
+                    <Link href={`/admin/pelayan/${attendant.id}`}>
+                      <button
+                        className={`mr-2 p-1 rounded ${
+                          darkMode ? 'text-blue-400 hover:text-blue-300 hover:bg-gray-700' : 'text-blue-600 hover:text-blue-800 hover:bg-blue-100'
+                        }`}
+                      >
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </Link>
                   </Tooltip>
                   <Tooltip content="Hapus pelayan">
                     <button

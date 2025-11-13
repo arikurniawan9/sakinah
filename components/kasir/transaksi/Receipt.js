@@ -17,6 +17,7 @@ const Receipt = React.forwardRef(({ receiptData, onReadyToPrint }, ref) => {
 
   const {
     id,
+    invoiceNumber,
     total,
     paymentMethod,
     amountPaid,
@@ -42,7 +43,7 @@ const Receipt = React.forwardRef(({ receiptData, onReadyToPrint }, ref) => {
       </div>
       <hr className="my-2 border-black" />
       <div>
-        <p>No: {id}</p>
+        <p>No: {invoiceNumber || id}</p>
         <p>Kasir: {cashier?.name || 'N/A'}</p>
         <p>Pelanggan: {customer?.name || 'Umum'}</p>
         <p>Waktu: {new Date(transactionTime).toLocaleString('id-ID')}</p>

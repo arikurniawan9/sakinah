@@ -101,6 +101,7 @@ model Sale {
   cashierId          String
   attendantId        String?
   memberId           String?
+  paymentMethod      String   @default("CASH") // Payment method: CASH, TRANSFER, etc
   date               DateTime @default(now())
   total              Int      // total sebelum diskon member
   discount           Int      // diskon member

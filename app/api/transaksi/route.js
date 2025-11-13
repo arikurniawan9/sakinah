@@ -4,32 +4,52 @@ import prisma from '../../../lib/prisma';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../../lib/authOptions';
 
-// Function to generate a unique 10-digit invoice number
+// Function to generate a unique invoice number with format: YYYYMMDDXXXXX (year-month-date-5digit_urut)
 async function generateInvoiceNumber() {
   const date = new Date();
-  const year = date.getFullYear().toString().slice(-2);
+  const year = date.getFullYear().toString();
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
   const day = date.getDate().toString().padStart(2, '0');
-  
-  const datePrefix = `${year}${month}${day}`; // YYMMDD format
 
-  let isUnique = false;
-  let invoiceNumber;
+  const datePrefix = `${year}${month}${day}`; // YYYYMMDD format
 
-  // This loop is a safeguard against rare duplicate invoice numbers.
-  // In a high-concurrency environment, a more robust solution like a dedicated sequence generator might be needed.
-  while (!isUnique) {
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000).toString(); // 4 random digits
-    invoiceNumber = `${datePrefix}${randomSuffix}`;
+  // Hitung jumlah transaksi hari ini untuk menentukan nomor urut
+  const todayStart = new Date(date);
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(date);
+  todayEnd.setHours(23, 59, 59, 999);
 
-    const existingSale = await prisma.sale.findUnique({
-      where: { invoiceNumber },
-    });
-
-    if (!existingSale) {
-      isUnique = true;
+  // Hitung jumlah transaksi dengan format yang sama hari ini
+  const existingSalesCount = await prisma.sale.count({
+    where: {
+      invoiceNumber: {
+        startsWith: datePrefix
+      },
+      createdAt: {
+        gte: todayStart,
+        lte: todayEnd
+      }
     }
+  });
+
+  // Nomor urut dimulai dari 1 setiap hari
+  const sequenceNumber = (existingSalesCount + 1).toString().padStart(5, '0'); // 5 digit dengan leading zeros
+  
+  // Gabungkan format: YYYYMMDD + 5 digit urut
+  const invoiceNumber = `${datePrefix}${sequenceNumber}`;
+
+  // Pastikan nomor unik (jaga-jaga jika ada konflik)
+  const existingSale = await prisma.sale.findUnique({
+    where: { invoiceNumber },
+  });
+
+  if (existingSale) {
+    // Jika ternyata sudah ada (kemungkinan kecil), tambahkan angka acak kecil
+    const randomSuffix = Math.floor(10 + Math.random() * 89).toString(); // 2 digit acak
+    const altSequence = (parseInt(sequenceNumber) + parseInt(randomSuffix)).toString().padStart(5, '0');
+    return `${datePrefix}${altSequence}`;
   }
+
   return invoiceNumber;
 }
 
@@ -52,12 +72,13 @@ export async function POST(request) {
     additionalDiscount,
     memberId,
     attendantId,
+    paymentMethod, // Add payment method
   } = body;
 
   if (!items || items.length === 0) {
     return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
   }
-  
+
   if (!attendantId) {
     return NextResponse.json({ error: 'Attendant must be selected' }, { status: 400 });
   }
@@ -73,6 +94,7 @@ export async function POST(request) {
           cashierId: session.user.id,
           attendantId: attendantId,
           memberId: memberId,
+          paymentMethod: paymentMethod || 'CASH', // Include payment method, default to CASH
           total: total,
           discount: discount,
           additionalDiscount: additionalDiscount,
@@ -110,12 +132,26 @@ export async function POST(request) {
           },
         });
       }
-      
+
       return newSale;
     });
 
-    // Return the complete sale object, which now includes saleDetails and product info
-    return NextResponse.json(sale, { status: 201 });
+    // Debug log untuk melihat invoice number yang dihasilkan
+    console.log("Sale object created:", {
+      id: sale.id,
+      invoiceNumber: sale.invoiceNumber,
+      total: sale.total,
+      paymentMethod: sale.paymentMethod
+    });
+
+    // Return the complete sale object including invoice number, which now includes saleDetails and product info
+    // Make sure invoiceNumber is explicitly included in the response
+    // Extract and return only the fields we need to ensure they are included
+    return NextResponse.json({
+      ...sale,
+      // Explicitly include important fields
+      invoiceNumber: sale.invoiceNumber,
+    }, { status: 201 });
   } catch (error) {
     console.error('Failed to create sale:', error);
     // Check for specific Prisma error for insufficient stock

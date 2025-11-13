@@ -72,8 +72,8 @@ export default function CashierDashboard() {
     },
     {
       title: "Riwayat Transaksi",
-      description: "Lihat riwayat transaksi hari ini",
-      href: "/admin/transaksi", // Changed to admin/transaksi as per likely structure
+      description: "Lihat riwayat transaksi yang telah Anda proses",
+      href: "/kasir/riwayat", // Changed to cashier-specific route
       icon: History,
       color: "bg-blue-100 text-blue-600", // Light mode colors
       darkModeColor: "bg-blue-900/30 text-blue-400", // Dark mode colors

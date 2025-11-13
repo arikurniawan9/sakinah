@@ -1,9 +1,10 @@
-"use client";
+// app/kasir/transaksi/page.js
+'use client';
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Home, Printer } from "lucide-react";
+import { Home, Printer, Plus } from "lucide-react";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useDarkMode } from "@/components/DarkModeContext";
@@ -18,6 +19,7 @@ import ConfirmationModal from "@/components/ConfirmationModal";
 import SuspendSaleModal from "@/components/kasir/transaksi/SuspendSaleModal";
 import SuspendedSalesListModal from "@/components/kasir/transaksi/SuspendedSalesListModal";
 import TransactionActions from "@/components/kasir/transaksi/TransactionActions";
+import AddMemberModal from "@/components/kasir/transaksi/AddMemberModal";
 import { useReactToPrint } from "react-to-print";
 import { printThermalReceipt } from "@/utils/thermalPrint";
 
@@ -49,7 +51,8 @@ export default function KasirTransaksiPage() {
   const [additionalDiscount, setAdditionalDiscount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [showReceiptModal, setShowReceiptModal] = useState(false);
-  
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+
   // State untuk fullscreen dan lock
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
@@ -80,23 +83,6 @@ export default function KasirTransaksiPage() {
 
   const initiateUnpaidPayment = () => {
     alert("Fitur simpan sebagai hutang belum tersedia di halaman ini.");
-  };
-
-  // Fungsi untuk toggle fullscreen
-  const toggleFullscreen = async () => {
-    try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-        setIsFullscreen(true);
-      } else {
-        if (document.exitFullscreen) {
-          await document.exitFullscreen();
-          setIsFullscreen(false);
-        }
-      }
-    } catch (err) {
-      console.error('Error attempting to toggle fullscreen:', err);
-    }
   };
 
   // Fungsi untuk lock saja (Alt+A hanya mengunci)
@@ -182,6 +168,7 @@ export default function KasirTransaksiPage() {
           cashierId: session.user.id,
           attendantId: selectedAttendant.id, // Now required, not optional
           memberId: selectedMember?.id || defaultMember?.id || null, // Use default member if none selected
+          paymentMethod: paymentMethod, // Include payment method
           items: cart.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
@@ -200,15 +187,27 @@ export default function KasirTransaksiPage() {
       const result = await response.json();
 
       if (response.ok) {
+        console.log("Full API response:", result); // Debug log lengkap
+        console.log("API invoiceNumber:", result.invoiceNumber); // Debug log khusus invoice number
+        
         const receiptPayload = {
           ...calculation,
           id: result.id,
-          date: result.date,
+          invoiceNumber: result.invoiceNumber || result.id, // Gunakan invoiceNumber, fallback ke id jika tidak ada
+          date: result.date || result.createdAt, // Menggunakan date jika ada, jika tidak maka createdAt
           cashier: session.user,
           attendant: selectedAttendant,
           payment: payment,
           change: payment - calculation.grandTotal,
+          paymentMethod: result.paymentMethod || paymentMethod, // Gunakan paymentMethod dari result atau dari state
         };
+        console.log("Receipt payload:", receiptPayload); // Debug log
+
+        // Pastikan invoiceNumber ada sebelum mencetak
+        if (!receiptPayload.invoiceNumber) {
+          console.warn("Invoice number tidak ditemukan, gunakan ID sebagai fallback");
+          receiptPayload.invoiceNumber = result.id;
+        }
 
         // Langsung cetak struk tanpa menampilkan modal
         printThermalReceipt(receiptPayload)
@@ -240,17 +239,7 @@ export default function KasirTransaksiPage() {
     } finally {
       setLoading(false);
     }
-  }, [
-    calculation,
-    payment,
-    session,
-    selectedAttendant,
-    selectedMember,
-    cart,
-    getTierPrice,
-    defaultMember,
-    additionalDiscount,
-  ]);
+  }, [calculation, payment, session, selectedAttendant, selectedMember, cart, getTierPrice, defaultMember, additionalDiscount]);
 
   const handleSuspendSale = async ({ name, notes }) => {
     if (cart.length === 0) {
@@ -297,8 +286,7 @@ export default function KasirTransaksiPage() {
 
   const handleResumeSale = async (suspendedSale) => {
     // Find the member object from the members list using memberId
-    const memberToSelect =
-      members.find((m) => m.id === suspendedSale.memberId) || null;
+    const memberToSelect = members.find((m) => m.id === suspendedSale.memberId) || null;
 
     // Set the state
     setCart(suspendedSale.cartItems);
@@ -309,12 +297,9 @@ export default function KasirTransaksiPage() {
 
     // Delete the suspended sale from the database
     try {
-      const response = await fetch(
-        `/api/suspended-sales?id=${suspendedSale.id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch(`/api/suspended-sales?id=${suspendedSale.id}`, {
+        method: "DELETE",
+      });
       if (!response.ok) {
         throw new Error(
           "Gagal menghapus penjualan yang ditangguhkan dari database."
@@ -435,30 +420,12 @@ export default function KasirTransaksiPage() {
     }
   }, [receiptData]);
 
-  // Effect untuk menangani fullscreen state
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    };
-  }, []);
-
   const handleReceiptReadyToPrint = () => {
     if (receiptData && receiptRef.current) {
       // Instead of printing directly, let's show the receipt modal
       console.log("Receipt ready to be shown in modal");
     } else {
-      console.log(
-        "Receipt not ready for printing. Data:",
-        !!receiptData,
-        "Ref:",
-        !!receiptRef.current
-      );
+      console.log("Receipt not ready for printing. Data:", !!receiptData, "Ref:", !!receiptRef.current);
     }
   };
 
@@ -527,9 +494,7 @@ export default function KasirTransaksiPage() {
   };
 
   const removeFromCart = (productId) => {
-    setCart((prevCart) =>
-      prevCart.filter((item) => item.productId !== productId)
-    );
+    setCart((prevCart) => prevCart.filter((item) => item.productId !== productId));
   };
 
   const updateQuantity = (productId, newQuantity) => {
@@ -592,20 +557,43 @@ export default function KasirTransaksiPage() {
     }
   };
 
+  // Fungsi untuk menambah member baru
+  const handleAddMember = async (memberData) => {
+    try {
+      const response = await fetch('/api/member', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(memberData),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert('Member baru berhasil ditambahkan');
+        // Tambahkan member baru ke daftar member
+        setMembers(prev => [...prev, result]);
+        // Pilih member yang baru ditambahkan
+        setSelectedMember(result);
+        return result;
+      } else {
+        alert(result.error || 'Gagal menambahkan member baru');
+        throw new Error(result.error || 'Gagal menambahkan member baru');
+      }
+    } catch (error) {
+      console.error('Error adding member:', error);
+      alert('Terjadi kesalahan saat menambahkan member baru');
+      throw error;
+    }
+  };
+
   return (
     <ProtectedRoute requiredRole="CASHIER">
-      <div
-        className={`min-h-screen ${
-          darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50"
-        }`}
-      >
-        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className={`min-h-screen ${darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50"}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex justify-between items-center mb-2">
-            <h1
-              className={`text-2xl font-bold ${
-                darkMode ? "text-white" : "text-gray-900"
-              }`}
-            >
+            <h1 className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
               Transaksi Kasir
             </h1>
             <div className="flex space-x-2">
@@ -623,24 +611,6 @@ export default function KasirTransaksiPage() {
                 </button>
                 <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 hidden group-hover:block bg-gray-800 text-white text-xs py-1 px-2 rounded">
                   Dashboard
-                </span>
-              </div>
-              <div className="group relative">
-                <button
-                  onClick={toggleFullscreen}
-                  className={`p-2 rounded-md ${
-                    isFullscreen
-                      ? "bg-blue-600 hover:bg-blue-700 text-white"
-                      : darkMode
-                        ? "bg-gray-600 hover:bg-gray-700 text-white"
-                        : "bg-gray-300 hover:bg-gray-400 text-gray-800"
-                  } transition-colors`}
-                  title={isFullscreen ? "Keluar Layar Penuh" : "Layar Penuh"}
-                >
-                  {isFullscreen ? "✕" : "⛶"}
-                </button>
-                <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 hidden group-hover:block bg-gray-800 text-white text-xs py-1 px-2 rounded">
-                  {isFullscreen ? "Keluar Layar Penuh" : "Layar Penuh"}
                 </span>
               </div>
               <div className="group relative">
@@ -718,7 +688,9 @@ export default function KasirTransaksiPage() {
                 darkMode={darkMode}
                 isOpen={showMembersModal}
                 onToggle={setShowMembersModal}
+                onAddNewMember={() => setShowAddMemberModal(true)}
               />
+              
               <AttendantSelection
                 selectedAttendant={selectedAttendant}
                 onSelectAttendant={setSelectedAttendant}
@@ -755,11 +727,7 @@ export default function KasirTransaksiPage() {
         </div>
       </div>
       <div className="printable-receipt">
-        <Receipt
-          ref={receiptRef}
-          receiptData={receiptData}
-          onReadyToPrint={handleReceiptReadyToPrint}
-        />
+        <Receipt ref={receiptRef} receiptData={receiptData} onReadyToPrint={handleReceiptReadyToPrint} />
       </div>
       <ConfirmationModal
         isOpen={isConfirmModalOpen}
@@ -786,9 +754,18 @@ export default function KasirTransaksiPage() {
         darkMode={darkMode}
       />
 
+      {/* Add Member Modal */}
+      <AddMemberModal
+        isOpen={showAddMemberModal}
+        onClose={() => setShowAddMemberModal(false)}
+        onSave={handleAddMember}
+        darkMode={darkMode}
+        existingMembers={members}
+      />
+
       {/* Receipt Modal */}
       {showReceiptModal && receiptData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[50] p-4">
           <div
             className={`relative ${
               darkMode ? "bg-gray-800" : "bg-white"

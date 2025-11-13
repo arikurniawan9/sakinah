@@ -2,9 +2,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Users, X } from 'lucide-react';
+import { Users, X, Plus } from 'lucide-react';
 
-const MemberSelection = ({ selectedMember, defaultMember, onSelectMember, onRemoveMember, members, darkMode, isOpen, onToggle }) => {
+const MemberSelection = ({ selectedMember, defaultMember, onSelectMember, onRemoveMember, members, darkMode, isOpen, onToggle, onAddNewMember }) => {
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
 
   const filteredMembers = members.filter(member =>
@@ -93,14 +93,30 @@ const MemberSelection = ({ selectedMember, defaultMember, onSelectMember, onRemo
               ))}
             </div>
             <div className={`p-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-              <button
-                onClick={() => onToggle(false)}
-                className={`w-full py-2 px-4 rounded-md text-sm font-medium ${
-                  darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'
-                }`}
-              >
-                Batal
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => onToggle(false)}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium ${
+                    darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-200 hover:bg-gray-300'
+                  }`}
+                >
+                  Batal
+                </button>
+                {onAddNewMember && (
+                  <button
+                    onClick={() => {
+                      onToggle(false); // Close modal
+                      onAddNewMember(); // Call function to open add member modal
+                    }}
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium flex items-center justify-center ${
+                      darkMode ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-green-600 hover:bg-green-500 text-white'
+                    }`}
+                  >
+                    <Plus className="h-4 w-4 inline mr-2" />
+                    Tambah Baru
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -23,11 +23,11 @@ const TotalDisplay = memo(({ total, darkMode }) => {
     if (typeof amount !== 'number' || isNaN(amount)) {
       return 'Nol Rupiah';
     }
-    
+
     if (amount < 0) {
       return 'Angka negatif tidak valid';
     }
-    
+
     try {
       // Untuk jumlah besar, terbilang bisa gagal, jadi kita gunakan try-catch
       const result = terbilang(amount);
@@ -53,9 +53,11 @@ const TotalDisplay = memo(({ total, darkMode }) => {
       <p className={`text-6xl font-bold my-2 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>
         {formatCurrency(total)}
       </p>
-      <p className={`text-md italic ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-        {terbilangText}
-      </p>
+      <div className="mt-2">
+        <p className={`text-md italic ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          {terbilangText}
+        </p>
+      </div>
     </div>
   );
 });

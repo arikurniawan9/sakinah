@@ -2,9 +2,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Users, X, Plus, DollarSign } from 'lucide-react';
+import { Users, X, Plus } from 'lucide-react';
 
-const MemberSelection = ({ selectedMember, defaultMember, onSelectMember, onRemoveMember, members, darkMode, isOpen, onToggle, onAddNewMember, onShowReceivables }) => {
+const MemberSelection = ({ selectedMember, defaultMember, onSelectMember, onRemoveMember, members, darkMode, isOpen, onToggle, onAddNewMember }) => {
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
 
   const filteredMembers = members.filter(member =>
@@ -40,8 +40,8 @@ const MemberSelection = ({ selectedMember, defaultMember, onSelectMember, onRemo
               </div>
               <div className="text-xs mt-1">
                 <span className={`px-2 py-0.5 rounded-full ${
-                  selectedMember.discount === 15 ? 'bg-purple-100 text-purple-800' : 
-                  selectedMember.discount === 10 ? 'bg-blue-100 text-blue-800' : 
+                  selectedMember.discount === 15 ? 'bg-purple-100 text-purple-800' :
+                  selectedMember.discount === 10 ? 'bg-blue-100 text-blue-800' :
                   'bg-yellow-100 text-yellow-800'
                 } ${darkMode ? 'text-xs' : ''}`}>
                   {selectedMember.discount}% Discount
@@ -49,13 +49,6 @@ const MemberSelection = ({ selectedMember, defaultMember, onSelectMember, onRemo
               </div>
             </div>
             <div className="flex space-x-2">
-              <button
-                onClick={() => onShowReceivables && onShowReceivables(selectedMember.id)}
-                className={`p-1 rounded-full ${darkMode ? 'text-yellow-400 hover:bg-gray-700' : 'text-yellow-600 hover:bg-yellow-100'}`}
-                title="Lihat Hutang"
-              >
-                <DollarSign size={16} />
-              </button>
               <button
                 onClick={onRemoveMember}
                 className={`p-1 rounded-full ${darkMode ? 'text-red-400 hover:bg-gray-700' : 'text-red-600 hover:bg-red-100'}`}

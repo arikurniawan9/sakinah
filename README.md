@@ -174,12 +174,20 @@ Setelah seeding, akun default tersedia:
 - **Kasir**: username: `kasir`, password: `kasir123`
 - **Pelayan**: username: `pelayan`, password: `pelayan123`
 
-## 📈 Fitur Lanjutan (Opsional)
+## 📈 Fitur Lanjutan (Tersedia)
 
 - Sistem log stock (stock in/out)
-- Notifikasi stok rendah
+- Notifikasi stok rendah langsung di halaman transaksi
 - Export/import CSV
-- Undo transaksi dalam 5 menit
+- Undo transaksi dalam 5 menit pertama setelah transaksi selesai
 - Audit log untuk admin
 - Integrasi printer thermal
 - Realtime via Supabase Realtime
+
+## 🚀 Fitur-fitur Baru
+
+- **Tombol Pembayaran Cepat**: Tombol untuk pembayaran dengan nominal umum (Rp20K, Rp50K, Rp100K, Rp200K) di halaman transaksi
+- **Notifikasi Stok Rendah**: Muncul secara real-time saat produk dengan stok kurang dari 5 buah ditambahkan ke keranjang
+- **Tombol Undo Transaksi**: Memungkinkan pembatalan transaksi dalam waktu 5 menit pertama di halaman riwayat
+- **Detail Diskon Lengkap**: Struk thermal menampilkan detail perhitungan diskon (diskon item, member, dan tambahan)
+- **Metode Pembayaran QRIS**: Menyediakan opsi pembayaran QRIS sebagai tambahan dari CASH dan TRANSFER

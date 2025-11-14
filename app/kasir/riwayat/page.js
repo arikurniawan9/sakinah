@@ -4,9 +4,10 @@
 import { useState, useEffect } from 'react';
 import Sidebar from '../../../components/Sidebar';
 import { useDarkMode } from '../../../components/DarkModeContext';
-import { History, Home, Calendar, Search, Printer } from 'lucide-react';
+import { History, Home, Calendar, Search, Printer, Undo2 } from 'lucide-react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import { printThermalReceipt } from '../../../utils/thermalPrint'; // Import the thermal print utility
+import UndoTransactionButton from '../../../components/kasir/transaksi/UndoTransactionButton'; // Import Undo Transaction Button
 
 export default function RiwayatKasirPage() {
   const { darkMode } = useDarkMode();
@@ -263,17 +264,28 @@ export default function RiwayatKasirPage() {
                               </span>
                             </td>
                             <td className={`px-6 py-4 whitespace-nowrap text-sm`}>
-                              <button
-                                onClick={() => handlePrintReceipt(transaction)}
-                                className={`p-1 rounded ${
-                                  darkMode
-                                    ? 'text-gray-300 hover:bg-gray-700'
-                                    : 'text-gray-600 hover:bg-gray-200'
-                                }`}
-                                title="Cetak Struk"
-                              >
-                                <Printer size={16} />
-                              </button>
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => handlePrintReceipt(transaction)}
+                                  className={`p-1 rounded ${
+                                    darkMode
+                                      ? 'text-gray-300 hover:bg-gray-700'
+                                      : 'text-gray-600 hover:bg-gray-200'
+                                  }`}
+                                  title="Cetak Struk"
+                                >
+                                  <Printer size={16} />
+                                </button>
+                                {/* Tombol undo hanya untuk transaksi yang statusnya 'PAID' dan masih dalam waktu maksimum undo */}
+                                {transaction.status === 'PAID' && (
+                                  <UndoTransactionButton
+                                    saleId={transaction.id}
+                                    invoiceNumber={transaction.invoiceNumber}
+                                    onUndo={() => fetchTransactions(pagination.page, selectedDate, searchTerm)}
+                                    darkMode={darkMode}
+                                  />
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}

@@ -1,7 +1,7 @@
 // components/kasir/transaksi/PaymentSummary.js
 'use client';
 
-import { CreditCard, Save } from 'lucide-react';
+import { CreditCard, Save, Wallet, Coins } from 'lucide-react';
 import { memo } from 'react';
 
 const PaymentSummary = memo(({
@@ -40,12 +40,9 @@ const PaymentSummary = memo(({
     return Math.ceil(num / roundTo) * roundTo;
   };
 
-  // Fungsi untuk menghitung pembayaran cepat
-  const quickPayment = (multiplier) => {
-    if (hasCalculation) {
-      const calculatedPayment = Math.max(grandTotal, roundToNearest(grandTotal * multiplier));
-      setPayment(calculatedPayment);
-    }
+  // Fungsi untuk tombol pembayaran cepat dengan nilai umum
+  const quickPaymentAmount = (amount) => {
+    setPayment(amount);
   };
 
   return (
@@ -101,6 +98,7 @@ const PaymentSummary = memo(({
             >
               <option value="CASH">CASH</option>
               <option value="TRANSFER">TRANSFER</option>
+              <option value="QRIS">QRIS</option>
             </select>
           </div>
           <div>
@@ -148,7 +146,7 @@ const PaymentSummary = memo(({
               value={payment}
               onChange={(e) => setPayment(Number(e.target.value))}
               placeholder="Masukkan jumlah pembayaran"
-              min={grandTotal}
+              min="0"
             />
              {calculation && payment > 0 && payment < grandTotal && (
               <p className="mt-2 text-xs text-red-500">
@@ -165,50 +163,55 @@ const PaymentSummary = memo(({
           {/* Tombol pembayaran cepat */}
           <div className="grid grid-cols-4 gap-2">
             <button
-              onClick={() => quickPayment(1)}
+              onClick={() => quickPaymentAmount(20000)}
               disabled={!hasCalculation}
-              className={`text-xs py-2 rounded ${
-                darkMode 
-                  ? 'bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-50' 
+              className={`text-xs py-2 rounded flex items-center justify-center ${
+                darkMode
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-50'
                   : 'bg-gray-200 hover:bg-gray-300 text-gray-800 disabled:opacity-50'
               }`}
             >
-              {formatCurrency(roundToNearest(grandTotal, 1000))}
+              <Wallet className="h-3 w-3 mr-1" />
+              20K
             </button>
             <button
-              onClick={() => quickPayment(1.1)}
+              onClick={() => quickPaymentAmount(50000)}
               disabled={!hasCalculation}
-              className={`text-xs py-2 rounded ${
-                darkMode 
-                  ? 'bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-50' 
+              className={`text-xs py-2 rounded flex items-center justify-center ${
+                darkMode
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-50'
                   : 'bg-gray-200 hover:bg-gray-300 text-gray-800 disabled:opacity-50'
               }`}
             >
-              +10%
+              <Wallet className="h-3 w-3 mr-1" />
+              50K
             </button>
             <button
-              onClick={() => quickPayment(1.25)}
+              onClick={() => quickPaymentAmount(100000)}
               disabled={!hasCalculation}
-              className={`text-xs py-2 rounded ${
-                darkMode 
-                  ? 'bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-50' 
+              className={`text-xs py-2 rounded flex items-center justify-center ${
+                darkMode
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-50'
                   : 'bg-gray-200 hover:bg-gray-300 text-gray-800 disabled:opacity-50'
               }`}
             >
-              +25%
+              <Coins className="h-3 w-3 mr-1" />
+              100K
             </button>
             <button
-              onClick={() => quickPayment(2)}
+              onClick={() => quickPaymentAmount(200000)}
               disabled={!hasCalculation}
-              className={`text-xs py-2 rounded ${
-                darkMode 
-                  ? 'bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-50' 
+              className={`text-xs py-2 rounded flex items-center justify-center ${
+                darkMode
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-50'
                   : 'bg-gray-200 hover:bg-gray-300 text-gray-800 disabled:opacity-50'
               }`}
             >
-              x2
+              <Coins className="h-3 w-3 mr-1" />
+              200K
             </button>
           </div>
+
 
           {calculation && (
             <div className="text-sm">

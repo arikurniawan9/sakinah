@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Home, Printer, Plus } from "lucide-react";
+import { Home, Printer, Plus, AlertTriangle } from "lucide-react";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useDarkMode } from "@/components/DarkModeContext";
@@ -22,6 +22,7 @@ import TransactionActions from "@/components/kasir/transaksi/TransactionActions"
 import AddMemberModal from "@/components/kasir/transaksi/AddMemberModal";
 import ReceivablesModal from "@/components/kasir/transaksi/ReceivablesModal";
 import AllReceivablesModal from "@/components/kasir/transaksi/AllReceivablesModal";
+import StockNotification from "@/components/kasir/transaksi/StockNotification";
 import { useReactToPrint } from "react-to-print";
 import { printThermalReceipt } from "@/utils/thermalPrint";
 
@@ -55,8 +56,8 @@ export default function KasirTransaksiPage() {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [showReceivablesModal, setShowReceivablesModal] = useState(false);
-  const [selectedMemberIdForReceivables, setSelectedMemberIdForReceivables] = useState(null);
   const [showAllReceivablesModal, setShowAllReceivablesModal] = useState(false);
+  const [showStockNotification, setShowStockNotification] = useState(true);
 
   // State untuk fullscreen dan lock
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -113,6 +114,13 @@ export default function KasirTransaksiPage() {
       return;
     }
 
+    // Validasi bahwa jumlah pembayaran tidak melebihi total
+    if (payment > calculation.grandTotal) {
+      alert("Jumlah pembayaran tidak boleh melebihi total tagihan!");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await fetch("/api/transaksi", {
@@ -130,19 +138,21 @@ export default function KasirTransaksiPage() {
             discount: getTierPrice(item, 1) - getTierPrice(item, item.quantity),
           })),
           total: calculation.grandTotal,
-          payment: payment, // Kirim jumlah pembayaran (bisa 0 untuk hutang penuh atau sebagian untuk pembayaran sebagian)
-          change: payment >= calculation.grandTotal ? payment - calculation.grandTotal : 0, // Kembalian jika pembayaran lebih atau sama
+          payment: payment, // Kirim jumlah pembayaran sebagai DP (uang muka)
+          change: 0, // Tidak ada kembalian untuk transaksi hutang
           tax: calculation.tax,
           discount: calculation.totalDiscount,
           additionalDiscount: additionalDiscount,
-          status: 'UNPAID', // Set status sebagai UNPAID karena ini untuk transaksi hutang
+          status: payment > 0 ? 'PARTIALLY_PAID' : 'UNPAID', // Gunakan PARTIALLY_PAID jika ada DP, UNPAID jika tidak ada DP
         }),
       });
 
       const result = await response.json();
 
       if (response.ok) {
-        alert(`Transaksi hutang berhasil disimpan.\nNomor Invoice: ${result.invoiceNumber || result.id}`);
+        // Hitung sisa yang harus dibayar
+        const remainingAmount = calculation.grandTotal - payment;
+        alert(`Transaksi hutang berhasil disimpan.\nNomor Invoice: ${result.invoiceNumber || result.id}\nJumlah DP: ${formatCurrency(payment)}\nSisa Hutang: ${formatCurrency(remainingAmount)}`);
 
         // Reset form setelah transaksi hutang
         setCart([]);
@@ -162,7 +172,7 @@ export default function KasirTransaksiPage() {
     } finally {
       setLoading(false);
     }
-  }, [calculation, session, selectedAttendant, selectedMember, cart, getTierPrice, paymentMethod, additionalDiscount]);
+  }, [calculation, session, selectedAttendant, selectedMember, cart, getTierPrice, paymentMethod, additionalDiscount, payment]);
 
   const initiateUnpaidPayment = () => {
     // Tambahkan konfirmasi untuk pembayaran hutang
@@ -178,6 +188,14 @@ export default function KasirTransaksiPage() {
     
     // Buka modal konfirmasi
     setIsUnpaidConfirmModalOpen(true);
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+    }).format(amount);
   };
 
   // Fungsi untuk lock saja (Alt+A hanya mengunci)
@@ -597,6 +615,11 @@ export default function KasirTransaksiPage() {
         },
       ]);
     }
+
+    // Reset stock notification to show again if new low stock items are added
+    if (product.stock < 5) {
+      setShowStockNotification(true);
+    }
   };
 
   const removeFromCart = (productId) => {
@@ -812,12 +835,8 @@ export default function KasirTransaksiPage() {
                 isOpen={showMembersModal}
                 onToggle={setShowMembersModal}
                 onAddNewMember={() => setShowAddMemberModal(true)}
-                onShowReceivables={(memberId) => {
-                  setSelectedMemberIdForReceivables(memberId);
-                  setShowReceivablesModal(true);
-                }}
               />
-              
+
               <AttendantSelection
                 selectedAttendant={selectedAttendant}
                 onSelectAttendant={setSelectedAttendant}
@@ -851,6 +870,15 @@ export default function KasirTransaksiPage() {
               />
             </div>
           </div>
+
+          {/* Stock Notification */}
+          {showStockNotification && calculation && calculation.items && calculation.items.length > 0 && (
+            <StockNotification
+              items={calculation.items}
+              onClose={() => setShowStockNotification(false)}
+              darkMode={darkMode}
+            />
+          )}
         </div>
       </div>
       <div className="printable-receipt">
@@ -960,12 +988,10 @@ export default function KasirTransaksiPage() {
             <p className="mb-2">Anda akan menyimpan transaksi ini sebagai hutang untuk:</p>
             <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-md text-left">
               <p className="font-semibold">{selectedMember?.name}</p>
-              <p className="text-sm">Total: {new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                minimumFractionDigits: 0,
-              }).format(calculation?.grandTotal || 0)}</p>
-              <p className="text-sm">Pelayan: {selectedAttendant?.name}</p>
+              <p className="text-sm">Total: {formatCurrency(calculation?.grandTotal || 0)}</p>
+              <p className="text-sm">Jumlah DP: {formatCurrency(payment || 0)}</p>
+              <p className="text-sm text-green-600 dark:text-green-400">Sisa Hutang: {calculation ? formatCurrency(Math.max(0, calculation.grandTotal - (payment || 0))) : formatCurrency(0)}</p>
+              <p className="text-sm mt-2">Pelayan: {selectedAttendant?.name}</p>
             </div>
             <p className="mt-3">Transaksi ini akan dicatat sebagai hutang dan stok produk akan berkurang. Apakah Anda yakin ingin melanjutkan?</p>
           </div>
@@ -980,7 +1006,7 @@ export default function KasirTransaksiPage() {
       <ReceivablesModal
         isOpen={showReceivablesModal}
         onClose={() => setShowReceivablesModal(false)}
-        memberId={selectedMemberIdForReceivables}
+        memberId={selectedMember?.id || null}
         darkMode={darkMode}
       />
 

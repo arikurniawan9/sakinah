@@ -65,6 +65,9 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
     id,
     invoiceNumber,
     subTotal,
+    itemDiscount,
+    memberDiscount,
+    additionalDiscount,
     grandTotal,
     totalDiscount,
     payment,
@@ -74,7 +77,8 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
     attendant,
     date,
     customer,
-    paymentMethod
+    paymentMethod,
+    status
   } = receiptData;
 
   return (
@@ -142,12 +146,36 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
           <span>Subtotal</span>
           <span>{formatCurrency(subTotal || 0)}</span>
         </div>
-        {totalDiscount > 0 && (
+
+        {/* Detail Diskon */}
+        {itemDiscount > 0 && (
           <div className="flex justify-between text-sm">
-            <span>Diskon</span>
+            <span>Diskon Item</span>
+            <span>-{formatCurrency(itemDiscount || 0)}</span>
+          </div>
+        )}
+
+        {memberDiscount > 0 && (
+          <div className="flex justify-between text-sm">
+            <span>Diskon Member</span>
+            <span>-{formatCurrency(memberDiscount || 0)}</span>
+          </div>
+        )}
+
+        {additionalDiscount > 0 && (
+          <div className="flex justify-between text-sm">
+            <span>Diskon Tambahan</span>
+            <span>-{formatCurrency(additionalDiscount || 0)}</span>
+          </div>
+        )}
+
+        {totalDiscount > 0 && (
+          <div className="flex justify-between text-sm border-t border-black pt-1">
+            <span>Total Diskon</span>
             <span>-{formatCurrency(totalDiscount || 0)}</span>
           </div>
         )}
+
         <div className="flex justify-between text-sm font-bold border-t border-black py-1">
           <span>Total</span>
           <span>{formatCurrency(grandTotal || 0)}</span>
@@ -156,6 +184,24 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
           <span>Bayar</span>
           <span>{formatCurrency(payment || 0)}</span>
         </div>
+        {/* Tampilkan status pembayaran */}
+        <div className="flex justify-between text-sm font-bold">
+          {status === 'UNPAID' ? (
+            <span className="text-red-500">Status: HUTANG</span>
+          ) : status === 'PARTIALLY_PAID' ? (
+            <span className="text-yellow-500">Status: DP</span>
+          ) : (
+            <span className="text-green-500">Status: LUNAS</span>
+          )}
+          <span></span>
+        </div>
+        {/* Tampilkan sisa hutang jika statusnya hutang */}
+        {payment < grandTotal && grandTotal > 0 && (
+          <div className="flex justify-between text-sm">
+            <span>Sisa Hutang</span>
+            <span>{formatCurrency(Math.max(0, grandTotal - payment))}</span>
+          </div>
+        )}
         <div className="flex justify-between text-sm">
           <span>Kembali</span>
           <span>{formatCurrency(change || 0)}</span>

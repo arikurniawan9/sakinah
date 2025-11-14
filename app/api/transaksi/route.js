@@ -115,7 +115,22 @@ export async function POST(request) {
     const newInvoiceNumber = await generateInvoiceNumber();
 
     const sale = await prisma.$transaction(async (tx) => {
-      // 1. Create the Sale record
+      // 1. Validasi ulang stok sebelum membuat transaksi untuk mencegah race condition
+      for (const item of items) {
+        const product = await tx.product.findUnique({
+          where: { id: item.productId },
+        });
+
+        if (!product) {
+          throw new Error(`Produk dengan ID ${item.productId} tidak ditemukan.`);
+        }
+
+        if (product.stock < item.quantity) {
+          throw new Error(`Stok tidak cukup untuk produk "${product.name}". Stok tersedia: ${product.stock}, permintaan: ${item.quantity}.`);
+        }
+      }
+
+      // 2. Create the Sale record
       const newSale = await tx.sale.create({
         data: {
           invoiceNumber: newInvoiceNumber,
@@ -149,7 +164,7 @@ export async function POST(request) {
         }
       });
 
-      // 2. Update product stock - dilakukan untuk semua transaksi karena produk telah diberikan ke pelanggan
+      // 3. Update product stock - dilakukan untuk semua transaksi karena produk telah diberikan ke pelanggan
       for (const item of items) {
         const updatedProduct = await tx.product.update({
           where: { id: item.productId },
@@ -159,16 +174,16 @@ export async function POST(request) {
             },
           },
         });
-        
+
         // Tambahkan validasi tambahan bahwa stok tidak negatif
         if (updatedProduct.stock < 0) {
           throw new Error(`Stok produk ${updatedProduct.name} menjadi negatif setelah transaksi.`);
         }
       }
 
-      // 3. Jika status UNPAID dan ada sisa yang harus dibayar, buat juga entri di Receivable
-      if (status === 'UNPAID' && memberId) {
-        // Untuk transaksi UNPAID, sisa hutang adalah total - jumlah yang dibayar
+      // 4. Jika status UNPAID atau PARTIALLY_PAID, buat juga entri di Receivable
+      if ((status === 'UNPAID' || status === 'PARTIALLY_PAID') && memberId) {
+        // Sisa hutang adalah total - jumlah yang dibayar
         const remainingAmount = total - (payment || 0);
         if (remainingAmount > 0) {
           await tx.receivable.create({
@@ -176,7 +191,7 @@ export async function POST(request) {
               saleId: newSale.id,
               memberId: memberId,
               amountDue: total, // Total asli
-              amountPaid: payment || 0, // Jumlah yang sudah dibayar
+              amountPaid: payment || 0, // Jumlah yang sudah dibayar sebagai DP
               status: payment > 0 ? 'PARTIALLY_PAID' : 'UNPAID', // Status tergantung pembayaran
             }
           });

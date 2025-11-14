@@ -79,7 +79,7 @@ const MemberSelection = ({ selectedMember, defaultMember, onSelectMember, onRemo
       </div>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
           <div className={`relative w-full max-w-md max-h-[70vh] rounded-2xl shadow-2xl flex flex-col ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
             <div className={`p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <h3 className="text-lg font-semibold">Pilih Member</h3>

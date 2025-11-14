@@ -22,7 +22,7 @@ export default function ProductModal({
   if (!showModal) return null;
 
   return (
-    <div className="fixed z-50 inset-0 overflow-y-auto">
+    <div className="fixed z-[100] inset-0 overflow-y-auto">
       <div className="flex items-end justify-center min-h-screen sm:p-0 p-0">
         <div className="fixed inset-0 transition-opacity" aria-hidden="true" onClick={closeModal}>
           <div className={`${darkMode ? 'bg-gray-800 bg-opacity-75' : 'bg-gray-500 bg-opacity-75'}`}></div>

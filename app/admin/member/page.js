@@ -9,12 +9,10 @@ import { useMemberTable } from '../../../lib/hooks/useMemberTable';
 import { useMemberForm } from '../../../lib/hooks/useMemberForm';
 import { useTableSelection } from '../../../lib/hooks/useTableSelection';
 
-import MemberView from '../../../components/member/MemberView';
 import MemberModal from '../../../components/member/MemberModal';
-import MemberToolbar from '../../../components/member/MemberToolbar';
-import Pagination from '../../../components/produk/Pagination'; // Reusing existing Pagination
-import ConfirmationModal from '../../../components/ConfirmationModal'; // Reusing existing ConfirmationModal
-import FloatingAddButton from '../../../components/member/FloatingAddButton';
+import ConfirmationModal from '../../../components/ConfirmationModal';
+import DataTable from '../../../components/DataTable';
+import Breadcrumb from '../../../components/Breadcrumb';
 
 export default function MemberManagement() {
   const { darkMode } = useDarkMode();
@@ -54,7 +52,6 @@ export default function MemberManagement() {
 
   const [importLoading, setImportLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
-  const [view, setView] = useState('table'); // 'grid' or 'table'
 
   // State for delete confirmation modal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -95,7 +92,7 @@ export default function MemberManagement() {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Gagal menghapus member');
       }
-      
+
       fetchMembers();
       if (isMultiple) {
         clearSelection();
@@ -104,7 +101,7 @@ export default function MemberManagement() {
         setSelectedRows(prev => prev.filter(rowId => rowId !== itemToDelete));
         setFormSuccess('Member berhasil dihapus');
       }
-      
+
       setTimeout(() => setFormSuccess(''), 3000);
     } catch (err) {
       setTableError('Terjadi kesalahan saat menghapus: ' + err.message);
@@ -155,111 +152,104 @@ export default function MemberManagement() {
     }
   };
 
-  const handleImport = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls') && !file.name.toLowerCase().endsWith('.csv')) {
-      setTableError('Silakan pilih file Excel (.xlsx, .xls) atau CSV (.csv)');
-      setTimeout(() => setTableError(''), 5000);
-      e.target.value = ''; // Reset file input
-      return;
-    }
+  // Reset to first page when itemsPerPage changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
 
-    setImportLoading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    try {
-      setFormSuccess(`Memproses file ${file.name}...`);
-      
-      // Send file to server for processing
-      const response = await fetch('/api/member/import', {
-        method: 'POST',
-        body: formData
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Gagal mengimport member');
-      }
-      
-      // Refresh data
-      fetchMembers();
-      
-      setFormSuccess(result.message || `Berhasil mengimport ${result.importedCount || 0} member`);
-      e.target.value = ''; // Reset file input
-      setTimeout(() => setFormSuccess(''), 5000);
-    } catch (err) {
-      setTableError('Terjadi kesalahan saat import: ' + err.message);
-      e.target.value = ''; // Reset file input
-      setTimeout(() => setTableError(''), 7000);
-    } finally {
-      setImportLoading(false);
+  // Define columns for DataTable
+  const columns = [
+    {
+      key: 'name',
+      title: 'Nama',
+      sortable: true
+    },
+    {
+      key: 'phone',
+      title: 'Telepon',
+      render: (value) => value || '-',
+      sortable: true
+    },
+    {
+      key: 'address',
+      title: 'Alamat',
+      render: (value) => value || '-',
+      sortable: true
+    },
+    {
+      key: 'membershipType',
+      title: 'Tipe Keanggotaan',
+      sortable: true
+    },
+    {
+      key: 'discount',
+      title: 'Diskon (%)',
+      render: (value) => `${value}%`,
+      sortable: true
+    },
+    {
+      key: 'createdAt',
+      title: 'Tanggal Dibuat',
+      render: (value) => new Date(value).toLocaleDateString('id-ID'),
+      sortable: true
     }
+  ];
+
+  // Enhanced data with action handlers
+  const enhancedMembers = members.map(member => ({
+    ...member,
+    onViewDetails: (m) => console.log('View details', m), // Placeholder for now
+    onEdit: () => openModalForEdit(member),
+    onDelete: () => handleDelete(member.id)
+  }));
+
+  // Pagination data for DataTable
+  const paginationData = {
+    currentPage,
+    totalPages,
+    totalItems: totalMembers,
+    startIndex: (currentPage - 1) * itemsPerPage + 1,
+    endIndex: Math.min(currentPage * itemsPerPage, totalMembers),
+    onPageChange: setCurrentPage,
+    itemsPerPage: itemsPerPage
   };
+
+  const error = tableError || formError;
 
   return (
     <ProtectedRoute requiredRole="ADMIN">
       <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <Breadcrumb
+          items={[{ title: 'Member', href: '/admin/member' }]}
+          darkMode={darkMode}
+        />
+
         <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
           Manajemen Member
         </h1>
 
         <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
-          <div className="p-4 sm:p-6">
-            <MemberToolbar
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              itemsPerPage={itemsPerPage}
-              setItemsPerPage={setItemsPerPage}
-              onDeleteMultiple={handleDeleteMultiple}
-              selectedRowsCount={selectedRows.length}
-              onExport={handleExport}
-              onImport={handleImport}
-              importLoading={importLoading}
-              exportLoading={exportLoading}
-              darkMode={darkMode}
-              view={view}
-              setView={setView}
-            />
-
-            {tableError && (
-              <div className={`my-4 p-4 ${darkMode ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-red-50 border border-red-200 text-red-700'} rounded-md`}>
-                {tableError}
-              </div>
-            )}
-            {formError && (
-              <div className={`my-4 p-4 ${darkMode ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-red-50 border border-red-200 text-red-700'} rounded-md`}>
-                {formError}
-              </div>
-            )}
-            {formSuccess && formSuccess.trim() !== '' && (
-              <div className={`my-4 p-4 ${darkMode ? 'bg-green-900/30 border-green-700 text-green-200' : 'bg-green-50 border-green-200 text-green-700'} rounded-md`}>
-                {formSuccess}
-              </div>
-            )}
-
-            <MemberView
-              members={members}
-              loading={loading}
-              darkMode={darkMode}
-              selectedRows={selectedRows}
-              handleSelectAll={handleSelectAll}
-              handleSelectRow={handleSelectRow}
-              handleEdit={openModalForEdit}
-              handleDelete={handleDelete}
-              view={view}
-            />
-          </div>
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            setCurrentPage={setCurrentPage}
-            itemsPerPage={itemsPerPage}
-            totalProducts={totalMembers} // Renamed from totalProducts to totalMembers
+          <DataTable
+            data={enhancedMembers}
+            columns={columns}
+            loading={loading}
+            selectedRows={selectedRows}
+            onSelectAll={handleSelectAll}
+            onSelectRow={handleSelectRow}
+            onAdd={openModalForCreate}
+            onSearch={setSearchTerm}
+            onExport={handleExport}
+            onItemsPerPageChange={setItemsPerPage}
+            onDeleteMultiple={handleDeleteMultiple}
+            selectedRowsCount={selectedRows.length}
             darkMode={darkMode}
+            actions={true}
+            showToolbar={true}
+            showAdd={true}
+            showExport={true}
+            showItemsPerPage={true}
+            pagination={paginationData}
+            mobileColumns={['name', 'phone', 'membershipType', 'discount']} // Show key information on mobile
           />
         </div>
 
@@ -280,15 +270,12 @@ export default function MemberManagement() {
           onClose={() => setShowDeleteModal(false)}
           onConfirm={handleConfirmDelete}
           title="Konfirmasi Hapus"
-          message={`Apakah Anda yakin ingin menghapus ${ 
+          message={`Apakah Anda yakin ingin menghapus ${
             Array.isArray(itemToDelete) ? itemToDelete.length + ' member' : 'member ini'
           }?`}
           darkMode={darkMode}
           isLoading={isDeleting}
         />
-
-        {/* Floating Add Button */}
-        <FloatingAddButton onClick={openModalForCreate} darkMode={darkMode} />
       </main>
     </ProtectedRoute>
   );

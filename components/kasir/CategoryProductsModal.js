@@ -47,7 +47,7 @@ const CategoryProductsModal = ({ category, onClose, darkMode }) => {
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
       <div 
         className={`relative w-full max-w-3xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col transform transition-all duration-300 ease-in-out
                     ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white'}`}

@@ -354,7 +354,7 @@ const Sidebar = ({ children }) => {
       </div>
 
       {/* Fixed Footer */}
-      <footer className={`fixed bottom-0 left-0 right-0 z-50 py-4 px-4 text-right text-sm ${darkMode ? 'bg-gray-800 text-gray-400 border-gray-700' : 'bg-white text-gray-600 border-gray-200'} border-t`}>
+      <footer className={`fixed bottom-0 left-0 right-0 z-40 py-4 px-4 text-right text-sm ${darkMode ? 'bg-gray-800 text-gray-400 border-gray-700' : 'bg-white text-gray-600 border-gray-200'} border-t`}>
         <span className={`${isMobile ? 'ml-0' : (isCollapsed ? 'ml-20' : 'ml-56')} transition-all duration-300`}>
           Copyright @2025 by Ari Kurniawan.
         </span>

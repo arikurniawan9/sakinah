@@ -24,7 +24,7 @@ const CategoryModal = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50"
       onClick={handleOverlayClick}
     >
       <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-lg transform transition-all">

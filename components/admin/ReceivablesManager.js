@@ -182,7 +182,7 @@ const ReceivablesManager = () => {
 
       {/* Modal Pembayaran */}
       {showPaymentModal && selectedReceivable && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
           <div className="relative w-full max-w-md rounded-2xl shadow-2xl bg-white dark:bg-gray-800 p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Pembayaran Hutang</h3>

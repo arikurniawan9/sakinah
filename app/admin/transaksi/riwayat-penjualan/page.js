@@ -243,7 +243,7 @@ export default function RiwayatPenjualan() {
 
       {/* Transaction Detail Modal */}
       {selectedTransaction && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 print:flex print:items-center print:justify-center print:inset-0 print:bg-white">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[100] print:flex print:items-center print:justify-center print:inset-0 print:bg-white">
           <div className={`relative max-w-2xl w-full rounded-xl shadow-lg ${
             darkMode ? 'bg-gray-800' : 'bg-white'
           } print:bg-white print:shadow-none print:w-full print:max-w-none print:m-0 print:p-4`}>

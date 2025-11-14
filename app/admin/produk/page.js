@@ -10,12 +10,12 @@ import { useProductTable } from '../../../lib/hooks/useProductTable';
 import { useProductForm } from '../../../lib/hooks/useProductForm';
 import { useTableSelection } from '../../../lib/hooks/useTableSelection';
 
-import ProductTable from '../../../components/produk/ProductTable';
+import DataTable from '../../../components/DataTable';
 import ProductModal from '../../../components/produk/ProductModal';
 import ProductDetailModal from '../../../components/produk/ProductDetailModal';
 import Toolbar from '../../../components/produk/Toolbar';
 import ConfirmationModal from '../../../components/ConfirmationModal';
-import Pagination from '../../../components/produk/Pagination';
+import Breadcrumb from '../../../components/Breadcrumb';
 
 export default function ProductManagement() {
   const { darkMode } = useDarkMode();
@@ -228,90 +228,106 @@ export default function ProductManagement() {
     }
   };
 
+  // Reset to first page when itemsPerPage changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
+
   const error = tableError || formError;
+
+  // Define columns for DataTable
+  const columns = [
+    {
+      key: 'productCode',
+      title: 'Kode',
+      sortable: true
+    },
+    {
+      key: 'name',
+      title: 'Nama',
+      sortable: true
+    },
+    {
+      key: 'price',
+      title: 'Harga',
+      render: (value, row) => {
+        const basePrice = row.priceTiers?.sort((a, b) => a.minQty - b.minQty)[0]?.price || 0;
+        return `Rp ${basePrice.toLocaleString('id-ID')}`;
+      },
+      sortable: true
+    },
+    {
+      key: 'stock',
+      title: 'Stok',
+      sortable: true
+    },
+    {
+      key: 'category',
+      title: 'Kategori',
+      render: (value, row) => row.category?.name || '-',
+      sortable: true
+    },
+    {
+      key: 'supplier',
+      title: 'Supplier',
+      render: (value, row) => row.supplier?.name || '-',
+      sortable: true
+    }
+  ];
+
+  // Enhanced data with action handlers
+  const enhancedProducts = products.map(product => ({
+    ...product,
+    onViewDetails: handleViewDetails,
+    onEdit: isAdmin ? openModalForEdit : undefined,
+    onDelete: isAdmin ? handleDelete : undefined
+  }));
+
+  // Pagination data
+  const paginationData = {
+    currentPage,
+    totalPages,
+    totalItems: totalProducts,
+    startIndex: (currentPage - 1) * itemsPerPage + 1,
+    endIndex: Math.min(currentPage * itemsPerPage, totalProducts),
+    onPageChange: setCurrentPage,
+    itemsPerPage: itemsPerPage
+  };
 
   return (
     <ProtectedRoute requiredRole="ADMIN">
       <main className={`w-full px-4 sm:px-6 lg:px-8 py-8 ${darkMode ? 'bg-gray-900 text-gray-100' : ''}`}>
+        <Breadcrumb
+          items={[{ title: 'Produk', href: '/admin/produk' }]}
+          darkMode={darkMode}
+        />
+
         <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
           Manajemen Produk
         </h1>
 
         <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-pastel-purple-700' : 'bg-white border-gray-200'} border`}>
-          <div className="p-4 sm:p-6">
-            {isAdmin && ( // Only show full toolbar for admin
-              <Toolbar
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                itemsPerPage={itemsPerPage}
-                setItemsPerPage={(value) => {
-                  setItemsPerPage(value);
-                  setCurrentPage(1);
-                }}
-                onAddNew={openModalForCreate}
-                onDeleteMultiple={handleDeleteMultiple}
-                selectedRowsCount={selectedRows.length}
-                onExport={handleExport}
-                onImport={handleImport}
-                importLoading={importLoading}
-                exportLoading={exportLoading}
-                darkMode={darkMode}
-              />
-            )}
-            {!isAdmin && ( // Show simplified toolbar for cashier
-              <div className="mb-4 flex justify-between items-center">
-                <input
-                  type="text"
-                  placeholder="Cari produk..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`w-full md:w-1/3 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-pastel-purple-500 focus:border-pastel-purple-500 sm:text-sm ${
-                    darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'
-                  }`}
-                />
-                <button
-                  onClick={handleExport}
-                  disabled={exportLoading}
-                  className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
-                    darkMode ? 'bg-pastel-purple-600 hover:bg-pastel-purple-700' : 'bg-pastel-purple-600 hover:bg-pastel-purple-700'
-                  } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pastel-purple-500`}
-                >
-                  {exportLoading ? 'Mengekspor...' : 'Export'}
-                </button>
-              </div>
-            )}
-
-            {error && (
-              <div className={`my-4 p-4 ${darkMode ? 'bg-red-900/30 border-red-700 text-red-200' : 'bg-red-50 border border-red-200 text-red-700'} rounded-md`}>
-                {error}
-              </div>
-            )}
-            {success && (
-              <div className={`my-4 p-4 ${darkMode ? 'bg-green-900/30 border-green-700 text-green-200' : 'bg-green-50 border-green-200 text-green-700'} rounded-md`}>
-                {success}
-              </div>
-            )}
-
-            <ProductTable
-              products={products}
-              loading={loading}
-              darkMode={darkMode}
-              selectedRows={selectedRows}
-              handleSelectAll={isAdmin ? handleSelectAll : undefined} // Disable selection for cashier
-              handleSelectRow={isAdmin ? handleSelectRow : undefined} // Disable selection for cashier
-              onEdit={isAdmin ? openModalForEdit : undefined} // Disable edit for cashier
-              onDelete={isAdmin ? handleDelete : undefined} // Disable delete for cashier
-              onViewDetails={handleViewDetails}
-              showActions={isAdmin} // Hide action column for cashier
-            />
-          </div>
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            setCurrentPage={setCurrentPage}
-            itemsPerPage={itemsPerPage}
-            totalProducts={totalProducts}
+          <DataTable
+            data={enhancedProducts}
+            columns={columns}
+            loading={loading}
+            selectedRows={selectedRows}
+            onSelectAll={isAdmin ? handleSelectAll : undefined}
+            onSelectRow={isAdmin ? handleSelectRow : undefined}
+            onAdd={isAdmin ? openModalForCreate : undefined}
+            onSearch={setSearchTerm}
+            onExport={handleExport}
+            onItemsPerPageChange={setItemsPerPage}
+            onDeleteMultiple={handleDeleteMultiple}
+            selectedRowsCount={selectedRows.length}
             darkMode={darkMode}
+            actions={isAdmin}
+            showToolbar={isAdmin}
+            showAdd={isAdmin}
+            showExport={true}
+            showItemsPerPage={true}
+            pagination={paginationData}
+            mobileColumns={['productCode', 'name', 'price', 'stock']} // Show key information on mobile
           />
         </div>
 

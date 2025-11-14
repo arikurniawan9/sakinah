@@ -13,7 +13,7 @@ export default function KategoriDetailModal({
   if (!isOpen || !category) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] overflow-y-auto">
       <div className="flex items-end justify-center min-h-screen p-0 sm:items-center sm:p-4">
         <div className="fixed inset-0 transition-opacity" aria-hidden="true" onClick={onClose}>
           <div className={`${darkMode ? 'bg-gray-800 bg-opacity-75' : 'bg-gray-500 bg-opacity-75'}`}></div>

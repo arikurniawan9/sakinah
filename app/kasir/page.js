@@ -100,25 +100,18 @@ export default function CashierDashboard() {
     <ProtectedRoute requiredRole="CASHIER">
       <Sidebar>
         <main className={`flex-1 p-4 min-h-screen ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Dashboard Kasir</h1>
-                <p className={`mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Sistem Penjualan Toko Sakinah</p>
-              </div>
-            </div>
-
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             {/* Scrolling Stock Alert */}
-            <div className="mb-8">
+            <div className="mb-6">
               <ScrollingStockAlert darkMode={darkMode} />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left Column: Quick Links */}
               <div className="lg:col-span-2">
-                <div className="mb-8">
+                <div className="mb-6">
                   <h2 className={`text-2xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Menu Kasir</h2>
-                  <p className={`mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Pilih menu untuk melakukan transaksi</p>
+                  <p className={`mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Selamat datang, {session?.user?.name || 'Kasir'}</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {menuItems.map((item, index) => {
@@ -150,8 +143,8 @@ export default function CashierDashboard() {
                 </div>
                 
                 {/* Quick Tips Section */}
-                <div className={`mt-8 p-6 rounded-xl shadow border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-                  <h2 className={`text-xl font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Tips Harian</h2>
+                <div className={`mt-6 p-5 rounded-xl shadow border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                  <h2 className={`text-xl font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Tips Harian</h2>
                   <ul className={`space-y-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                     <li className="flex items-start">
                       <span className="mr-2">•</span>
@@ -170,10 +163,10 @@ export default function CashierDashboard() {
               </div>
 
               {/* Right Column: Quick Stats & Low Stock Products */}
-              <div className="lg:col-span-1 space-y-8">
+              <div className="lg:col-span-1 space-y-6">
                 {/* Quick Stats */}
                 <div>
-                  <h2 className={`text-2xl font-semibold mb-6 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>Ringkasan Hari Ini</h2>
+                  <h2 className={`text-2xl font-semibold mb-4 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>Ringkasan Hari Ini</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className={`p-6 rounded-xl shadow border text-center ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
                       <div className={`mx-auto p-3 rounded-full w-12 h-12 flex items-center justify-center mb-3 ${darkMode ? 'bg-green-900/30' : 'bg-green-100'}`}>
@@ -209,8 +202,8 @@ export default function CashierDashboard() {
 
                 {/* Low Stock Products */}
                 <div>
-                  <h2 className={`text-2xl font-semibold mb-6 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>Produk Stok Menipis</h2>
-                  <div className={`p-6 rounded-xl shadow border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                  <h2 className={`text-2xl font-semibold mb-4 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>Produk Stok Menipis</h2>
+                  <div className={`p-5 rounded-xl shadow border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
                     {lowStockLoading ? (
                       <p className="text-center text-gray-500">Memuat produk...</p>
                     ) : lowStockProducts.length > 0 ? (

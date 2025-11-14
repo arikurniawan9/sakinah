@@ -22,7 +22,7 @@ import TransactionActions from "@/components/kasir/transaksi/TransactionActions"
 import AddMemberModal from "@/components/kasir/transaksi/AddMemberModal";
 import ReceivablesModal from "@/components/kasir/transaksi/ReceivablesModal";
 import AllReceivablesModal from "@/components/kasir/transaksi/AllReceivablesModal";
-import StockNotification from "@/components/kasir/transaksi/StockNotification";
+import LowStockModal from "@/components/kasir/transaksi/LowStockModal";
 import { useReactToPrint } from "react-to-print";
 import { printThermalReceipt } from "@/utils/thermalPrint";
 
@@ -57,7 +57,7 @@ export default function KasirTransaksiPage() {
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [showReceivablesModal, setShowReceivablesModal] = useState(false);
   const [showAllReceivablesModal, setShowAllReceivablesModal] = useState(false);
-  const [showStockNotification, setShowStockNotification] = useState(true);
+  const [showLowStockModal, setShowLowStockModal] = useState(false);
 
   // State untuk fullscreen dan lock
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -565,26 +565,26 @@ export default function KasirTransaksiPage() {
         subtotal: itemSubtotal,
       };
     });
-    
+
     let memberDiscount = 0;
     if (selectedMember?.discount) {
       // Diskon member dihitung dari subtotal sebelum diskon item
       memberDiscount = (subtotal * selectedMember.discount) / 100;
     }
-    
+
     // Total diskon adalah jumlah dari semua jenis diskon
     const totalDiscount = itemDiscount + memberDiscount;
-    
+
     // Hitung grand total setelah diskon member diterapkan
     const grandTotalAfterMemberDiscount = subtotal - memberDiscount;
-    
+
     // Terapkan diskon tambahan jika ada
     const finalGrandTotal = Math.max(0, grandTotalAfterMemberDiscount - additionalDiscount);
-    
+
     // Total diskon akhir adalah jumlah semua diskon
     const finalTotalDiscount = totalDiscount + additionalDiscount;
-    
-    setCalculation({
+
+    const newCalculation = {
       items: calculatedItems,
       subTotal: subtotal,
       itemDiscount: itemDiscount,
@@ -593,7 +593,15 @@ export default function KasirTransaksiPage() {
       totalDiscount: finalTotalDiscount,
       tax: 0, // Pajak bisa ditambahkan nanti jika diperlukan
       grandTotal: Math.max(0, Math.round(finalGrandTotal)), // Pastikan tidak negatif
-    });
+    };
+
+    setCalculation(newCalculation);
+
+    // Periksa apakah ada produk dengan stok rendah dan tampilkan modal
+    const hasLowStockItems = calculatedItems.some(item => item.stock < 5);
+    if (hasLowStockItems) {
+      setShowLowStockModal(true);
+    }
   }, [cart, selectedMember, getTierPrice, additionalDiscount]);
 
   // --- CART LOGIC (can be defined here as they don't depend on hooks) ---
@@ -616,9 +624,9 @@ export default function KasirTransaksiPage() {
       ]);
     }
 
-    // Reset stock notification to show again if new low stock items are added
+    // Tampilkan modal jika produk memiliki stok rendah
     if (product.stock < 5) {
-      setShowStockNotification(true);
+      setShowLowStockModal(true);
     }
   };
 
@@ -871,14 +879,13 @@ export default function KasirTransaksiPage() {
             </div>
           </div>
 
-          {/* Stock Notification */}
-          {showStockNotification && calculation && calculation.items && calculation.items.length > 0 && (
-            <StockNotification
-              items={calculation.items}
-              onClose={() => setShowStockNotification(false)}
-              darkMode={darkMode}
-            />
-          )}
+          {/* Low Stock Modal */}
+          <LowStockModal
+            items={calculation?.items || []}
+            isOpen={showLowStockModal}
+            onClose={() => setShowLowStockModal(false)}
+            darkMode={darkMode}
+          />
         </div>
       </div>
       <div className="printable-receipt">

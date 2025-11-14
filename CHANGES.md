@@ -26,9 +26,10 @@ Perubahan ini menambahkan beberapa fitur penting dan perbaikan pada halaman tran
 - Memperbaiki struktur error handling
 
 ### 4. Halaman Transaksi Kasir (app/kasir/transaksi/page.js)
-- Menambahkan state untuk notifikasi stok
-- Mengintegrasikan komponen notifikasi stok
-- Memperbarui fungsi addToCart untuk menampilkan notifikasi
+- Mengganti state showStockNotification menjadi showLowStockModal
+- Mengganti komponen StockNotification dengan LowStockModal
+- Memperbarui fungsi addToCart untuk menampilkan modal
+- Menambahkan efek untuk mengecek stok rendah setelah perhitungan
 
 ### 5. Komponen ThermalReceipt
 - Menambahkan detail diskon yang lebih lengkap di struk thermal
@@ -36,9 +37,16 @@ Perubahan ini menambahkan beberapa fitur penting dan perbaikan pada halaman tran
 
 ## Komponen Baru
 
-### 1. StockNotification (components/kasir/transaksi/StockNotification.js)
-- Komponen notifikasi untuk menampilkan produk dengan stok rendah
+### 1. LowStockModal (components/kasir/transaksi/LowStockModal.js)
+- Modal notifikasi untuk menampilkan produk dengan stok rendah
 - Menampilkan peringatan saat produk dengan stok < 5 ditambahkan ke keranjang
+- Memberikan tampilan yang lebih menonjol dan informatif
+
+## Perubahan Komponen
+
+### 1. Penghapusan StockNotification
+- Menghapus komponen StockNotification yang lama
+- Mengganti dengan LowStockModal untuk tampilan yang lebih informatif
 
 ### 2. UndoTransactionButton (components/kasir/transaksi/UndoTransactionButton.js)
 - Komponen tombol untuk mengundo transaksi dalam waktu tertentu

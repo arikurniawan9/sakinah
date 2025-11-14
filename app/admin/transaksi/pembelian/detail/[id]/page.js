@@ -1,46 +1,50 @@
-
+// app/admin/transaksi/pembelian/detail/[id]/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useDarkMode } from '@/components/DarkModeContext';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import { ArrowLeft, Printer } from 'lucide-react';
+import ProtectedRoute from '../../../../../components/ProtectedRoute';
+import { useDarkMode } from '../../../../../components/DarkModeContext';
+import { useSession } from 'next-auth/react';
+import { ArrowLeft, Package, User, Calendar, CreditCard, Eye } from 'lucide-react';
 import Link from 'next/link';
 
-export default function PurchaseDetailPage() {
-  const { id } = useParams();
-  const router = useRouter();
+export default function PurchaseDetailPage({ params }) {
+  const { data: session } = useSession();
   const { darkMode } = useDarkMode();
   const [purchase, setPurchase] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (id) {
-      const fetchPurchaseDetail = async () => {
+    const fetchPurchase = async () => {
+      try {
         setLoading(true);
-        try {
-          const res = await fetch(`/api/purchase/${id}`);
-          if (!res.ok) {
-            throw new Error('Failed to fetch purchase details');
-          }
-          const data = await res.json();
-          setPurchase(data);
-        } catch (err) {
-          setError(err.message);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchPurchaseDetail();
+        const response = await fetch(`/api/purchase/${params.id}`);
+        if (!response.ok) throw new Error('Gagal mengambil detail pembelian');
+        const data = await response.json();
+        setPurchase(data.purchase);
+      } catch (err) {
+        setError(err.message);
+        console.error('Error fetching purchase:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (params.id) {
+      fetchPurchase();
     }
-  }, [id]);
+  }, [params.id]);
 
   if (loading) {
     return (
       <ProtectedRoute requiredRole="ADMIN">
-        <main className="p-8">Loading...</main>
+        <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto"></div>
+            <p className={`mt-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Memuat detail pembelian...</p>
+          </div>
+        </div>
       </ProtectedRoute>
     );
   }
@@ -48,104 +52,156 @@ export default function PurchaseDetailPage() {
   if (error) {
     return (
       <ProtectedRoute requiredRole="ADMIN">
-        <main className="p-8 text-red-500">Error: {error}</main>
+        <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+          <div className={`p-6 rounded-lg ${darkMode ? 'bg-red-900/30 text-red-200' : 'bg-red-100 text-red-700'}`}>
+            <h3 className="text-lg font-semibold">Error</h3>
+            <p>{error}</p>
+          </div>
+        </div>
       </ProtectedRoute>
     );
   }
-  
+
   if (!purchase) {
     return (
       <ProtectedRoute requiredRole="ADMIN">
-        <main className="p-8">Purchase not found.</main>
+        <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+          <div className={`p-6 rounded-lg ${darkMode ? 'bg-gray-800 text-gray-300' : 'bg-white text-gray-700'}`}>
+            <h3 className="text-lg font-semibold">Pembelian Tidak Ditemukan</h3>
+            <p>Data pembelian tidak ditemukan atau telah dihapus.</p>
+          </div>
+        </div>
       </ProtectedRoute>
     );
   }
 
   return (
     <ProtectedRoute requiredRole="ADMIN">
-      <main className={`p-4 sm:p-6 lg:p-8 min-h-screen ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="flex justify-between items-center mb-6">
-            <Link href="/admin/transaksi/pembelian" className="flex items-center text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
-              <ArrowLeft size={16} className="mr-2" />
-              Kembali ke Riwayat Pembelian
+      <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50'}`}>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Back Button */}
+          <div className="mb-6">
+            <Link href="/admin/transaksi/pembelian" className="inline-flex items-center text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300">
+              <ArrowLeft className="h-5 w-5 mr-2" />
+              Kembali ke Daftar Pembelian
             </Link>
-            <button 
-              onClick={() => window.print()}
-              className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700"
-            >
-              <Printer size={16} className="mr-2" />
-              Cetak
-            </button>
           </div>
 
-          {/* Purchase Details Card */}
-          <div className={`bg-white rounded-lg shadow-md p-6 ${darkMode ? 'bg-gray-800' : ''}`}>
-            <div className="flex flex-col sm:flex-row justify-between border-b pb-4 mb-4 ${darkMode ? 'border-gray-700' : 'border-gray-200'}">
+          {/* Purchase Header */}
+          <div className={`p-6 rounded-xl shadow-lg mb-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <div className="flex justify-between items-start mb-4">
               <div>
                 <h1 className="text-2xl font-bold">Detail Pembelian</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  ID Transaksi: {purchase.id}
+                <p className={`text-lg ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  #{purchase.id.substring(0, 8).toUpperCase()}
                 </p>
               </div>
-              <div className="text-left sm:text-right mt-4 sm:mt-0">
-                <p className="font-semibold text-gray-900 dark:text-gray-100">{purchase.supplier.name}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{purchase.supplier.address}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{purchase.supplier.phone}</p>
+              <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                purchase.status === 'COMPLETED' 
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
+                  : purchase.status === 'PENDING' 
+                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' 
+                    : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+              }`}>
+                {purchase.status === 'COMPLETED' ? 'Selesai' : purchase.status === 'PENDING' ? 'Tertunda' : 'Dibatalkan'}
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-6 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <p className="text-gray-500 dark:text-gray-400">Tanggal Pembelian</p>
-                <p className="font-semibold">{new Date(purchase.purchaseDate).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Supplier</h3>
+                <p className="font-medium">{purchase.supplier?.name || 'N/A'}</p>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{purchase.supplier?.phone}</p>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{purchase.supplier?.address}</p>
               </div>
+              
               <div>
-                <p className="text-gray-500 dark:text-gray-400">Dibuat Oleh</p>
-                <p className="font-semibold">{purchase.user.name}</p>
+                <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Tanggal</h3>
+                <p className="font-medium">
+                  {new Date(purchase.purchaseDate).toLocaleDateString('id-ID', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric'
+                  })}
+                </p>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {new Date(purchase.createdAt).toLocaleTimeString('id-ID', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
               </div>
+              
               <div>
-                <p className="text-gray-500 dark:text-gray-400">Status</p>
-                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                  Completed
-                </span>
+                <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Pembelian</h3>
+                <p className="text-xl font-bold text-green-600">Rp {purchase.totalAmount?.toLocaleString('id-ID') || '0'}</p>
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Dibuat oleh: {purchase.user?.name}</p>
               </div>
             </div>
+          </div>
 
-            {/* Items Table */}
-            <h2 className="text-lg font-semibold mb-2">Item yang Dibeli</h2>
+          {/* Purchase Items */}
+          <div className={`p-6 rounded-xl shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <Package className="mr-2 h-5 w-5" />
+              Item Pembelian
+            </h2>
+            
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className={darkMode ? 'bg-gray-700' : 'bg-gray-100'}>
+                <thead className={darkMode ? 'bg-gray-700' : 'bg-gray-50'}>
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Produk</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Kuantitas</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Harga Satuan</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Subtotal</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Produk</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Kode</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Kuantitas</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Harga Satuan</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Subtotal</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {purchase.items.map(item => (
-                    <tr key={item.id} className={darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">{item.product.name}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">{item.quantity}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">Rp {item.purchasePrice.toLocaleString('id-ID')}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right text-gray-700 dark:text-gray-300">Rp {(item.quantity * item.purchasePrice).toLocaleString('id-ID')}</td>
+                <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                  {purchase.items?.map((item, index) => (
+                    <tr key={index} className={darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium">{item.product?.name}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500 dark:text-gray-400">{item.product?.productCode}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm">{item.quantity}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm">Rp {item.price?.toLocaleString('id-ID')}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-semibold">Rp {(item.price * item.quantity)?.toLocaleString('id-ID')}</div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot>
-                  <tr className="border-t-2 font-bold ${darkMode ? 'border-gray-700' : 'border-gray-300'}">
-                    <td colSpan="3" className="text-right px-4 py-3">Total Keseluruhan</td>
-                    <td className="text-right px-4 py-3 text-lg">Rp {purchase.totalAmount.toLocaleString('id-ID')}</td>
-                  </tr>
-                </tfoot>
               </table>
             </div>
           </div>
+
+          {/* Purchase Summary */}
+          <div className={`mt-6 p-6 rounded-xl shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Item</h3>
+                <p className="text-2xl font-bold">{purchase.items?.reduce((sum, item) => sum + item.quantity, 0) || 0}</p>
+              </div>
+              <div className="text-center">
+                <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Produk</h3>
+                <p className="text-2xl font-bold">{purchase.items?.length || 0}</p>
+              </div>
+              <div className="text-center">
+                <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Harga</h3>
+                <p className="text-2xl font-bold text-green-600">Rp {purchase.totalAmount?.toLocaleString('id-ID') || '0'}</p>
+              </div>
+            </div>
+          </div>
         </div>
-      </main>
+      </div>
     </ProtectedRoute>
   );
 }

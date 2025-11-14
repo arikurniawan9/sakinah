@@ -37,12 +37,14 @@ export async function GET(request) {
     const search = searchParams.get('search') || '';
     const categoryId = searchParams.get('categoryId') || '';
     const productCode = searchParams.get('productCode') || '';
+    const supplierId = searchParams.get('supplierId') || ''; // Add supplier ID parameter
 
     const offset = (page - 1) * limit;
 
     const where = {
       ...(productCode && { productCode: { equals: productCode } }),
       ...(categoryId && { categoryId }),
+      ...(supplierId && { supplierId }), // Add supplier filter if provided
       ...(search && !productCode && {
         OR: [
           { name: { contains: search } },

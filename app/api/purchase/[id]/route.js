@@ -1,46 +1,172 @@
-
+// app/api/purchase/[id]/route.js
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
-import { getSession } from '@/lib/auth';
 
-// GET /api/purchase/[id]
+// GET: Fetch a specific purchase by ID
 export async function GET(request, { params }) {
-  const session = await getSession();
+  const session = await getServerSession(authOptions);
+
+  if (!session || (session.user.role !== 'ADMIN')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const purchase = await prisma.purchase.findUnique({
+      where: {
+        id: params.id
+      },
+      include: {
+        supplier: true,
+        user: true,
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
+    });
+
+    if (!purchase) {
+      return NextResponse.json({ error: 'Pembelian tidak ditemukan' }, { status: 404 });
+    }
+
+    // Calculate total amount from items
+    const totalAmount = purchase.items.reduce((sum, item) => sum + (item.purchasePrice * item.quantity), 0);
+
+    // Return purchase with calculated total
+    return NextResponse.json({
+      purchase: {
+        ...purchase,
+        totalAmount: totalAmount
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching purchase:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// PUT: Update a specific purchase (for status change or other updates)
+export async function PUT(request, { params }) {
+  const session = await getServerSession(authOptions);
+
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { id } = params;
-
   try {
-    const purchase = await prisma.purchase.findUnique({
-      where: { id: id },
+    const data = await request.json();
+
+    // Prepare update data
+    const updateData = {
+      status: data.status // Only allow status update for now
+    };
+
+    // If purchaseDate is provided and valid, update it
+    if (data.purchaseDate) {
+      let purchaseDate;
+      if (data.purchaseDate instanceof Date) {
+        purchaseDate = data.purchaseDate;
+      } else {
+        const parsedDate = new Date(data.purchaseDate);
+        if (!isNaN(parsedDate.getTime())) {
+          purchaseDate = parsedDate;
+        }
+      }
+      if (purchaseDate && !isNaN(purchaseDate.getTime())) {
+        updateData.purchaseDate = purchaseDate;
+      }
+    }
+
+    const updatedPurchase = await prisma.purchase.update({
+      where: {
+        id: params.id
+      },
+      data: updateData,
       include: {
         supplier: true,
-        user: { select: { name: true } },
+        user: true,
         items: {
           include: {
-            product: {
-              select: {
-                name: true,
-                productCode: true,
-              },
-            },
-          },
-        },
+            product: true
+          }
+        }
+      }
+    });
+
+    // Calculate updated total
+    const totalAmount = updatedPurchase.items.reduce((sum, item) => sum + (item.purchasePrice * item.quantity), 0);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Status pembelian berhasil diperbarui',
+      purchase: {
+        ...updatedPurchase,
+        totalAmount: totalAmount
+      }
+    });
+  } catch (error) {
+    console.error('Error updating purchase:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// DELETE: Delete a specific purchase
+export async function DELETE(request, { params }) {
+  const session = await getServerSession(authOptions);
+
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    // Get the purchase with items to revert stock changes
+    const purchase = await prisma.purchase.findUnique({
+      where: {
+        id: params.id
       },
+      include: {
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
     });
 
     if (!purchase) {
-      return NextResponse.json({ error: 'Purchase not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Pembelian tidak ditemukan' }, { status: 404 });
     }
 
-    return NextResponse.json(purchase);
+    // First, reduce stock for each item in the purchase
+    for (const item of purchase.items) {
+      await prisma.product.update({
+        where: {
+          id: item.productId
+        },
+        data: {
+          stock: {
+            decrement: item.quantity
+          }
+        }
+      });
+    }
+
+    // Then delete the purchase and all related items
+    await prisma.purchase.delete({
+      where: {
+        id: params.id
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Pembelian berhasil dihapus'
+    });
   } catch (error) {
-    console.error(`Error fetching purchase ${id}:`, error);
-    return NextResponse.json(
-      { error: 'Failed to fetch purchase details.' },
-      { status: 500 }
-    );
+    console.error('Error deleting purchase:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

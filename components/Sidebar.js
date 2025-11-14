@@ -28,7 +28,8 @@ import {
   Receipt,       // Added for Transaksi Penjualan
   DollarSign,    // Added for Pengeluaran
   History,       // Added for Riwayat Penjualan
-  Settings       // Added for Pengaturan Toko
+  Settings,       // Added for Pengaturan Toko
+  Package         // Added for Riwayat Pembelian
 } from 'lucide-react';
 import { useDarkMode } from './DarkModeContext';
 import { useSidebar } from './SidebarContext';
@@ -114,6 +115,7 @@ const Sidebar = ({ children }) => {
     { title: "Laporan Piutang", href: "/admin/laporan/piutang", icon: DollarSign, type: 'item', roles: ['ADMIN'] },
     { title: "Transaksi", type: 'heading', roles: ['ADMIN'] },
     { title: "Pembelian", href: "/admin/transaksi/pembelian", icon: ShoppingCart, type: 'item', roles: ['ADMIN'] },
+    { title: "Riwayat Pembelian", href: "/admin/transaksi/pembelian/riwayat", icon: Package, type: 'item', roles: ['ADMIN'] },
     { title: "Penjualan", href: "/admin/transaksi", icon: Receipt, type: 'item', roles: ['ADMIN'] },
     { title: "Riwayat Penjualan", href: "/admin/transaksi/riwayat-penjualan", icon: History, type: 'item', roles: ['ADMIN'] },
     { title: "Keuangan", type: 'heading', roles: ['ADMIN'] },

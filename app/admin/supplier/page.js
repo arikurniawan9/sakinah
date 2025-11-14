@@ -13,6 +13,8 @@ import SupplierModal from '@/components/supplier/SupplierModal';
 import SupplierToolbar from '@/components/supplier/SupplierToolbar'; // Import the new toolbar
 import Pagination from '@/components/produk/Pagination';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import DataTable from '@/components/DataTable';
+import Breadcrumb from '@/components/Breadcrumb';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
 
 // Skeleton component for loading state
@@ -41,34 +43,39 @@ export default function SupplierManagementPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, totalPages: 1 });
-  const [view, setView] = useState('grid'); // 'grid' or 'table'
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalSuppliers, setTotalSuppliers] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [view, setView] = useState('table'); // Default to 'table' to use DataTable
 
   const fetchSuppliers = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const url = `/api/supplier?page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`;
+      const url = `/api/supplier?search=${searchTerm}&limit=${itemsPerPage}&page=${currentPage}`;
       const response = await fetch(url);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Gagal mengambil data');
-      setSuppliers(data.suppliers);
-      setPagination(prev => ({ ...prev, total: data.pagination.total, totalPages: data.pagination.totalPages }));
+      setSuppliers(data.suppliers || []);
+      // Update pagination info from API response
+      setTotalSuppliers(data.pagination?.total || 0);
+      setTotalPages(data.pagination?.totalPages || 1);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [pagination.page, pagination.limit, searchTerm]);
+  }, [searchTerm, itemsPerPage, currentPage]);
 
   useEffect(() => {
     fetchSuppliers();
   }, [fetchSuppliers]);
-  
+
   // Debounce search term
   useEffect(() => {
     const handler = setTimeout(() => {
-      setPagination(p => ({ ...p, page: 1 })); // Reset to page 1 on search
+      setCurrentPage(1); // Reset to page 1 on search
       fetchSuppliers();
     }, 500); // 500ms delay
     return () => clearTimeout(handler);
@@ -331,7 +338,12 @@ export default function SupplierManagementPage() {
 
   return (
     <ProtectedRoute requiredRole="ADMIN">
-      <main className={`flex-1 p-4 sm:p-6 lg:p-8 min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-950'}`}>
+      <main className={`w-full px-4 sm:px-6 lg:px-8 py-8 ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50'}`}>
+        <Breadcrumb
+          items={[{ title: 'Supplier', href: '/admin/supplier' }]}
+          darkMode={darkMode}
+        />
+
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
@@ -344,20 +356,22 @@ export default function SupplierManagementPage() {
           </div>
 
           {/* Toolbar */}
-              <SupplierToolbar
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                onAddNew={openModalForCreate}
-                onDeleteMultiple={handleDeleteMultiple}
-                selectedRowsCount={selectedRows.length}
-                onExport={handleExport}
-                onImport={handleImport}
-                importLoading={importLoading}
-                exportLoading={exportLoading}
-                view={view}
-                setView={setView}
-                darkMode={darkMode}
-              />
+          <div className="mb-6">
+            <SupplierToolbar
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              onAddNew={openModalForCreate}
+              onDeleteMultiple={handleDeleteMultiple}
+              selectedRowsCount={selectedRows.length}
+              onExport={handleExport}
+              onImport={handleImport}
+              importLoading={importLoading}
+              exportLoading={exportLoading}
+              view={view}
+              setView={setView}
+              darkMode={darkMode}
+            />
+          </div>
 
           {/* Alerts */}
           {error && (
@@ -377,17 +391,19 @@ export default function SupplierManagementPage() {
           {loading ? (
             view === 'grid' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {[...Array(pagination.limit)].map((_, i) => <CardSkeleton key={i} darkMode={darkMode} />)}
+                {[...Array(itemsPerPage)].map((_, i) => <CardSkeleton key={i} darkMode={darkMode} />)}
               </div>
             ) : (
-              <div className="animate-pulse">
-                <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-200'} h-12 rounded mb-4`}></div>
-                <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-200'} h-96 rounded`}></div>
+              <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
+                <div className="animate-pulse">
+                  <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-200'} h-12 rounded mb-4`}></div>
+                  <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-200'} h-96 rounded`}></div>
+                </div>
               </div>
             )
           ) : suppliers.length > 0 ? (
-            <>
-              {view === 'grid' ? (
+            view === 'grid' ? (
+              <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {suppliers.map(supplier => (
                     <SupplierCard
@@ -399,31 +415,55 @@ export default function SupplierManagementPage() {
                     />
                   ))}
                 </div>
-              ) : (
-                <SupplierTable
-                  suppliers={suppliers}
-                  loading={loading}
-                  darkMode={darkMode}
-                  selectedRows={selectedRows}
-                  handleSelectAll={handleSelectAll}
-                  handleSelectRow={handleSelectRow}
-                  onEdit={openModalForEdit}
-                  onDelete={handleDelete}
-                />
-              )}
-              {pagination.totalPages > 1 && (
-                <div className="mt-8">
-                  <Pagination
-                    currentPage={pagination.page}
-                    totalPages={pagination.totalPages}
-                    setCurrentPage={(page) => setPagination(p => ({ ...p, page }))}
-                    itemsPerPage={pagination.limit}
-                    totalItems={pagination.total}
+              </>
+            ) : (
+              // Use DataTable for table view
+              <>
+                <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
+                  <DataTable
+                    data={suppliers.map(supplier => ({
+                      ...supplier,
+                      onViewDetails: (s) => console.log('View details', s), // Placeholder
+                      onEdit: () => openModalForEdit(supplier),
+                      onDelete: () => handleDelete(supplier.id)
+                    }))}
+                    columns={[
+                      { key: 'name', title: 'Nama', sortable: true },
+                      { key: 'phone', title: 'Telepon', sortable: true },
+                      { key: 'email', title: 'Email', sortable: true },
+                      { key: 'address', title: 'Alamat', sortable: true, render: (value) => value || '-' },
+                      { key: 'productCount', title: 'Produk', sortable: true, render: (value) => value || 0 }
+                    ]}
+                    loading={loading}
+                    selectedRows={selectedRows}
+                    onSelectAll={handleSelectAll}
+                    onSelectRow={handleSelectRow}
+                    onAdd={openModalForCreate}
+                    onSearch={setSearchTerm}
+                    onExport={handleExport}
+                    onItemsPerPageChange={setItemsPerPage}
+                    onDeleteMultiple={handleDeleteMultiple}
+                    selectedRowsCount={selectedRows.length}
                     darkMode={darkMode}
+                    actions={true}
+                    showToolbar={false}
+                    showAdd={false}
+                    showExport={false}
+                    showItemsPerPage={true}
+                    pagination={{
+                      currentPage,
+                      totalPages: Math.ceil(totalSuppliers / itemsPerPage),
+                      totalItems: totalSuppliers,
+                      startIndex: (currentPage - 1) * itemsPerPage + 1,
+                      endIndex: Math.min(currentPage * itemsPerPage, totalSuppliers),
+                      onPageChange: setCurrentPage,
+                      itemsPerPage: itemsPerPage
+                    }}
+                    mobileColumns={['name', 'phone', 'email']} // Show key information on mobile
                   />
                 </div>
-              )}
-            </>
+              </>
+            )
           ) : (
             <div className={`text-center py-16 px-6 rounded-xl ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
               <h3 className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Tidak Ada Supplier Ditemukan</h3>

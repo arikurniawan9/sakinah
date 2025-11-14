@@ -1,136 +1,248 @@
+// app/api/purchase/route.js
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
-import { getSession } from '@/lib/auth';
 
-// GET /api/purchase - Get all purchases with filtering
+// GET: Fetch all purchase transactions with filtering and pagination
 export async function GET(request) {
-  const session = await getSession();
-  if (!session || session.user.role !== 'ADMIN') {
+  const session = await getServerSession(authOptions);
+
+  if (!session || (session.user.role !== 'ADMIN')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { searchParams } = new URL(request.url);
-  const supplierId = searchParams.get('supplierId');
-  const startDate = searchParams.get('startDate');
-  const endDate = searchParams.get('endDate');
-
-  const whereClause = {};
-  if (supplierId) {
-    whereClause.supplierId = supplierId;
-  }
-  if (startDate && endDate) {
-    whereClause.purchaseDate = {
-      gte: new Date(startDate),
-      lte: new Date(new Date(endDate).getTime() + 86400000), // include the whole end day
-    };
-  } else if (startDate) {
-    whereClause.purchaseDate = {
-      gte: new Date(startDate),
-    };
-  } else if (endDate) {
-    whereClause.purchaseDate = {
-      lte: new Date(new Date(endDate).getTime() + 86400000),
-    };
-  }
-
   try {
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page')) || 1;
+    const limit = parseInt(searchParams.get('limit')) || 10;
+    const search = searchParams.get('search') || '';
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+    const supplierId = searchParams.get('supplierId');
+
+    // Calculate offset for pagination
+    const offset = (page - 1) * limit;
+
+    // Build where condition for filtering
+    const whereCondition = {
+      AND: [
+        // Search condition - search in purchase number, supplier name, or user name
+        search ? {
+          OR: [
+            { id: { contains: search, mode: 'insensitive' } },
+            { supplier: { name: { contains: search, mode: 'insensitive' } } },
+            { user: { name: { contains: search, mode: 'insensitive' } } }
+          ]
+        } : {},
+
+        // Date range condition
+        ...(startDate && endDate ? [{
+          purchaseDate: {
+            gte: new Date(startDate),
+            lte: new Date(endDate)
+          }
+        }] : startDate ? [{
+          purchaseDate: { gte: new Date(startDate) }
+        }] : endDate ? [{
+          purchaseDate: { lte: new Date(endDate) }
+        }] : []),
+
+        // Supplier filter
+        supplierId ? { supplierId } : {}
+      ]
+    };
+
+    // Get purchases with pagination and include related data
     const purchases = await prisma.purchase.findMany({
-      where: whereClause,
+      where: whereCondition,
+      skip: offset,
+      take: limit,
       orderBy: {
-        purchaseDate: 'desc',
+        createdAt: 'desc'
       },
       include: {
-        supplier: true, // Include supplier details
-        user: { // Include user (creator) details
-          select: {
-            name: true,
+        supplier: true,
+        user: true,
+        items: {
+          include: {
+            product: true
           }
-        },
-      },
+        }
+      }
     });
-    return NextResponse.json({ purchases });
+
+    // Get total count for pagination
+    const totalCount = await prisma.purchase.count({
+      where: whereCondition
+    });
+
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // Format the data to include computed fields
+    const formattedPurchases = purchases.map(purchase => ({
+      ...purchase,
+      totalAmount: purchase.items.reduce((sum, item) => sum + (item.purchasePrice * item.quantity), 0)
+    }));
+
+    return NextResponse.json({
+      purchases: formattedPurchases,
+      pagination: {
+        currentPage: page,
+        totalPages: totalPages,
+        total: totalCount,
+        itemsPerPage: limit,
+        startIndex: offset + 1,
+        endIndex: Math.min(offset + limit, totalCount)
+      }
+    });
   } catch (error) {
     console.error('Error fetching purchases:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch purchases.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
+// POST: Create a new purchase transaction
 export async function POST(request) {
-  const session = await getSession();
+  const session = await getServerSession(authOptions);
+
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const { supplierId, purchaseDate, items } = await request.json();
+    const data = await request.json();
 
-    if (!supplierId || !purchaseDate || !items || items.length === 0) {
-      return NextResponse.json(
-        { error: 'Supplier, purchase date, and items are required.' },
-        { status: 400 }
-      );
+    // Validate required fields
+    if (!data.supplierId || !data.items || data.items.length === 0) {
+      return NextResponse.json({ error: 'Supplier ID dan item pembelian wajib diisi' }, { status: 400 });
     }
 
-    let totalAmount = 0;
-    const purchaseItemsData = [];
+    // Calculate total amount
+    const totalAmount = data.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-    for (const item of items) {
-      if (!item.productId || !item.quantity || !item.purchasePrice) {
-        return NextResponse.json(
-          { error: 'Each item must have a productId, quantity, and purchasePrice.' },
-          { status: 400 }
-        );
+    // Convert date string to proper Date object if needed
+    let purchaseDate = new Date();
+    if (data.purchaseDate) {
+      // If purchaseDate is already a Date object, use it
+      if (data.purchaseDate instanceof Date) {
+        purchaseDate = data.purchaseDate;
+      } else {
+        // If it's a string, try to parse it
+        const parsedDate = new Date(data.purchaseDate);
+        if (!isNaN(parsedDate.getTime())) {
+          purchaseDate = parsedDate;
+        } else {
+          // If parsing fails, default to current date
+          purchaseDate = new Date();
+        }
       }
-      const subtotal = item.quantity * item.purchasePrice;
-      totalAmount += subtotal;
-      purchaseItemsData.push({
-        productId: item.productId,
-        quantity: item.quantity,
-        purchasePrice: item.purchasePrice,
-        subtotal: subtotal,
-      });
     }
 
-    const newPurchase = await prisma.$transaction(async (prisma) => {
-      // Create the Purchase record
-      const purchase = await prisma.purchase.create({
-        data: {
-          supplierId,
-          userId: session.user.id,
-          purchaseDate: new Date(purchaseDate),
-          totalAmount,
-          items: {
-            createMany: {
-              data: purchaseItemsData,
-            },
-          },
-        },
-      });
-
-      // Update product stock for each item
-      for (const item of items) {
-        await prisma.product.update({
-          where: { id: item.productId },
-          data: {
-            stock: {
-              increment: item.quantity,
-            },
-            purchasePrice: item.purchasePrice, // Update purchase price to the latest
-          },
-        });
+    // Create purchase with items
+    const newPurchase = await prisma.purchase.create({
+      data: {
+        supplierId: data.supplierId,
+        userId: session.user.id,
+        purchaseDate: purchaseDate,
+        totalAmount: totalAmount,
+        items: {
+          create: data.items.map(item => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            purchasePrice: item.price,
+            subtotal: item.quantity * item.price  // Calculate subtotal automatically
+          }))
+        }
+      },
+      include: {
+        supplier: true,
+        user: true,
+        items: {
+          include: {
+            product: true
+          }
+        }
       }
-      return purchase;
     });
 
-    return NextResponse.json(newPurchase, { status: 201 });
+    // Update product stock
+    for (const item of data.items) {
+      await prisma.product.update({
+        where: { id: item.productId },
+        data: {
+          stock: {
+            increment: item.quantity
+          }
+        }
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Pembelian berhasil disimpan',
+      purchase: newPurchase
+    });
   } catch (error) {
     console.error('Error creating purchase:', error);
-    return NextResponse.json(
-      { error: 'Failed to create purchase.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// DELETE: Delete a purchase transaction
+export async function DELETE(request) {
+  const session = await getServerSession(authOptions);
+
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const { id } = await request.json();
+
+    if (!id) {
+      return NextResponse.json({ error: 'Purchase ID is required' }, { status: 400 });
+    }
+
+    // Check if purchase exists
+    const existingPurchase = await prisma.purchase.findUnique({
+      where: { id },
+      include: {
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
+    });
+
+    if (!existingPurchase) {
+      return NextResponse.json({ error: 'Pembelian tidak ditemukan' }, { status: 404 });
+    }
+
+    // First, reduce product stock for each item in the purchase
+    for (const item of existingPurchase.items) {
+      await prisma.product.update({
+        where: { id: item.productId },
+        data: {
+          stock: {
+            decrement: item.quantity
+          }
+        }
+      });
+    }
+
+    // Then delete the purchase
+    await prisma.purchase.delete({
+      where: { id }
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Pembelian berhasil dihapus'
+    });
+  } catch (error) {
+    console.error('Error deleting purchase:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

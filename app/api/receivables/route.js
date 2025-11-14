@@ -22,9 +22,16 @@ export async function GET(request) {
     const skip = (page - 1) * limit;
 
     // Bangun where clause
-    let whereClause = {
-      OR: status ? [{ status: status }] : [{ status: { in: ['UNPAID', 'PARTIALLY_PAID'] } }], // Default hanya tampilkan yang belum lunas
-    };
+    let whereClause = {};
+
+    if (status) {
+      // Jika status diberikan dalam format string terpisah koma, ubah ke array
+      const statusArray = status.split(',').map(s => s.trim());
+      whereClause.status = { in: statusArray };
+    } else {
+      // Default hanya tampilkan yang belum lunas
+      whereClause.status = { in: ['UNPAID', 'PARTIALLY_PAID'] };
+    }
 
     if (memberId) {
       whereClause.memberId = memberId;

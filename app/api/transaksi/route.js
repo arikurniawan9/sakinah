@@ -166,17 +166,21 @@ export async function POST(request) {
         }
       }
 
-      // 3. Jika status UNPAID, buat juga entri di Receivable
+      // 3. Jika status UNPAID dan ada sisa yang harus dibayar, buat juga entri di Receivable
       if (status === 'UNPAID' && memberId) {
-        await tx.receivable.create({
-          data: {
-            saleId: newSale.id,
-            memberId: memberId,
-            amountDue: total, // Total hutang
-            amountPaid: 0, // Belum dibayar
-            status: 'UNPAID', // Status hutang
-          }
-        });
+        // Untuk transaksi UNPAID, sisa hutang adalah total - jumlah yang dibayar
+        const remainingAmount = total - (payment || 0);
+        if (remainingAmount > 0) {
+          await tx.receivable.create({
+            data: {
+              saleId: newSale.id,
+              memberId: memberId,
+              amountDue: total, // Total asli
+              amountPaid: payment || 0, // Jumlah yang sudah dibayar
+              status: payment > 0 ? 'PARTIALLY_PAID' : 'UNPAID', // Status tergantung pembayaran
+            }
+          });
+        }
       }
 
       return newSale;

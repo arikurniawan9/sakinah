@@ -7,6 +7,7 @@ import ProtectedRoute from '../../../components/ProtectedRoute';
 import { useDarkMode } from '../../../components/DarkModeContext';
 import { Download, Calendar, Search, FileText, TrendingUp, Users, CreditCard } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import Breadcrumb from '../../../components/Breadcrumb';
 
 export default function ReportDashboard() {
   const { data: session } = useSession();
@@ -64,13 +65,18 @@ export default function ReportDashboard() {
   return (
     <ProtectedRoute requiredRole="ADMIN">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Breadcrumb
+          items={[{ title: 'Laporan', href: '/admin/laporan' }]}
+          darkMode={darkMode}
+        />
+
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
           <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Laporan Penjualan</h1>
           <div className="flex flex-wrap gap-2">
             <button
               className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
-                darkMode 
-                  ? 'bg-pastel-purple-600 hover:bg-pastel-purple-700' 
+                darkMode
+                  ? 'bg-pastel-purple-600 hover:bg-pastel-purple-700'
                   : 'bg-pastel-purple-600 hover:bg-pastel-purple-700'
               } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pastel-purple-500 min-w-[100px]`}
             >

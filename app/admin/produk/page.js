@@ -5,10 +5,13 @@ import { useState, useEffect } from 'react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import { useDarkMode } from '../../../components/DarkModeContext';
 import { useSession } from 'next-auth/react'; // Import useSession
+import { toast } from 'react-toastify';
+import useSWR from 'swr';
 
 import { useProductTable } from '../../../lib/hooks/useProductTable';
 import { useProductForm } from '../../../lib/hooks/useProductForm';
 import { useTableSelection } from '../../../lib/hooks/useTableSelection';
+import { useCachedCategories, useCachedSuppliers } from '../../../lib/hooks/useCachedData';
 
 import DataTable from '../../../components/DataTable';
 import ProductModal from '../../../components/produk/ProductModal';
@@ -70,24 +73,30 @@ export default function ProductManagement() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState(null);
 
+  // Gunakan hook SWR yang baru untuk mengambil data kategori dan supplier
+  const { categories: cachedCategories, loading: categoriesLoading, error: categoriesError } = useCachedCategories();
+  const { suppliers: cachedSuppliers, loading: suppliersLoading, error: suppliersError } = useCachedSuppliers();
+
+  // Gunakan data dari cache jika tersedia
   useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const [catResponse, supResponse] = await Promise.all([
-          fetch('/api/kategori'),
-          fetch('/api/supplier'),
-        ]);
-        const catData = await catResponse.json();
-        const supData = await supResponse.json();
-        setCategories(catData.categories || []);
-        setSuppliers(supData.suppliers || []);
-      } catch (err) {
-        console.error('Error fetching initial data:', err);
-        setTableError('Gagal memuat data pendukung (kategori/supplier).');
-      }
-    };
-    fetchInitialData();
-  }, [setTableError]);
+    setCategories(cachedCategories);
+  }, [cachedCategories]);
+
+  useEffect(() => {
+    setSuppliers(cachedSuppliers);
+  }, [cachedSuppliers]);
+
+  // Tampilkan error jika terjadi
+  useEffect(() => {
+    if (categoriesError) {
+      console.error('Error fetching categories:', categoriesError);
+      setTableError('Gagal memuat data kategori.');
+    }
+    if (suppliersError) {
+      console.error('Error fetching suppliers:', suppliersError);
+      setTableError('Gagal memuat data supplier.');
+    }
+  }, [categoriesError, suppliersError, setTableError]);
 
   const handleDelete = (id) => {
     if (!isAdmin) return; // Prevent delete if not admin
@@ -211,18 +220,16 @@ export default function ProductManagement() {
     formData.append('file', file);
 
     try {
-      setSuccess(`Memproses file ${file.name}...`);
+      toast.info(`Memproses file ${file.name}...`);
       const response = await fetch('/api/produk/import', { method: 'POST', body: formData });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Gagal mengimport produk');
       fetchProducts();
-      setSuccess(result.message || `Berhasil mengimport ${result.importedCount || 0} produk`);
+      toast.success(result.message || `Berhasil mengimport ${result.importedCount || 0} produk`);
       e.target.value = '';
-      setTimeout(() => setSuccess(''), 5000);
     } catch (err) {
-      setTableError('Terjadi kesalahan saat import: ' + err.message);
+      toast.error('Terjadi kesalahan saat import: ' + err.message);
       e.target.value = '';
-      setTimeout(() => setTableError(''), 7000);
     } finally {
       setImportLoading(false);
     }

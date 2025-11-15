@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../../lib/authOptions';
+import { logCreate } from '@/lib/auditLogger';
 
 // Function to generate a unique invoice number with format: YYYYMMDDXXXXX (year-month-date-5digit_urut)
 async function generateInvoiceNumber() {
@@ -201,22 +202,25 @@ export async function POST(request) {
       return newSale;
     });
 
+    // Log audit untuk pembuatan transaksi penjualan
+    await logCreate(session.user.id, 'Sale', newSale.id, newSale, request);
+
     // Debug log untuk melihat invoice number yang dihasilkan
     console.log("Sale object created:", {
-      id: sale.id,
-      invoiceNumber: sale.invoiceNumber,
-      total: sale.total,
-      paymentMethod: sale.paymentMethod,
-      status: sale.status
+      id: newSale.id,
+      invoiceNumber: newSale.invoiceNumber,
+      total: newSale.total,
+      paymentMethod: newSale.paymentMethod,
+      status: newSale.status
     });
 
     // Return the complete sale object including invoice number, which now includes saleDetails and product info
     // Make sure invoiceNumber is explicitly included in the response
     // Extract and return only the fields we need to ensure they are included
     return NextResponse.json({
-      ...sale,
+      ...newSale,
       // Explicitly include important fields
-      invoiceNumber: sale.invoiceNumber,
+      invoiceNumber: newSale.invoiceNumber,
     }, { status: 201 });
   } catch (error) {
     console.error('Failed to create sale:', error);

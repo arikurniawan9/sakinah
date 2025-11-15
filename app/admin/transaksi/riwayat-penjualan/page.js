@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import ProtectedRoute from '../../../../components/ProtectedRoute';
 import { useDarkMode } from '../../../../components/DarkModeContext';
 import { Search, Calendar, Receipt, Eye, X } from 'lucide-react';
+import Breadcrumb from '../../../../components/Breadcrumb';
 
 export default function RiwayatPenjualan() {
   const { data: session } = useSession();
@@ -91,6 +92,14 @@ export default function RiwayatPenjualan() {
   return (
     <ProtectedRoute requiredRole="ADMIN">
       <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <Breadcrumb
+          items={[
+            { title: 'Transaksi', href: '/admin/transaksi' },
+            { title: 'Riwayat Penjualan', href: '/admin/transaksi/riwayat-penjualan' }
+          ]}
+          darkMode={darkMode}
+        />
+
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>

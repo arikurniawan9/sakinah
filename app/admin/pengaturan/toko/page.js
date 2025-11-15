@@ -9,6 +9,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import Breadcrumb from '@/components/Breadcrumb';
 
 export default function PengaturanTokoPage() {
   const { data: session } = useSession();
@@ -49,10 +50,6 @@ export default function PengaturanTokoPage() {
     setSettings((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleColorChange = (e) => {
-    setSettings((prev) => ({ ...prev, themeColor: e.target.value }));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSaving(true);
@@ -69,7 +66,7 @@ export default function PengaturanTokoPage() {
 
       const updatedSettings = await response.json();
       setSettings(updatedSettings);
-      
+
       // Re-fetch settings for the whole app to apply theme and shop name changes
       await fetchThemeSettings();
 
@@ -92,6 +89,14 @@ export default function PengaturanTokoPage() {
   return (
     <ProtectedRoute requiredRole="ADMIN">
       <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <Breadcrumb
+          items={[
+            { title: 'Pengaturan', href: '/admin/pengaturan' },
+            { title: 'Toko', href: '/admin/pengaturan/toko' }
+          ]}
+          darkMode={darkMode}
+        />
+
         <ToastContainer
           position="top-right"
           autoClose={5000}
@@ -173,34 +178,13 @@ export default function PengaturanTokoPage() {
                 </div>
               </div>
 
-              {/* Pengaturan Tampilan */}
-              <div>
-                <h2 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Tampilan</h2>
-                <div>
-                  <label htmlFor="themeColor" className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Warna Tema Utama
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="color"
-                      id="themeColor"
-                      name="themeColor"
-                      value={settings.themeColor || '#3c8dbc'}
-                      onChange={handleColorChange}
-                      className="w-12 h-10 p-1 border-none rounded-md cursor-pointer"
-                    />
-                    <span className={`px-3 py-2 rounded-md ${inputClass}`}>{settings.themeColor}</span>
-                  </div>
-                </div>
-              </div>
             </div>
 
             <div className="mt-8 pt-5 border-t border-gray-200 dark:border-gray-700 flex justify-end">
               <button
                 type="submit"
                 disabled={isSaving}
-                style={{ backgroundColor: isSaving ? '' : settings.themeColor }}
-                className="px-4 py-2 text-white rounded-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaving ? 'Menyimpan...' : 'Simpan Pengaturan'}
               </button>

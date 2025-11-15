@@ -2,11 +2,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import ProtectedRoute from '../../../../../components/ProtectedRoute';
-import { useDarkMode } from '../../../../../components/DarkModeContext';
+import ProtectedRoute from '../../../../../../components/ProtectedRoute';
+import { useDarkMode } from '../../../../../../components/DarkModeContext';
 import { useSession } from 'next-auth/react';
 import { ArrowLeft, Package, User, Calendar, CreditCard, Eye } from 'lucide-react';
 import Link from 'next/link';
+import PurchaseCancelButton from '../../../../../../components/purchase/PurchaseCancelButton';
 
 export default function PurchaseDetailPage({ params }) {
   const { data: session } = useSession();
@@ -96,14 +97,24 @@ export default function PurchaseDetailPage({ params }) {
                   #{purchase.id.substring(0, 8).toUpperCase()}
                 </p>
               </div>
-              <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                purchase.status === 'COMPLETED' 
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
-                  : purchase.status === 'PENDING' 
-                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' 
-                    : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-              }`}>
-                {purchase.status === 'COMPLETED' ? 'Selesai' : purchase.status === 'PENDING' ? 'Tertunda' : 'Dibatalkan'}
+              <div className="flex flex-col items-end">
+                <div className={`px-3 py-1 rounded-full text-sm font-medium mb-2 ${
+                  purchase.status === 'COMPLETED'
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                    : purchase.status === 'PENDING'
+                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                      : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                }`}>
+                  {purchase.status === 'COMPLETED' ? 'Selesai' : purchase.status === 'PENDING' ? 'Tertunda' : 'Dibatalkan'}
+                </div>
+                <PurchaseCancelButton
+                  purchaseId={purchase.id}
+                  currentStatus={purchase.status}
+                  onStatusChange={(newStatus) => {
+                    setPurchase(prev => ({...prev, status: newStatus}));
+                  }}
+                  darkMode={darkMode}
+                />
               </div>
             </div>
 

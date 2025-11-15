@@ -10,6 +10,7 @@ import ProductSearch from '../../../components/kasir/transaksi/ProductSearch';
 import TransactionCart from '../../../components/kasir/transaksi/TransactionCart';
 import MemberSelection from '../../../components/kasir/transaksi/MemberSelection';
 import PaymentSummary from '../../../components/kasir/transaksi/PaymentSummary';
+import Breadcrumb from '../../../components/Breadcrumb';
 
 import AttendantSelection from '../../../components/kasir/transaksi/AttendantSelection';
 import Receipt from '../../../components/kasir/transaksi/Receipt';
@@ -178,7 +179,7 @@ export default function AdminTransaction() {
       try {
         const [membersRes, attendantsRes] = await Promise.all([
           fetch('/api/member'),
-          fetch('/api/pelayan')
+          fetch('/api/pelayan?simple=true')
         ]);
         const membersData = await membersRes.json();
         const attendantsData = await attendantsRes.json();
@@ -189,7 +190,7 @@ export default function AdminTransaction() {
         const generalCustomer = allMembers.find(m => m.name === 'Pelanggan Umum');
         setDefaultMember(generalCustomer);
 
-        setAttendants(attendantsData.attendants || []);
+        setAttendants(attendantsData || []);
       } catch (error) {
         console.error('Error fetching initial data:', error);
       }
@@ -333,6 +334,10 @@ export default function AdminTransaction() {
     <ProtectedRoute requiredRole="ADMIN">
       <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50'}`}>
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Breadcrumb
+            items={[{ title: 'Transaksi', href: '/admin/transaksi' }]}
+            darkMode={darkMode}
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <ProductSearch

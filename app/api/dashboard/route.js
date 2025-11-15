@@ -9,89 +9,132 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const startDateParam = searchParams.get('startDate');
+  const endDateParam = searchParams.get('endDate');
+
   try {
-    // --- Stats Overview ---
+    // --- Define Date Range ---
+    let endDate = new Date();
+    if (endDateParam) {
+        endDate = new Date(endDateParam);
+    }
+    endDate.setHours(23, 59, 59, 999); // End of the selected day
+
+    let startDate = new Date();
+    if (startDateParam) {
+        startDate = new Date(startDateParam);
+    } else {
+        startDate.setDate(startDate.getDate() - 6); // Default to last 7 days
+    }
+    startDate.setHours(0, 0, 0, 0); // Start of the selected day
+
+
+    // --- Stats Overview (Not date-dependent) ---
     const totalProducts = await prisma.product.count();
     const totalMembers = await prisma.member.count();
-    const totalCashiers = await prisma.user.count({ where: { role: 'CASHIER' } });
-    const totalAttendants = await prisma.user.count({ where: { role: 'ATTENDANT' } });
-    const activeEmployees = totalCashiers + totalAttendants;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const transactionsToday = await prisma.sale.count({
-      where: {
-        createdAt: {
-          gte: today,
-          lt: tomorrow,
-        },
-      },
+    const activeEmployees = await prisma.user.count({
+      where: { role: { in: ['CASHIER', 'ATTENDANT'] } },
     });
 
-    // --- Sales Chart Data (Last 7 days) ---
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6); // Include today, so 7 days total
-    sevenDaysAgo.setHours(0, 0, 0, 0);
+    // --- Range-based Stats ---
+    const salesInRange = await prisma.sale.findMany({
+        where: {
+            createdAt: {
+                gte: startDate,
+                lte: endDate,
+            },
+        },
+        include: {
+            saleDetails: {
+                include: {
+                    product: {
+                        select: {
+                            purchasePrice: true,
+                        },
+                    },
+                },
+            },
+        },
+    });
 
-    const salesDataRaw = await prisma.$queryRaw`
-      SELECT
-        strftime('%Y-%m-%d', createdAt) as saleDate,
-        SUM(total) as totalSales,
-        COUNT(id) as totalTransactions
-      FROM Sale
-      WHERE createdAt >= ${sevenDaysAgo.toISOString()} AND createdAt <= ${new Date().toISOString()}
-      GROUP BY saleDate
-      ORDER BY saleDate ASC;
-    `;
+    const totalSalesInRange = salesInRange.reduce((sum, sale) => sum + sale.total, 0);
+    const totalTransactionsInRange = salesInRange.length;
+    
+    // Calculate Total Profit
+    const totalProfitInRange = salesInRange.reduce((totalProfit, sale) => {
+      const totalCostForSale = sale.saleDetails.reduce((costSum, detail) => {
+        // Ensure product and purchasePrice exist to avoid errors
+        const purchasePrice = detail.product?.purchasePrice || 0;
+        return costSum + (purchasePrice * detail.quantity);
+      }, 0);
+      const profitForSale = sale.total - totalCostForSale;
+      return totalProfit + profitForSale;
+    }, 0);
 
-    const dailySalesChartData = [];
-    let currentDate = new Date(sevenDaysAgo);
-    while (currentDate <= new Date()) {
-      const dateString = currentDate.toISOString().split('T')[0];
-      const salesForDay = salesDataRaw.find(
-        (s) => s.saleDate === dateString
-      );
-      dailySalesChartData.push({
-        name: currentDate.toLocaleDateString('id-ID', { weekday: 'short' }), // e.g., "Sen"
-        sales: Number(salesForDay?.totalSales || 0),
-        transactions: Number(salesForDay?.totalTransactions || 0),
-        fullDate: dateString,
-      });
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
 
-    // --- Recent Activity Log (Last 5 transactions) ---
+    // --- Recent Activity Log (Last 5 transactions, not date-dependent) ---
     const recentTransactions = await prisma.sale.findMany({
       take: 5,
-      orderBy: {
-        createdAt: 'desc',
-      },
-      include: {
-        cashier: {
-          select: { name: true },
+      orderBy: { createdAt: 'desc' },
+      include: { cashier: { select: { name: true } } }, // CORRECTED: from 'user' to 'cashier'
+    });
+
+    // --- Best Selling Products ---
+    const topProductsQuery = await prisma.saleDetail.groupBy({
+      by: ['productId'],
+      where: {
+        sale: {
+          createdAt: {
+            gte: startDate,
+            lte: endDate,
+          },
         },
+      },
+      _sum: {
+        quantity: true,
+      },
+      orderBy: {
+        _sum: {
+          quantity: 'desc',
+        },
+      },
+      take: 5,
+    });
+
+    const productIds = topProductsQuery.map(p => p.productId);
+    const productDetails = await prisma.product.findMany({
+      where: {
+        id: { in: productIds },
+      },
+      select: {
+        id: true,
+        name: true,
+        productCode: true,
       },
     });
 
-    const formattedRecentTransactions = recentTransactions.map(sale => ({
-      id: sale.id,
-      cashierName: sale.user?.name || 'N/A',
-      date: sale.createdAt,
-      totalAmount: sale.totalAmount,
-      paymentMethod: sale.paymentMethod || 'N/A', // Assuming paymentMethod exists on Sale model
-    }));
+    const bestSellingProducts = topProductsQuery.map(topProduct => {
+      const detail = productDetails.find(p => p.id === topProduct.productId);
+      return {
+        ...detail,
+        quantitySold: topProduct._sum.quantity,
+      };
+    }).sort((a, b) => b.quantitySold - a.quantitySold);
 
 
     return NextResponse.json({
       totalProducts,
       totalMembers,
-      transactionsToday,
       activeEmployees,
-      dailySalesChartData,
-      recentTransactions: formattedRecentTransactions,
+      // New range-based stats
+      totalSalesInRange,
+      totalTransactionsInRange,
+      totalProfitInRange,
+      // Recent activity
+      recentTransactions,
+      // Best selling products
+      bestSellingProducts,
     });
 
   } catch (error) {

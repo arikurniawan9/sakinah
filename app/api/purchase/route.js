@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
+import { logCreate, logDelete } from '@/lib/auditLogger';
 
 // GET: Fetch all purchase transactions with filtering and pagination
 export async function GET(request) {
@@ -178,6 +179,9 @@ export async function POST(request) {
       });
     }
 
+    // Log audit untuk pembuatan pembelian
+    await logCreate(session.user.id, 'Purchase', newPurchase.id, newPurchase, request);
+
     return NextResponse.json({
       success: true,
       message: 'Pembelian berhasil disimpan',
@@ -236,6 +240,9 @@ export async function DELETE(request) {
     await prisma.purchase.delete({
       where: { id }
     });
+
+    // Log audit untuk penghapusan pembelian
+    await logDelete(session.user.id, 'Purchase', existingPurchase.id, existingPurchase, request);
 
     return NextResponse.json({
       success: true,

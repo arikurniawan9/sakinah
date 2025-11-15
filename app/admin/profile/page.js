@@ -9,6 +9,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import Breadcrumb from '@/components/Breadcrumb';
 
 export default function AdminProfilePage() {
   const { data: session, update: updateSession } = useSession();
@@ -116,8 +117,13 @@ export default function AdminProfilePage() {
   return (
     <ProtectedRoute requiredRole="ADMIN">
       <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <Breadcrumb
+          items={[{ title: 'Profil', href: '/admin/profile' }]}
+          darkMode={darkMode}
+        />
+
         <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme={darkMode ? 'dark' : 'light'} />
-        
+
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>

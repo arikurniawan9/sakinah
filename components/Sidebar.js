@@ -29,7 +29,8 @@ import {
   DollarSign,    // Added for Pengeluaran
   History,       // Added for Riwayat Penjualan
   Settings,       // Added for Pengaturan Toko
-  Package         // Added for Riwayat Pembelian
+  Package,        // Added for Riwayat Pembelian
+  Folder          // Added for Kategori Pengeluaran
 } from 'lucide-react';
 import { useDarkMode } from './DarkModeContext';
 import { useSidebar } from './SidebarContext';
@@ -112,6 +113,7 @@ const Sidebar = ({ children }) => {
     { title: "Pelayan", href: "/admin/pelayan", icon: Users, type: 'item', roles: ['ADMIN'] },
     { title: "Laporan", type: 'heading', roles: ['ADMIN'] },
     { title: "Laporan", href: "/admin/laporan", icon: BarChart3, type: 'item', roles: ['ADMIN'] },
+    { title: "Laporan Laba Rugi", href: "/admin/laporan/labarugi", icon: BarChart3, type: 'item', roles: ['ADMIN'] },
     { title: "Laporan Piutang", href: "/admin/laporan/piutang", icon: DollarSign, type: 'item', roles: ['ADMIN'] },
     { title: "Transaksi", type: 'heading', roles: ['ADMIN'] },
     { title: "Pembelian", href: "/admin/transaksi/pembelian", icon: ShoppingCart, type: 'item', roles: ['ADMIN'] },
@@ -120,11 +122,9 @@ const Sidebar = ({ children }) => {
     { title: "Riwayat Penjualan", href: "/admin/transaksi/riwayat-penjualan", icon: History, type: 'item', roles: ['ADMIN'] },
     { title: "Keuangan", type: 'heading', roles: ['ADMIN'] },
     { title: "Pengeluaran", href: "/admin/pengeluaran", icon: DollarSign, type: 'item', roles: ['ADMIN'] },
+    { title: "Kategori Pengeluaran", href: "/admin/pengeluaran/kategori", icon: Folder, type: 'item', roles: ['ADMIN'] },
     { title: "Pengaturan", type: 'heading', roles: ['ADMIN'] },
     { title: "Pengaturan", href: "/admin/pengaturan", icon: Settings, type: 'item', roles: ['ADMIN'] },
-    { title: "Pengaturan Toko", href: "/admin/pengaturan/toko", icon: Settings, type: 'item', roles: ['ADMIN'] },
-    { title: "Pengaturan Sistem", href: "/admin/pengaturan/sistem", icon: Settings, type: 'item', roles: ['ADMIN'] },
-    { title: "Pengaturan Keamanan", href: "/admin/pengaturan/keamanan", icon: Settings, type: 'item', roles: ['ADMIN'] },
 
     // CASHIER menus
     { title: "Kasir", type: 'heading', roles: ['CASHIER'] },

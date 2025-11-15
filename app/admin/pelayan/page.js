@@ -15,6 +15,7 @@ import PelayanToolbar from '../../../components/pelayan/PelayanToolbar';
 import Pagination from '../../../components/produk/Pagination';
 import ConfirmationModal from '../../../components/ConfirmationModal';
 import FloatingAddButton from '../../../components/FloatingAddButton';
+import Breadcrumb from '../../../components/Breadcrumb';
 
 export default function AttendantManagement() {
   const { darkMode } = useDarkMode();
@@ -201,6 +202,11 @@ export default function AttendantManagement() {
   return (
     <ProtectedRoute requiredRole="ADMIN">
       <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <Breadcrumb
+          items={[{ title: 'Pelayan', href: '/admin/pelayan' }]}
+          darkMode={darkMode}
+        />
+
         <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
           Manajemen Pelayan
         </h1>

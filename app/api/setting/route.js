@@ -42,7 +42,7 @@ export async function PUT(request) {
 
   try {
     const body = await request.json();
-    const { shopName, address, phone, themeColor } = body;
+    const { shopName, address, phone } = body;
 
     // Cek apakah setting sudah ada
     const existingSetting = await prisma.setting.findFirst();
@@ -56,7 +56,6 @@ export async function PUT(request) {
           shopName,
           address,
           phone,
-          themeColor,
         }
       });
     } else {
@@ -66,7 +65,6 @@ export async function PUT(request) {
           shopName,
           address,
           phone,
-          themeColor,
         }
       });
     }

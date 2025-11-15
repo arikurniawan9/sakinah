@@ -5,10 +5,12 @@ const RecentActivityTable = ({ recentActivitiesData, darkMode }) => {
   const [itemsPerPage] = useState(5); // You can make this configurable
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredActivities = recentActivitiesData.filter(activity =>
-    activity.cashierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    activity.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredActivities = recentActivitiesData.filter(activity => {
+    const cashierName = activity.cashier?.name || ''; // Use optional chaining and default to empty string
+    const invoiceNum = activity.invoiceNumber || ''; // Use optional chaining and default to empty string
+    return cashierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           invoiceNum.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -55,7 +57,7 @@ const RecentActivityTable = ({ recentActivitiesData, darkMode }) => {
               <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                 darkMode ? 'text-gray-300' : 'text-gray-500'
               }`}>
-                Transaksi
+                No. Invoice
               </th>
               <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                 darkMode ? 'text-gray-300' : 'text-gray-500'
@@ -79,22 +81,22 @@ const RecentActivityTable = ({ recentActivitiesData, darkMode }) => {
                   <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                     darkMode ? 'text-gray-300' : 'text-gray-500'
                   }`}>
-                    {new Date(activity.date).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {new Date(activity.createdAt).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </td>
                   <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
                     darkMode ? 'text-white' : 'text-gray-900'
                   }`}>
-                    {activity.cashierName}
+                    {activity.cashier?.name || 'N/A'}
                   </td>
                   <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                     darkMode ? 'text-gray-400' : 'text-gray-500'
                   }`}>
-                    #{activity.id.substring(0, 8)}
+                    #{activity.invoiceNumber}
                   </td>
                   <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                     darkMode ? 'text-white' : 'text-gray-900'
                   }`}>
-                    Rp {activity.totalAmount ? activity.totalAmount.toLocaleString('id-ID') : '0'}
+                    Rp {activity.total ? activity.total.toLocaleString('id-ID') : '0'}
                   </td>
                 </tr>
               ))
@@ -123,12 +125,6 @@ const RecentActivityTable = ({ recentActivitiesData, darkMode }) => {
                   currentPage === index + 1
                     ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
                     : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                } ${
-                  darkMode
-                    ? currentPage === index + 1
-                      ? 'dark:bg-indigo-900/30 dark:border-indigo-500 dark:text-indigo-400'
-                      : 'dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600'
-                    : ''
                 }`}
               >
                 {index + 1}

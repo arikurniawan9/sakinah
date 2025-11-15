@@ -1,5 +1,3 @@
-
-// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,168 +8,162 @@ datasource db {
 }
 
 model User {
-  id             String   @id @default(cuid())
+  id             String     @id @default(cuid())
   name           String
-  username       String   @unique
-  employeeNumber String?  @unique // Nomor pegawai
-  gender         String?  // LAKI_LAKI, PEREMPUAN
+  username       String     @unique
+  employeeNumber String?    @unique
+  gender         String?
   address        String?
   phone          String?
-  status         String   @default("AKTIF") // AKTIF, TIDAK_AKTIF
-  password       String   // hashed password
-  role           String   // ADMIN, CASHIER, ATTENDANT
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt()
-
-  cashierSales   Sale[]     @relation("CashierSales")
-  attendantSales Sale[]     @relation("AttendantSales")
-  tempCarts      TempCart[] @relation("AttendantTempCarts")
+  status         String     @default("AKTIF")
+  password       String
+  role           String
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  auditLogs      AuditLog[]
+  expenses       Expense[]
   purchases      Purchase[] @relation("PurchaseUser")
+  attendantSales Sale[]     @relation("AttendantSales")
+  cashierSales   Sale[]     @relation("CashierSales")
+  tempCarts      TempCart[] @relation("AttendantTempCarts")
 }
 
 model Category {
-  id          String   @id @default(cuid())
-  name        String   @unique
+  id          String    @id @default(cuid())
+  name        String    @unique
   description String?
-  icon        String?  // Add icon field
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt()
-
-  products Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  icon        String?
+  products    Product[]
 }
 
 model Product {
-  id             String   @id @default(cuid())
-  categoryId     String
-  name           String
-  productCode    String   @unique
-  stock          Int      @default(0)
-  purchasePrice  Int      // harga beli
-  supplierId     String
-  image          String?
-  description    String? // Add description field back
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt()
-
-  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  salesDetails SaleDetail[]
-  tempCarts TempCart[]
-  priceTiers PriceTier[]
-  purchaseItems PurchaseItem[] // Added missing back-relation
+  id            String         @id @default(cuid())
+  categoryId    String
+  name          String
+  productCode   String         @unique
+  stock         Int            @default(0)
+  purchasePrice Int
+  supplierId    String
+  image         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  description   String?
+  priceTiers    PriceTier[]
+  supplier      Supplier       @relation(fields: [supplierId], references: [id])
+  category      Category       @relation(fields: [categoryId], references: [id])
+  purchaseItems PurchaseItem[]
+  salesDetails  SaleDetail[]
+  tempCarts     TempCart[]
 }
 
 model PriceTier {
   id        String  @id @default(cuid())
   productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   minQty    Int
   maxQty    Int?
   price     Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([productId, minQty])
 }
 
 model Supplier {
-  id        String   @id @default(cuid())
-  name      String   @unique
+  id        String     @id @default(cuid())
+  name      String     @unique
   address   String?
   phone     String?
   email     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt()
-
-  products Product[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  products  Product[]
   purchases Purchase[]
 }
 
 model Member {
-  id            String   @id @default(cuid())
-  name          String
-  phone         String   @unique
-  address       String?
-  membershipType String   // SILVER, GOLD, PLATINUM
-  discount      Int      // in percentage
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt()
-
-  sales       Sale[]
-  receivables Receivable[]
+  id             String       @id @default(cuid())
+  name           String
+  phone          String       @unique
+  address        String?
+  membershipType String
+  discount       Int
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  receivables    Receivable[]
+  sales          Sale[]
 }
 
 model Sale {
-  id                 String   @id @default(cuid())
-  invoiceNumber      String   @unique // Customer-facing 10-digit invoice number
+  id                 String       @id @default(cuid())
+  invoiceNumber      String       @unique
   cashierId          String
   attendantId        String?
   memberId           String?
-  paymentMethod      String   @default("CASH") // Payment method: CASH, TRANSFER, etc
-  date               DateTime @default(now())
-  total              Int      // total sebelum diskon member
-  discount           Int      // diskon member
-  additionalDiscount Int      @default(0) // Diskon tambahan manual
-  tax                Int      // pajak opsional
-  payment            Int      // jumlah yang dibayar
-  change             Int      // kembalian
-  status             String   @default("PAID") // PAID, UNPAID
-  createdAt          DateTime @default(now())
-
-  cashier     User          @relation("CashierSales", fields: [cashierId], references: [id], onDelete: Restrict)
-  attendant   User?         @relation("AttendantSales", fields: [attendantId], references: [id], onDelete: Restrict)
-  member      Member?       @relation(fields: [memberId], references: [id], onDelete: Restrict)
-  saleDetails SaleDetail[]
-  receivable  Receivable?
+  date               DateTime     @default(now())
+  total              Int
+  discount           Int
+  additionalDiscount Int          @default(0)
+  tax                Int
+  payment            Int
+  change             Int
+  status             String       @default("PAID")
+  createdAt          DateTime     @default(now())
+  paymentMethod      String       @default("CASH")
+  receivable         Receivable?
+  member             Member?      @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  attendant          User?        @relation("AttendantSales", fields: [attendantId], references: [id], onDelete: Restrict)
+  cashier            User         @relation("CashierSales", fields: [cashierId], references: [id])
+  saleDetails        SaleDetail[]
 }
 
 model Receivable {
-  id         String   @id @default(cuid())
-  saleId     String   @unique
-  sale       Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  id         String    @id @default(cuid())
+  saleId     String    @unique
   memberId   String
-  member     Member   @relation(fields: [memberId], references: [id], onDelete: Restrict)
   amountDue  Int
-  amountPaid Int      @default(0)
-  status     String   // UNPAID, PARTIALLY_PAID, PAID
+  amountPaid Int       @default(0)
+  status     String
   dueDate    DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt()
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  member     Member    @relation(fields: [memberId], references: [id])
+  sale       Sale      @relation(fields: [saleId], references: [id], onDelete: Cascade)
 }
 
 model SaleDetail {
-  id         String @id @default(cuid())
-  saleId     String
-  productId  String
-  quantity   Int
-  price      Int      // harga satuan
-  discount   Int      // potongan per item
-  subtotal   Int      // total setelah potongan per item sebelum diskon member
-
-  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  id        String  @id @default(cuid())
+  saleId    String
+  productId String
+  quantity  Int
+  price     Int
+  discount  Int
+  subtotal  Int
+  product   Product @relation(fields: [productId], references: [id])
+  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
 }
 
 model TempCart {
-  id         String   @id @default(cuid())
+  id          String   @id @default(cuid())
   attendantId String
-  productId  String
-  quantity   Int      @default(1)
-  createdAt  DateTime @default(now())
-
-  attendant User    @relation("AttendantTempCarts", fields: [attendantId], references: [id], onDelete: Cascade)
-  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productId   String
+  quantity    Int      @default(1)
+  createdAt   DateTime @default(now())
+  product     Product  @relation(fields: [productId], references: [id])
+  attendant   User     @relation("AttendantTempCarts", fields: [attendantId], references: [id], onDelete: Cascade)
 }
 
 model Purchase {
-  id           String     @id @default(cuid())
+  id           String         @id @default(cuid())
   supplierId   String
-  userId       String     // User who made the purchase (e.g., Admin)
-  purchaseDate DateTime   @default(now())
+  userId       String
+  purchaseDate DateTime       @default(now())
   totalAmount  Int
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt()
-
-  supplier     Supplier   @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  user         User       @relation("PurchaseUser", fields: [userId], references: [id], onDelete: Restrict)
+  status       String         @default("COMPLETED")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  user         User           @relation("PurchaseUser", fields: [userId], references: [id])
+  supplier     Supplier       @relation(fields: [supplierId], references: [id])
   items        PurchaseItem[]
 }
 
@@ -180,17 +172,16 @@ model PurchaseItem {
   purchaseId    String
   productId     String
   quantity      Int
-  purchasePrice Int      // Price at which this specific item was purchased
-  subtotal      Int      // quantity * purchasePrice
-
+  purchasePrice Int
+  subtotal      Int
+  product       Product  @relation(fields: [productId], references: [id])
   purchase      Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  product       Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
 }
 
 model SuspendedSale {
   id        String   @id @default(cuid())
   name      String?
-  cartItems String   // Stored as a JSON string
+  cartItems String
   memberId  String?
   notes     String?
   createdAt DateTime @default(now())
@@ -201,7 +192,43 @@ model Setting {
   shopName   String?
   address    String?
   phone      String?
-  themeColor String?  @default("#3c8dbc") // Default AdminLTE blue
+  themeColor String?  @default("#3c8dbc")
   createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt()
+  updatedAt  DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  oldValue  String?
+  newValue  String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model ExpenseCategory {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  expenses    Expense[]
+}
+
+model Expense {
+  id                String          @id @default(cuid())
+  expenseCategoryId String
+  amount            Int
+  description       String?
+  date              DateTime        @default(now())
+  createdBy         String
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  user              User            @relation(fields: [createdBy], references: [id])
+  category          ExpenseCategory @relation(fields: [expenseCategoryId], references: [id])
 }

@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [themeColor, setThemeColor] = useState('#3c8dbc'); // Default color
+  const [themeColor, setThemeColor] = useState('#3c8dbc'); // Default color - will be fixed
   const [shopName, setShopName] = useState('Toko Sakinah');
 
   const fetchSettings = useCallback(async () => {
@@ -13,10 +13,11 @@ export const ThemeProvider = ({ children }) => {
       const response = await fetch('/api/pengaturan');
       if (response.ok) {
         const data = await response.json();
-        if (data.themeColor) {
-          setThemeColor(data.themeColor);
-          document.documentElement.style.setProperty('--theme-color', data.themeColor);
-        }
+        // Gunakan warna default karena fitur penggantian warna dihapus
+        const defaultThemeColor = '#3c8dbc';
+        setThemeColor(defaultThemeColor);
+        document.documentElement.style.setProperty('--theme-color', defaultThemeColor);
+
         if (data.shopName) {
             setShopName(data.shopName);
         }
@@ -30,18 +31,15 @@ export const ThemeProvider = ({ children }) => {
     fetchSettings();
   }, [fetchSettings]);
 
-  const updateThemeColor = (newColor) => {
-    setThemeColor(newColor);
-    document.documentElement.style.setProperty('--theme-color', newColor);
-  };
-  
   const updateShopName = (newName) => {
     setShopName(newName);
   };
 
+  // Fungsi updateThemeColor dihapus karena fitur penggantian warna dihapus
+
 
   return (
-    <ThemeContext.Provider value={{ themeColor, updateThemeColor, shopName, updateShopName, fetchSettings }}>
+    <ThemeContext.Provider value={{ themeColor, shopName, updateShopName, fetchSettings }}>
       {children}
     </ThemeContext.Provider>
   );

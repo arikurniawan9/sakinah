@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { z } from 'zod';
+import { logCreate, logUpdate, logDelete } from '@/lib/auditLogger';
 
 // Zod Schemas for Product
 const priceTierSchema = z.object({
@@ -58,9 +59,28 @@ export async function GET(request) {
       skip: offset,
       take: limit,
       include: {
-        category: true,
-        supplier: true,
-        priceTiers: { orderBy: { minQty: 'asc' } },
+        category: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        supplier: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        priceTiers: {
+          orderBy: { minQty: 'asc' },
+          select: {
+            id: true,
+            productId: true,
+            minQty: true,
+            maxQty: true,
+            price: true
+          }
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -104,13 +124,18 @@ export async function POST(request) {
     
     // Pisahkan field categoryId dan supplierId dari productData
     const { categoryId, supplierId, ...restProductData } = productData;
-    
+
     const createdProduct = await prisma.$transaction(async (tx) => {
       const product = await tx.product.create({
         data: {
           ...restProductData,
           category: { connect: { id: categoryId } },
           supplier: { connect: { id: supplierId } },
+        },
+        include: {
+          category: true,
+          supplier: true,
+          priceTiers: true,
         },
       });
 
@@ -120,7 +145,10 @@ export async function POST(request) {
 
       return product;
     });
-    
+
+    // Log audit untuk pembuatan produk
+    await logCreate(session.user.id, 'Product', createdProduct.id, createdProduct, request);
+
     return NextResponse.json(createdProduct, { status: 201 });
   } catch (error) {
     console.error('Error creating product:', error);
@@ -143,20 +171,30 @@ export async function PUT(request) {
     const validatedData = productUpdateSchema.parse(body);
     const { id, priceTiers, ...productData } = validatedData;
     
-    const existingProduct = await prisma.product.findFirst({
+    const duplicateProduct = await prisma.product.findFirst({
       where: {
         productCode: productData.productCode,
         id: { not: id },
       },
     });
-    
-    if (existingProduct) {
+
+    if (duplicateProduct) {
       return NextResponse.json({ error: 'Kode produk sudah digunakan' }, { status: 409 });
     }
-    
+
+    // Ambil data produk sebelum update untuk logging
+    const existingProduct = await prisma.product.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        supplier: true,
+        priceTiers: true,
+      },
+    });
+
     // Pisahkan field categoryId dan supplierId dari productData
     const { categoryId, supplierId, ...restProductData } = productData;
-    
+
     const updatedProduct = await prisma.$transaction(async (tx) => {
       const product = await tx.product.update({
         where: { id },
@@ -164,6 +202,11 @@ export async function PUT(request) {
           ...restProductData,
           category: { connect: { id: categoryId } },
           supplier: { connect: { id: supplierId } },
+        },
+        include: {
+          category: true,
+          supplier: true,
+          priceTiers: true,
         },
       });
 
@@ -174,7 +217,10 @@ export async function PUT(request) {
 
       return product;
     });
-    
+
+    // Log audit untuk pembaruan produk
+    await logUpdate(session.user.id, 'Product', updatedProduct.id, existingProduct, updatedProduct, request);
+
     return NextResponse.json(updatedProduct);
   } catch (error) {
     console.error('Error updating product:', error);
@@ -228,6 +274,16 @@ export async function DELETE(request) {
       );
     }
     
+    // Ambil data produk sebelum dihapus untuk logging
+    const deletedProducts = await prisma.product.findMany({
+      where: { id: { in: idsToDelete } },
+      include: {
+        category: true,
+        supplier: true,
+        priceTiers: true,
+      },
+    });
+
     const { count } = await prisma.product.deleteMany({
       where: { id: { in: idsToDelete } },
     });
@@ -235,7 +291,12 @@ export async function DELETE(request) {
     if (count === 0) {
       return NextResponse.json({ error: 'Produk tidak ditemukan' }, { status: 404 });
     }
-    
+
+    // Log audit untuk penghapusan produk
+    for (const product of deletedProducts) {
+      await logDelete(session.user.id, 'Product', product.id, product, request);
+    }
+
     return NextResponse.json({ message: `Berhasil menghapus ${count} produk` });
   } catch (error) {
     console.error('Error deleting products:', error);

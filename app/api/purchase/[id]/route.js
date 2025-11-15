@@ -59,6 +59,22 @@ export async function PUT(request, { params }) {
   try {
     const data = await request.json();
 
+    // Get the current purchase to check for status changes
+    const currentPurchase = await prisma.purchase.findUnique({
+      where: { id: params.id },
+      include: {
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
+    });
+
+    if (!currentPurchase) {
+      return NextResponse.json({ error: 'Pembelian tidak ditemukan' }, { status: 404 });
+    }
+
     // Prepare update data
     const updateData = {
       status: data.status // Only allow status update for now
@@ -80,21 +96,95 @@ export async function PUT(request, { params }) {
       }
     }
 
-    const updatedPurchase = await prisma.purchase.update({
-      where: {
-        id: params.id
-      },
-      data: updateData,
-      include: {
-        supplier: true,
-        user: true,
-        items: {
+    let updatedPurchase;
+
+    // Handle status change to CANCELLED
+    if (data.status === 'CANCELLED' && currentPurchase.status !== 'CANCELLED') {
+      // In a transaction, update purchase status and revert product stock
+      updatedPurchase = await prisma.$transaction(async (tx) => {
+        // First, reduce product stock for each item in the purchase (reverse the original increment)
+        for (const item of currentPurchase.items) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: {
+              stock: {
+                decrement: item.quantity
+              }
+            }
+          });
+        }
+
+        // Update the purchase status
+        const purchase = await tx.purchase.update({
+          where: {
+            id: params.id
+          },
+          data: updateData,
           include: {
-            product: true
+            supplier: true,
+            user: true,
+            items: {
+              include: {
+                product: true
+              }
+            }
+          }
+        });
+
+        return purchase;
+      });
+    } else if (data.status === 'COMPLETED' && currentPurchase.status === 'CANCELLED') {
+      // Handle status change from CANCELLED to COMPLETED (reverse cancellation)
+      updatedPurchase = await prisma.$transaction(async (tx) => {
+        // First, increment product stock for each item in the purchase
+        for (const item of currentPurchase.items) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: {
+              stock: {
+                increment: item.quantity
+              }
+            }
+          });
+        }
+
+        // Update the purchase status
+        const purchase = await tx.purchase.update({
+          where: {
+            id: params.id
+          },
+          data: updateData,
+          include: {
+            supplier: true,
+            user: true,
+            items: {
+              include: {
+                product: true
+              }
+            }
+          }
+        });
+
+        return purchase;
+      });
+    } else {
+      // Regular status update (not cancellation or reinstatement)
+      updatedPurchase = await prisma.purchase.update({
+        where: {
+          id: params.id
+        },
+        data: updateData,
+        include: {
+          supplier: true,
+          user: true,
+          items: {
+            include: {
+              product: true
+            }
           }
         }
-      }
-    });
+      });
+    }
 
     // Calculate updated total
     const totalAmount = updatedPurchase.items.reduce((sum, item) => sum + (item.purchasePrice * item.quantity), 0);

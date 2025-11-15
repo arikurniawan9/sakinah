@@ -15,6 +15,7 @@ import KasirToolbar from '../../../components/kasir/KasirToolbar';
 import Pagination from '../../../components/produk/Pagination'; // Reusing existing Pagination
 import ConfirmationModal from '../../../components/ConfirmationModal'; // Reusing existing ConfirmationModal
 import FloatingAddButton from '../../../components/kasir/FloatingAddButton';
+import Breadcrumb from '../../../components/Breadcrumb';
 
 export default function CashierManagement() {
   const { darkMode } = useDarkMode();
@@ -201,6 +202,11 @@ export default function CashierManagement() {
   return (
     <ProtectedRoute requiredRole="ADMIN">
       <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <Breadcrumb
+          items={[{ title: 'Kasir', href: '/admin/kasir' }]}
+          darkMode={darkMode}
+        />
+
         <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
           Manajemen Kasir
         </h1>

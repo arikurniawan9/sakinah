@@ -8,3 +8,7 @@ prisma/dev.db-journal
 *.tmp
 *.end
 *.exportfix
+
+# Ignore files with sensitive credentials
+koneksi prisma vercel.md
+prisma ORM.md

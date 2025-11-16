@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["dataProxy"]
 }
 
 datasource db {
@@ -51,11 +52,14 @@ model Product {
   updatedAt     DateTime       @updatedAt
   description   String?
   priceTiers    PriceTier[]
-  supplier      Supplier       @relation(fields: [supplierId], references: [id])
   category      Category       @relation(fields: [categoryId], references: [id])
+  supplier      Supplier       @relation(fields: [supplierId], references: [id])
   purchaseItems PurchaseItem[]
   salesDetails  SaleDetail[]
   tempCarts     TempCart[]
+
+  @@index([categoryId])
+  @@index([supplierId])
 }
 
 model PriceTier {
@@ -67,6 +71,7 @@ model PriceTier {
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([productId, minQty])
+  @@index([productId])
 }
 
 model Supplier {
@@ -111,10 +116,15 @@ model Sale {
   createdAt          DateTime     @default(now())
   paymentMethod      String       @default("CASH")
   receivable         Receivable?
-  member             Member?      @relation(fields: [memberId], references: [id], onDelete: Restrict)
   attendant          User?        @relation("AttendantSales", fields: [attendantId], references: [id], onDelete: Restrict)
   cashier            User         @relation("CashierSales", fields: [cashierId], references: [id])
+  member             Member?      @relation(fields: [memberId], references: [id], onDelete: Restrict)
   saleDetails        SaleDetail[]
+
+  @@index([cashierId])
+  @@index([attendantId])
+  @@index([memberId])
+  @@index([date])
 }
 
 model Receivable {
@@ -129,6 +139,9 @@ model Receivable {
   updatedAt  DateTime  @updatedAt
   member     Member    @relation(fields: [memberId], references: [id])
   sale       Sale      @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([saleId])
 }
 
 model SaleDetail {
@@ -141,6 +154,9 @@ model SaleDetail {
   subtotal  Int
   product   Product @relation(fields: [productId], references: [id])
   sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([saleId])
+  @@index([productId])
 }
 
 model TempCart {
@@ -149,8 +165,11 @@ model TempCart {
   productId   String
   quantity    Int      @default(1)
   createdAt   DateTime @default(now())
-  product     Product  @relation(fields: [productId], references: [id])
   attendant   User     @relation("AttendantTempCarts", fields: [attendantId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id])
+
+  @@index([attendantId])
+  @@index([productId])
 }
 
 model Purchase {
@@ -162,9 +181,13 @@ model Purchase {
   status       String         @default("COMPLETED")
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
-  user         User           @relation("PurchaseUser", fields: [userId], references: [id])
   supplier     Supplier       @relation(fields: [supplierId], references: [id])
+  user         User           @relation("PurchaseUser", fields: [userId], references: [id])
   items        PurchaseItem[]
+
+  @@index([supplierId])
+  @@index([userId])
+  @@index([purchaseDate])
 }
 
 model PurchaseItem {
@@ -176,6 +199,9 @@ model PurchaseItem {
   subtotal      Int
   product       Product  @relation(fields: [productId], references: [id])
   purchase      Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseId])
+  @@index([productId])
 }
 
 model SuspendedSale {
@@ -209,6 +235,10 @@ model AuditLog {
   userAgent String?
   createdAt DateTime @default(now())
   user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
 }
 
 model ExpenseCategory {
@@ -231,4 +261,8 @@ model Expense {
   updatedAt         DateTime        @updatedAt
   user              User            @relation(fields: [createdBy], references: [id])
   category          ExpenseCategory @relation(fields: [expenseCategoryId], references: [id])
+
+  @@index([expenseCategoryId])
+  @@index([createdBy])
+  @@index([date])
 }

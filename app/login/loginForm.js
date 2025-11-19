@@ -7,27 +7,58 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ROLES } from '../../lib/constants';
 
-export default function LoginForm() {
+export default function LoginForm({ role: forcedRole = null }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showRegisterManager, setShowRegisterManager] = useState(false);
   const router = useRouter();
   const { data: session, status } = useSession();
 
+  // Check if a manager account exists to conditionally show the register button
+  useEffect(() => {
+    const checkManager = async () => {
+      try {
+        const response = await fetch('/api/check-manager');
+        const data = await response.json();
+        if (!data.exists) {
+          setShowRegisterManager(true);
+        }
+      } catch (err) {
+        console.error("Failed to check for manager account:", err);
+      }
+    };
+    checkManager();
+  }, []);
+
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.role) {
-      setLoading(true); // Show loading feedback
-      const { role } = session.user;
+      setLoading(true);
+      const { role, isGlobalRole, storeId } = session.user;
+
       // Redirect based on role
-      if (role === ROLES.ADMIN) {
-        router.push('/admin');
-      } else if (role === ROLES.CASHIER) {
-        router.push('/kasir');
-      } else if (role === ROLES.ATTENDANT) {
-        router.push('/pelayan');
+      if (role === ROLES.MANAGER) {
+        // MANAGER bisa langsung ke dashboard atau harus pilih toko dulu
+        router.push('/select-store');
+      } else if (role === ROLES.WAREHOUSE) {
+        // WAREHOUSE langsung ke dashboard warehouse
+        router.push('/warehouse');
+      } else if (role === ROLES.ADMIN || role === ROLES.CASHIER || role === ROLES.ATTENDANT) {
+        // Role per toko harus memilih toko terlebih dahulu
+        if (!isGlobalRole && !storeId) {
+          router.push('/select-store');
+        } else {
+          // Jika sudah ada storeId, arahkan ke dashboard yang sesuai
+          if (role === ROLES.ADMIN) {
+            router.push('/admin');
+          } else if (role === ROLES.CASHIER) {
+            router.push('/kasir');
+          } else if (role === ROLES.ATTENDANT) {
+            router.push('/pelayan');
+          }
+        }
       }
-      // No need to refresh, push will trigger a re-render
     }
   }, [session, status, router]);
 
@@ -51,20 +82,47 @@ export default function LoginForm() {
     // The useEffect will handle the redirect upon successful login
   };
 
+  // Jika role dipaksa (dari halaman login spesifik), tampilkan judul khusus
+  const getTitle = () => {
+    if (forcedRole === ROLES.MANAGER) {
+      return "Login Manager";
+    } else if (forcedRole === ROLES.WAREHOUSE) {
+      return "Login Warehouse";
+    } else if (forcedRole === ROLES.ADMIN) {
+      return "Login Admin Toko";
+    } else if (forcedRole === ROLES.CASHIER) {
+      return "Login Kasir";
+    } else if (forcedRole === ROLES.ATTENDANT) {
+      return "Login Pelayan";
+    }
+    return "Login";
+  };
+
+  const getSubtitle = () => {
+    if (forcedRole === ROLES.MANAGER) {
+      return "Masuk sebagai Manager (akses semua toko)";
+    } else if (forcedRole === ROLES.WAREHOUSE) {
+      return "Masuk sebagai Warehouse (akses gudang pusat)";
+    } else if (forcedRole === ROLES.ADMIN) {
+      return "Masuk sebagai Admin (akses toko tertentu)";
+    }
+    return "Masuk ke akun Anda";
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pastel-purple-50 to-pastel-purple-100 p-4">
       <div className="max-w-md w-full space-y-8 card-pastel-purple">
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-bold text-pastel-purple-700">Login</h2>
-          <p className="mt-2 text-pastel-purple-600">Masuk ke akun Anda</p>
+          <h2 className="mt-6 text-3xl font-bold text-pastel-purple-700">{getTitle()}</h2>
+          <p className="mt-2 text-pastel-purple-600">{getSubtitle()}</p>
         </div>
-        
+
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
             <span className="block sm:inline">{error}</span>
           </div>
         )}
-        
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm space-y-4">
             <div>
@@ -112,8 +170,16 @@ export default function LoginForm() {
               {loading || status === 'authenticated' ? 'Mengalihkan...' : 'Sign in'}
             </button>
           </div>
-          
+
           <div className="text-center text-sm text-gray-600">
+            {showRegisterManager && (
+              <p className="mb-2">
+                Belum ada Akun Manager?{' '}
+                <Link href="/register-manager" className="font-medium text-pastel-purple-600 hover:text-pastel-purple-800">
+                  Daftar di sini
+                </Link>
+              </p>
+            )}
             <Link href="/" className="text-pastel-purple-600 hover:text-pastel-purple-800">
               Kembali ke halaman utama
             </Link>

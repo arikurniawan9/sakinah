@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { useDarkMode } from '@/components/DarkModeContext';
+import { useUserTheme } from '@/components/UserThemeContext';
 import { useTheme } from '@/components/ThemeContext';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -13,7 +13,8 @@ import Breadcrumb from '@/components/Breadcrumb';
 
 export default function PengaturanTokoPage() {
   const { data: session } = useSession();
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const { fetchSettings: fetchThemeSettings } = useTheme();
 
   const [settings, setSettings] = useState({
@@ -29,7 +30,7 @@ export default function PengaturanTokoPage() {
     async function fetchPageSettings() {
       setIsLoading(true);
       try {
-        const response = await fetch('/api/pengaturan');
+        const response = await fetch('/api/setting');
         if (!response.ok) {
           throw new Error('Failed to fetch settings');
         }
@@ -54,8 +55,8 @@ export default function PengaturanTokoPage() {
     e.preventDefault();
     setIsSaving(true);
     try {
-      const response = await fetch('/api/pengaturan', {
-        method: 'POST',
+      const response = await fetch('/api/setting', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       });

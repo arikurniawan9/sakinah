@@ -3,14 +3,15 @@
 
 import { useState, useEffect } from 'react';
 import Sidebar from '../../../components/Sidebar';
-import { useDarkMode } from '../../../components/DarkModeContext';
+import { useUserTheme } from '../../../components/UserThemeContext';
 import { History, Home, Calendar, Search, Printer, Undo2 } from 'lucide-react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import { printThermalReceipt } from '../../../utils/thermalPrint'; // Import the thermal print utility
 import UndoTransactionButton from '../../../components/kasir/transaksi/UndoTransactionButton'; // Import Undo Transaction Button
 
 export default function RiwayatKasirPage() {
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

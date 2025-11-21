@@ -1,153 +1,218 @@
 // app/api/stores/route.js
-import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import bcrypt from 'bcryptjs';
 import { authOptions } from '@/lib/authOptions';
-import globalPrisma from '@/lib/prisma';
-import { ROLES } from '@/lib/constants';
+import prisma from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 
-// ... (GET function remains the same)
 export async function GET(request) {
   try {
+    console.log('GET /api/stores called');
     const session = await getServerSession(authOptions);
 
+    console.log('Session:', session ? { role: session.user.role } : 'No session');
+
+    // Untuk debugging: coba beri akses ke semua role dulu, lalu kita batasi nanti
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      console.log('No session found');
+      return new Response(JSON.stringify({ error: 'Unauthorized - No session' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    if (session.user.role !== ROLES.MANAGER) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    console.log('Full session user object:', JSON.stringify(session.user, null, 2));
+    console.log('User role (raw):', session.user.role);
+    console.log('User role type:', typeof session.user.role);
+    console.log('Role comparison - session.user.role === "MANAGER":', session.user.role === "MANAGER");
+    console.log('Role comparison - session.user.role === "ADMIN":', session.user.role === "ADMIN");
+
+    // Normalisasi role untuk perbandingan
+    const normalizedRole = session.user.role ? session.user.role.trim().toUpperCase() : '';
+    console.log('Normalized role:', normalizedRole);
+
+    // Hanya MANAGER yang bisa mengakses semua toko
+    if (normalizedRole !== 'MANAGER') {
+      console.log('Access denied for role:', session.user.role, '(normalized to)', normalizedRole);
+      return new Response(JSON.stringify({ error: `Unauthorized - Insufficient permissions. Your role: ${session.user.role}` }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
+
+    console.log('Access granted for role:', session.user.role, '(normalized to)', normalizedRole);
 
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page')) || 1;
-    const limit = parseInt(searchParams.get('limit')) || 10;
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search') || '';
     const sortKey = searchParams.get('sortKey') || 'createdAt';
     const sortDirection = searchParams.get('sortDirection') || 'desc';
+    const statusFilter = searchParams.get('status') || '';
 
-    const whereClause = {};
-    if (search) {
-      whereClause.OR = [
-        { name: { contains: search } },
-        { address: { contains: search } },
-        { email: { contains: search } },
-      ];
-    }
+    console.log('Query params:', { page, limit, search, sortKey, sortDirection, statusFilter });
 
-    const stores = await globalPrisma.store.findMany({
+    const skip = (page - 1) * limit;
+
+    const whereClause = {
+      AND: [
+        search ? {
+          OR: [
+            { name: { contains: search } },
+            { address: { contains: search } },
+          ],
+        } : {},
+        statusFilter ? { status: statusFilter } : {},
+      ],
+    };
+
+    console.log('Where clause:', whereClause);
+
+    const stores = await prisma.store.findMany({
       where: whereClause,
+      skip,
       take: limit,
-      skip: (page - 1) * limit,
       orderBy: {
         [sortKey]: sortDirection,
       },
     });
 
-    const totalItems = await globalPrisma.store.count({
+    console.log('Stores found:', stores.length);
+
+    const totalItems = await prisma.store.count({
       where: whereClause,
     });
 
-    return NextResponse.json({ stores, totalItems });
+    console.log('Total items:', totalItems);
+
+    const responseData = {
+      stores,
+      totalItems,
+      currentPage: page,
+      totalPages: Math.ceil(totalItems / limit),
+    };
+
+    console.log('Response data:', responseData);
+
+    return new Response(JSON.stringify(responseData), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (error) {
     console.error('Error fetching stores:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return new Response(JSON.stringify({ error: 'Internal Server Error', details: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
-
 
 export async function POST(request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (session.user.role !== ROLES.MANAGER) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const body = await request.json();
-    const { name, description, address, phone, email, adminUsername, adminPassword } = body;
-
-    if (!name) {
-      return NextResponse.json({ error: 'Nama toko wajib diisi' }, { status: 400 });
-    }
-
-    // Check if a custom admin username was provided and if it's already taken
-    if (adminUsername) {
-      const existingUser = await globalPrisma.user.findUnique({
-        where: { username: adminUsername },
+    if (!session || session.user.role !== 'MANAGER') {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
       });
-      if (existingUser) {
-        return NextResponse.json({ error: 'Username admin sudah ada. Mohon gunakan username lain.' }, { status: 409 });
-      }
     }
 
-    const newStore = await globalPrisma.store.create({
-      data: {
-        name,
-        description: description || null,
-        address: address || null,
-        phone: phone || null,
-        email: email || null,
-        status: 'ACTIVE',
-      },
+    const { store, admin } = await request.json();
+
+    // Validasi data
+    if (!store.name || !store.address || !admin.name || !admin.username || !admin.password) {
+      return new Response(JSON.stringify({ error: 'Data tidak lengkap' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Periksa apakah username admin sudah ada
+    const existingUser = await prisma.user.findUnique({
+      where: { username: admin.username },
     });
 
-    // --- Dynamic Admin User Creation ---
-    const generatedAdminUsername = adminUsername || `admin_${name.toLowerCase().replace(/\s+/g, '')}`;
-    const rawAdminPassword = adminPassword || 'password123';
-    const hashedPassword = await bcrypt.hash(rawAdminPassword, 10);
+    if (existingUser) {
+      return new Response(JSON.stringify({ error: 'Username sudah digunakan' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
-    const newAdminUser = await globalPrisma.user.create({
-      data: {
-        name: `${name} Admin`,
-        username: generatedAdminUsername,
-        password: hashedPassword,
-        role: ROLES.ADMIN,
-        isGlobalRole: false, // Ensure this new admin is specific to a store, not global
-        createdBy: session.user.id,
-      },
+    // Hash password
+    const hashedPassword = await bcrypt.hash(admin.password, 10);
+
+    // Buat transaksi untuk memastikan konsistensi data
+    const result = await prisma.$transaction(async (tx) => {
+      // Buat toko
+      const newStore = await tx.store.create({
+        data: {
+          name: store.name,
+          code: store.code || null,
+          description: store.description || '',
+          address: store.address,
+          phone: store.phone || '',
+          email: store.email || '',
+          status: store.status || 'ACTIVE',
+        },
+      });
+
+      // Buat pengguna admin
+      const newAdmin = await tx.user.create({
+        data: {
+          name: admin.name,
+          username: admin.username,
+          password: hashedPassword,
+          role: 'ADMIN',
+          status: 'AKTIF',
+        },
+      });
+
+      // Hubungkan pengguna dengan toko
+      await tx.storeUser.create({
+        data: {
+          userId: newAdmin.id,
+          storeId: newStore.id,
+          role: 'ADMIN',
+          assignedBy: session.user.id,
+        },
+      });
+
+      return { store: newStore, admin: newAdmin };
     });
 
-    // Link the new admin user to the new store
-    await globalPrisma.storeUser.create({
-      data: {
-        userId: newAdminUser.id,
-        storeId: newStore.id,
-        role: ROLES.ADMIN,
-        assignedBy: session.user.id,
-      },
-    });
-    // --- End of Dynamic Admin User Creation ---
-
-    // Create default settings for the new store
-    await globalPrisma.setting.create({
-      data: {
-        storeId: newStore.id,
-        shopName: newStore.name,
-        address: newStore.address,
-        phone: newStore.phone,
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      store: newStore,
-      adminCredentials: {
-        username: generatedAdminUsername,
-        password: rawAdminPassword,
-      },
-      message: 'Toko dan akun admin berhasil dibuat. Harap simpan kredensial admin.',
+    return new Response(JSON.stringify(result), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Error creating store:', error);
-    // If there's an error, try to clean up the created store if it exists
-    if (error.code === 'P2002' && error.meta?.target?.includes('username')) {
-      return NextResponse.json({ error: `Username admin '${error.meta.target}' sudah ada. Coba nama toko yang lain.` }, { status: 409 });
+    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+// Handler untuk mendapatkan jumlah total toko (digunakan untuk dashboard)
+export async function HEAD(request) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session || !['MANAGER', 'ADMIN'].includes(session.user.role)) {
+      return new Response(null, { status: 401 });
     }
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+
+    const totalStores = await prisma.store.count();
+
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'X-Total-Count': totalStores.toString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error getting store count:', error);
+    return new Response(null, { status: 500 });
   }
 }

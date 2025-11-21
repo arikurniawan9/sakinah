@@ -32,9 +32,10 @@ import {
   Package,        // Added for Riwayat Pembelian
   Folder,          // Added for Kategori Pengeluaran
   Building,
-  Monitor
+  Monitor,
+  Plus
 } from 'lucide-react';
-import { useDarkMode } from './DarkModeContext';
+import { useUserTheme } from './UserThemeContext';
 import { useSidebar } from './SidebarContext';
 import { useTheme } from './ThemeContext';
 import Tooltip from './Tooltip';
@@ -48,18 +49,14 @@ const Sidebar = ({ children }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const userMenuRef = useRef(null);
   const pathname = usePathname();
-  const { darkMode, toggleDarkMode } = useDarkMode();
+  const { userTheme: { darkMode }, toggleDarkMode } = useUserTheme();
   const { isCollapsed, toggleSidebar } = useSidebar();
   const { data: session } = useSession(); // Get session data
 
   useEffect(() => {
     setHasMounted(true);
     const checkIfMobile = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      if (mobile) {
-        setIsMobileMenuOpen(false);
-      }
+      setIsMobile(window.innerWidth < 768);
     };
     checkIfMobile();
     window.addEventListener('resize', checkIfMobile);
@@ -107,6 +104,7 @@ const Sidebar = ({ children }) => {
     // MANAGER menus
     { title: "Dashboard", href: "/manager", icon: Home, type: 'item', roles: ['MANAGER'] },
     { title: "Manajemen Toko", type: 'heading', roles: ['MANAGER'] },
+    { title: "Manajemen Toko", href: "/manager/stores", icon: ShoppingBag, type: 'item', roles: ['MANAGER'] },
     { title: "Monitor Toko", href: "/manager/monitor-all", icon: Monitor, type: 'item', roles: ['MANAGER'] },
 
     // ADMIN menus

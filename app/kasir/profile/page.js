@@ -5,12 +5,13 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Sidebar from '@/components/Sidebar';
-import { useDarkMode } from '@/components/DarkModeContext';
+import { useUserTheme } from '../../../components/UserThemeContext';
 import { User, Lock, CheckCircle, AlertTriangle, Home } from 'lucide-react';
 
 export default function CashierProfile() {
   const { data: session, update: updateSession } = useSession();
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');

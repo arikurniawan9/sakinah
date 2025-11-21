@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { useDarkMode } from '@/components/DarkModeContext';
+import { useUserTheme } from '@/components/UserThemeContext';
 
 export default function SistemPage() {
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
 
   return (
     <ProtectedRoute requiredRole="ADMIN">

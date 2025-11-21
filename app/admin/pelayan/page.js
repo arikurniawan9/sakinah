@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
-import { useDarkMode } from '../../../components/DarkModeContext';
+import { useUserTheme } from '../../../components/UserThemeContext';
 
 import { usePelayanTable } from '../../../lib/hooks/usePelayanTable';
 import { usePelayanForm } from '../../../lib/hooks/usePelayanForm';
@@ -18,7 +18,8 @@ import FloatingAddButton from '../../../components/FloatingAddButton';
 import Breadcrumb from '../../../components/Breadcrumb';
 
 export default function AttendantManagement() {
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
 
   const {
     attendants,
@@ -124,14 +125,15 @@ export default function AttendantManagement() {
       if (!response.ok) throw new Error('Gagal mengambil data untuk export');
       const data = await response.json();
 
-      let csvContent = 'Nama,Username,Role,Tanggal Dibuat,Tanggal Diubah\n';
+      let csvContent = 'Kode,Nama,Username,Role,Tanggal Dibuat,Tanggal Diubah\n';
       data.users.forEach(user => {
+        const code = `"${user.code || ''}"`;
         const name = `"${user.name.split('"').join('""')}"`;
         const username = `"${user.username.split('"').join('""')}"`;
         const role = `"${user.role}"`;
         const createdAt = `"${new Date(user.createdAt).toLocaleString()}"`;
         const updatedAt = `"${new Date(user.updatedAt).toLocaleString()}"`;
-        csvContent += `${name},${username},${role},${createdAt},${updatedAt}\n`;
+        csvContent += `${code},${name},${username},${role},${createdAt},${updatedAt}\n`;
       });
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

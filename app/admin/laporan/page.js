@@ -4,14 +4,15 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
-import { useDarkMode } from '../../../components/DarkModeContext';
+import { useUserTheme } from '../../../components/UserThemeContext';
 import { Download, Calendar, Search, FileText, TrendingUp, Users, CreditCard } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import Breadcrumb from '../../../components/Breadcrumb';
 
 export default function ReportDashboard() {
   const { data: session } = useSession();
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [reportType, setReportType] = useState('daily');

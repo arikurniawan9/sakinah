@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import ProtectedRoute from '../../../../../../components/ProtectedRoute';
-import { useDarkMode } from '../../../../../../components/DarkModeContext';
+import { useUserTheme } from '@/components/UserThemeContext';
 import { useSession } from 'next-auth/react';
 import { ArrowLeft, Package, User, Calendar, CreditCard, Eye } from 'lucide-react';
 import Link from 'next/link';
@@ -11,7 +11,8 @@ import PurchaseCancelButton from '../../../../../../components/purchase/Purchase
 
 export default function PurchaseDetailPage({ params }) {
   const { data: session } = useSession();
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const [purchase, setPurchase] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

@@ -31,9 +31,9 @@ export async function GET(request) {
         // Search condition - search in purchase number, supplier name, or user name
         search ? {
           OR: [
-            { id: { contains: search, mode: 'insensitive' } },
-            { supplier: { name: { contains: search, mode: 'insensitive' } } },
-            { user: { name: { contains: search, mode: 'insensitive' } } }
+            { id: { contains: search } },
+            { supplier: { name: { contains: search } } },
+            { user: { name: { contains: search } } }
           ]
         } : {},
 

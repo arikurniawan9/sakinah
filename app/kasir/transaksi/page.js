@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { Home, Printer, Plus, AlertTriangle } from "lucide-react";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { useDarkMode } from "@/components/DarkModeContext";
+import { useUserTheme } from '../../../components/UserThemeContext';
 import ProductSearch from "@/components/kasir/transaksi/ProductSearch";
 import TransactionCart from "@/components/kasir/transaksi/TransactionCart";
 import MemberSelection from "@/components/kasir/transaksi/MemberSelection";
@@ -28,7 +28,8 @@ import { printThermalReceipt } from "@/utils/thermalPrint";
 
 export default function KasirTransaksiPage() {
   const { data: session } = useSession();
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const router = useRouter();
 
   // State Management

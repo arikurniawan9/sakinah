@@ -4,14 +4,15 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { useDarkMode } from '@/components/DarkModeContext';
+import { useUserTheme } from '../../../../components/UserThemeContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
 import { Download, Calendar, Search, FileText, TrendingUp, Wallet, CreditCard } from 'lucide-react';
 import Breadcrumb from '@/components/Breadcrumb';
 
 export default function ProfitLossReport() {
   const { data: session } = useSession();
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

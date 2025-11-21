@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import Sidebar from '../../../components/Sidebar';
-import { useDarkMode } from '../../../components/DarkModeContext';
+import { useUserTheme } from '../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react';
 import { Home } from 'lucide-react';
 
@@ -16,7 +16,8 @@ import Pagination from '../../../components/produk/Pagination';
 import ProductDetailModal from '../../../components/produk/ProductDetailModal';
 
 export default function KasirProductView() {
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const { data: session } = useSession();
   const isCashier = session?.user?.role === 'CASHIER';
 

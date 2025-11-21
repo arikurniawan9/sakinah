@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import ProtectedRoute from '../../../../components/ProtectedRoute';
-import { useDarkMode } from '../../../../components/DarkModeContext';
+import { useUserTheme } from '../../../../components/UserThemeContext';
 import { Search, Calendar, Receipt, Eye, X } from 'lucide-react';
 import Breadcrumb from '../../../../components/Breadcrumb';
 
 export default function RiwayatPenjualan() {
   const { data: session } = useSession();
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

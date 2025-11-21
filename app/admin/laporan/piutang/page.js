@@ -2,14 +2,15 @@
 'use client';
 
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { useDarkMode } from '@/components/DarkModeContext';
+import { useUserTheme } from '../../../../components/UserThemeContext';
 import { useReceivableTable } from '@/lib/hooks/useReceivableTable';
 import ReceivableToolbar from '@/components/laporan/piutang/ReceivableToolbar';
 import ReceivableTable from '@/components/laporan/piutang/ReceivableTable';
 import Pagination from '@/components/produk/Pagination'; // Re-using pagination component
 
 export default function ReceivablesPage() {
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const {
     receivables,
     loading,

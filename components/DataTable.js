@@ -1,6 +1,6 @@
 // components/DataTable.js
-import { useState, useEffect } from 'react';
-import { Search, Plus, Download, Trash2, Edit, Eye, Filter, SortAsc, SortDesc, MinusCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Search, Plus, Download, Trash2, Edit, Eye, Filter, SortAsc, SortDesc, MinusCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Upload, FileText } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner'; // Import LoadingSpinner
 
 export default function DataTable({
@@ -10,6 +10,7 @@ export default function DataTable({
   onDelete,
   onSearch,
   onExport,
+  onExportPDF, // ADDED: Export PDF handler
   loading = false,
   selectedRows = [],
   onSelectAll,
@@ -20,6 +21,7 @@ export default function DataTable({
   showSearch = true,
   showAdd = true,
   showExport = true,
+  showExportPDF = false, // ADDED: Show export PDF button
   showItemsPerPage = true,
   pagination = null,
   onSort = null,
@@ -28,31 +30,62 @@ export default function DataTable({
   onDeleteMultiple = null,
   selectedRowsCount = 0,
   mobileColumns = [],
-  rowActions = null
+  rowActions = null,
+  onImport = null, // ADDED: Import handler
+  showImport = true // ADDED: Show import button
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false); // New state to track if component is mounted
+  const searchTimeoutRef = useRef(null); // Ref to hold the debounce timeout
 
   // Check screen size to determine mobile view
   useEffect(() => {
-    setMounted(true); // Component is mounted on client
+    // Only set mounted to true after component is mounted on client
+    setMounted(true);
+
     const checkScreenSize = () => {
-      setIsMobile(window.innerWidth < 768);
+      if (typeof window !== 'undefined') {
+        setIsMobile(window.innerWidth < 768);
+      }
     };
 
-    checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
+    // Check screen size after component is mounted
+    if (typeof window !== 'undefined') {
+      checkScreenSize();
+      window.addEventListener('resize', checkScreenSize);
+    }
 
-    return () => window.removeEventListener('resize', checkScreenSize);
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', checkScreenSize);
+      }
+      // Clear timeout on unmount to prevent memory leaks
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
   }, []);
 
-  // Render desktop view by default on server, switch to mobile only after mounted on client
+  // Fallback to false if not mounted to prevent hydration mismatch
   const renderMobileView = mounted && isMobile;
 
   const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
-    onSearch?.(e.target.value);
+    const value = e.target.value;
+    setSearchTerm(value);
+
+    // Clear the previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Set a new timeout to call onSearch after 300ms (debouncing)
+    searchTimeoutRef.current = setTimeout(() => {
+      // Only trigger search if the search term is at least 2 characters long or empty
+      if (value.length >= 2 || value.length === 0) {
+        onSearch?.(value);
+      }
+    }, 300); // 300ms delay
   };
 
   const handleSort = (columnKey) => {
@@ -71,6 +104,41 @@ export default function DataTable({
     const value = parseInt(e.target.value);
     onItemsPerPageChange?.(value);
   };
+
+  // Show loading placeholder during hydration to prevent mismatch
+  if (!mounted) {
+    return (
+      <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-grow">
+              {showSearch && (
+                <div className="relative flex-grow sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari..."
+                    value=""
+                    onChange={() => {}}
+                    className={`pl-10 pr-4 py-2 border rounded-lg w-full ${
+                      darkMode
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="p-8 text-center">
+          <div className="flex justify-center">
+            <LoadingSpinner />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Determine which columns to show based on screen size
   const visibleColumns = isMobile && mobileColumns.length > 0
@@ -152,6 +220,24 @@ export default function DataTable({
                     title="Ekspor"
                   >
                     <Download className="h-4 w-4" />
+                  </button>
+                )}
+                {showExportPDF && onExportPDF && (
+                  <button
+                    onClick={onExportPDF}
+                    className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    title="Ekspor PDF"
+                  >
+                    <FileText className="h-4 w-4" />
+                  </button>
+                )}
+                {showImport && onImport && (
+                  <button
+                    onClick={onImport}
+                    className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    title="Impor"
+                  >
+                    <Upload className="h-4 w-4" />
                   </button>
                 )}
               </div>

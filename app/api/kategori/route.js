@@ -8,7 +8,6 @@ import { z } from 'zod';
 const categorySchema = z.object({
   name: z.string().trim().min(1, { message: 'Nama kategori wajib diisi' }),
   description: z.string().trim().optional().nullable(),
-  icon: z.string().trim().optional().nullable(),
 });
 
 const categoryUpdateSchema = categorySchema.extend({
@@ -17,53 +16,105 @@ const categoryUpdateSchema = categorySchema.extend({
 
 // GET /api/kategori - Get all categories with pagination, search, and filtering
 export async function GET(request) {
+  const session = await getSession();
+  if (!session || !['CASHIER', 'ADMIN'].includes(session.user.role)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page')) || 1;
-    const limit = parseInt(searchParams.get('limit')) || 10;
+    const exportData = searchParams.get('export') === 'true';
+    const storeId = session.user.storeId; // Assume session contains storeId
+
+    if (!storeId) {
+      return NextResponse.json(
+        { error: 'User tidak terkait dengan toko manapun' },
+        { status: 400 }
+      );
+    }
+
     const search = searchParams.get('search') || '';
 
-    const offset = (page - 1) * limit;
+    const where = {
+      storeId: storeId, // Always filter by storeId
+      ...(search && {
+        OR: [
+          { name: { contains: search } },
+          { description: { contains: search } },
+        ],
+      }),
+    };
 
-    const where = search
+    // Gunakan opsi yang didukung oleh versi Prisma
+    const searchWhere = search
       ? {
+          storeId,
           OR: [
             { name: { contains: search } },
             { description: { contains: search } },
           ],
         }
-      : {};
+      : { storeId };
 
-    // Dapatkan kategori dengan jumlah produk masing-masing
-    const categoriesWithProductCount = await prisma.category.findMany({
-      where,
-      skip: offset,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        _count: {
-          select: { products: true }
+    if (exportData) {
+      // Jika export, ambil semua data tanpa pagination
+      const categoriesForExport = await prisma.category.findMany({
+        where: searchWhere,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          _count: {
+            select: { products: true }
+          }
         }
-      }
-    });
+      });
 
-    // Sesuaikan nama field agar sesuai dengan nama yang digunakan di UI
-    const categories = categoriesWithProductCount.map(cat => ({
-      ...cat,
-      productCount: cat._count.products
-    }));
+      // Untuk export, hanya ambil field yang diperlukan
+      const exportedData = categoriesForExport.map((cat, index) => ({
+        'No.': index + 1,
+        'Nama Kategori': cat.name,
+        'Deskripsi': cat.description || '-',
+        'Jumlah Produk': cat._count.products,
+        'Dibuat Pada': new Date(cat.createdAt).toLocaleDateString('id-ID'),
+      }));
 
-    const totalCount = await prisma.category.count({ where });
+      return NextResponse.json({
+        categories: exportedData,
+        pagination: {
+          page: 1,
+          limit: categoriesForExport.length,
+          total: categoriesForExport.length,
+          totalPages: 1,
+        },
+      });
+    } else {
+      // Jika bukan export, gunakan pagination
+      const page = parseInt(searchParams.get('page')) || 1;
+      const limit = parseInt(searchParams.get('limit')) || 10;
+      const offset = (page - 1) * limit;
 
-    return NextResponse.json({
-      categories,
-      pagination: {
-        page,
-        limit,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / limit),
-      },
-    });
+      const categoriesToFetch = await prisma.category.findMany({
+        where: searchWhere,
+        skip: offset,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          _count: {
+            select: { products: true }
+          }
+        }
+      });
+      const totalCount = await prisma.category.count({ where: searchWhere });
+
+      return NextResponse.json({
+        categories: categoriesToFetch,
+        pagination: {
+          page: page,
+          limit: limit,
+          total: totalCount,
+          totalPages: Math.ceil(totalCount / limit),
+        },
+      });
+    }
   } catch (error) {
     console.error('Error fetching categories:', error);
     return NextResponse.json(
@@ -82,7 +133,7 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { name, description, icon } = categorySchema.parse(body);
+    const { name, description } = categorySchema.parse(body);
     const storeId = session.user.storeId;
 
     if (!storeId) {
@@ -93,7 +144,7 @@ export async function POST(request) {
     }
 
     const existingCategory = await prisma.category.findFirst({
-      where: { 
+      where: {
         name: { equals: name },
         storeId: storeId,
       },
@@ -110,7 +161,6 @@ export async function POST(request) {
       data: {
         name,
         description,
-        icon,
         storeId,
       },
     });
@@ -140,7 +190,7 @@ export async function PUT(request) {
 
   try {
     const body = await request.json();
-    const { id, name, description, icon } = categoryUpdateSchema.parse(body);
+    const { id, name, description } = categoryUpdateSchema.parse(body);
     const storeId = session.user.storeId;
 
     if (!storeId) {
@@ -175,7 +225,6 @@ export async function PUT(request) {
       data: {
         name,
         description,
-        icon,
       },
     });
 

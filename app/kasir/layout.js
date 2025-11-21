@@ -1,14 +1,14 @@
 'use client';
 
-import { DarkModeProvider } from '../../components/DarkModeContext';
+import { UserThemeProvider } from '../../components/UserThemeContext';
 import { SidebarProvider } from '../../components/SidebarContext';
 
 export default function KasirLayout({ children }) {
   return (
-    <DarkModeProvider>
+    <UserThemeProvider>
       <SidebarProvider>
         {children}
       </SidebarProvider>
-    </DarkModeProvider>
+    </UserThemeProvider>
   );
 }

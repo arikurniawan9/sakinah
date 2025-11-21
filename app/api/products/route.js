@@ -6,53 +6,43 @@ import prisma from '@/lib/prisma';
 export async function GET(request) {
   // Validasi permission untuk membaca produk
   const authResult = await requireAuthAndPermission(request, 'PRODUCT_READ');
-  
+
   if (!authResult.authorized) {
     return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
 
   try {
     const { session, storeId } = authResult;
-    let products;
+    const { searchParams } = new URL(request.url);
+    const categoryId = searchParams.get('categoryId');
 
-    // Jika user adalah MANAGER atau WAREHOUSE, mereka bisa melihat semua produk
+    let whereClause = {};
+
+    // Filter berdasarkan toko
     if (['MANAGER', 'WAREHOUSE'].includes(session.user.role)) {
       // Jika storeId disediakan, filter berdasarkan toko tertentu
       if (storeId) {
-        products = await prisma.product.findMany({
-          where: { storeId },
-          include: {
-            category: true,
-            supplier: true,
-            priceTiers: true,
-          },
-          orderBy: { name: 'asc' },
-        });
-      } else {
-        // Jika tidak ada storeId, kembalikan semua produk (mungkin terlalu banyak)
-        // Dalam praktiknya, mungkin ingin menampilkan semua produk dari semua toko
-        // atau menampilkan produk dari semua toko yang diizinkan
-        products = await prisma.product.findMany({
-          include: {
-            category: true,
-            supplier: true,
-            priceTiers: true,
-          },
-          orderBy: { name: 'asc' },
-        });
+        whereClause.storeId = storeId;
       }
     } else {
       // Untuk role per toko, hanya tampilkan produk dari toko yang diakses
-      products = await prisma.product.findMany({
-        where: { storeId },
-        include: {
-          category: true,
-          supplier: true,
-          priceTiers: true,
-        },
-        orderBy: { name: 'asc' },
-      });
+      whereClause.storeId = authResult.storeId;
     }
+
+    // Tambahkan filter berdasarkan kategori jika disediakan
+    if (categoryId) {
+      whereClause.categoryId = categoryId;
+    }
+
+    const products = await prisma.product.findMany({
+      where: whereClause,
+      include: {
+        category: true,
+        supplier: true,
+        priceTiers: true,
+      },
+      orderBy: { name: 'asc' },
+    });
 
     return NextResponse.json({ products, storeId });
   } catch (error) {

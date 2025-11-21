@@ -1,6 +1,5 @@
 import React from 'react';
 import { Save, X } from 'lucide-react';
-import IconPicker from './IconPicker'; // Import the new component
 
 const CategoryModal = ({
   showModal,
@@ -8,11 +7,10 @@ const CategoryModal = ({
   editingCategory,
   formData,
   handleInputChange,
-  handleIconChange, // Add a new handler for the icon picker
   handleSave,
   error,
   setFormError,
-  darkMode, // Pass darkMode for the picker
+  darkMode,
 }) => {
   if (!showModal) return null;
 
@@ -79,12 +77,6 @@ const CategoryModal = ({
                 placeholder="e.g., Kumpulan semua pakaian untuk pria dewasa"
               ></textarea>
             </div>
-            {/* Add the IconPicker component */}
-            <IconPicker 
-              value={formData.icon}
-              onChange={handleIconChange}
-              darkMode={darkMode}
-            />
           </div>
 
           {/* Footer */}

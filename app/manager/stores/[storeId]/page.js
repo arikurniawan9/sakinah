@@ -1,120 +1,219 @@
-// app/manager/stores/[storeId]/page.js
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { useUserTheme } from '../../../../components/UserThemeContext';
 import { ROLES } from '@/lib/constants';
-import { ArrowLeft } from 'lucide-react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function StoreDetailPage() {
-  const { data: session, status } = useSession();
   const router = useRouter();
   const params = useParams();
-  const storeId = params.storeId;
-
+  const { data: session } = useSession();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const [store, setStore] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (status === 'loading') return;
-    if (status !== 'authenticated' || session.user.role !== ROLES.MANAGER) {
-      router.push('/unauthorized');
-      return;
-    }
-    if (storeId) {
-      fetchStoreDetails();
-    }
-  }, [status, session, storeId, router]);
-
-  const fetchStoreDetails = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/stores/${storeId}`);
-      if (response.ok) {
+    const fetchStore = async () => {
+      try {
+        const response = await fetch(`/api/stores/${params.storeId}`);
         const data = await response.json();
-        setStore(data.store);
-      } else {
-        const errData = await response.json();
-        setError(errData.error || 'Gagal memuat detail toko');
+        
+        if (response.ok) {
+          setStore(data.store);
+        } else {
+          toast.error(data.error || 'Gagal mengambil data toko');
+          router.push('/manager/stores');
+        }
+      } catch (error) {
+        console.error('Error fetching store:', error);
+        toast.error('Terjadi kesalahan saat mengambil data toko');
+        router.push('/manager/stores');
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError('Terjadi kesalahan pada server');
-      console.error('Error fetching store details:', err);
-    } finally {
-      setLoading(false);
+    };
+
+    if (params.storeId) {
+      fetchStore();
     }
-  };
+  }, [params.storeId, router]);
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  }
-
-  if (error) {
-    return <div className="flex justify-center items-center h-screen text-red-500">{error}</div>;
+    return (
+      <ProtectedRoute requiredRole="MANAGER">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex justify-center items-center h-64">
+            <LoadingSpinner />
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
   }
 
   if (!store) {
-    return <div className="flex justify-center items-center h-screen">Toko tidak ditemukan.</div>;
+    return (
+      <ProtectedRoute requiredRole="MANAGER">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center py-12">
+            <h2 className={`text-xl font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+              Toko tidak ditemukan
+            </h2>
+            <button
+              onClick={() => router.push('/manager/stores')}
+              className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md"
+            >
+              Kembali ke Daftar Toko
+            </button>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
   }
 
   return (
-    <main className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mb-6">
-        <button onClick={() => router.back()} className="flex items-center text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white mb-4">
-          <ArrowLeft size={18} className="mr-2" />
-          Kembali ke Dashboard
-        </button>
-        <div className="flex justify-between items-start">
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{store.name}</h1>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Detail dan informasi toko</p>
-            </div>
-            <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${store.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                {store.status}
-            </span>
-        </div>
-      </div>
+    <ProtectedRoute requiredRole="MANAGER">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <ToastContainer
+          position="top-right"
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme={darkMode ? 'dark' : 'light'}
+        />
 
-      <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg">
-        <div className="border-t border-gray-200 dark:border-gray-700">
-          <dl>
-            <div className="bg-gray-50 dark:bg-gray-700 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Nama Toko</dt>
-              <dd className="mt-1 text-sm text-gray-900 dark:text-white sm:mt-0 sm:col-span-2">{store.name}</dd>
-            </div>
-            <div className="bg-white dark:bg-gray-800 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Deskripsi</dt>
-              <dd className="mt-1 text-sm text-gray-900 dark:text-white sm:mt-0 sm:col-span-2">{store.description || '-'}</dd>
-            </div>
-            <div className="bg-gray-50 dark:bg-gray-700 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Alamat</dt>
-              <dd className="mt-1 text-sm text-gray-900 dark:text-white sm:mt-0 sm:col-span-2">{store.address || '-'}</dd>
-            </div>
-            <div className="bg-white dark:bg-gray-800 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Telepon</dt>
-              <dd className="mt-1 text-sm text-gray-900 dark:text-white sm:mt-0 sm:col-span-2">{store.phone || '-'}</dd>
-            </div>
-            <div className="bg-gray-50 dark:bg-gray-700 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</dt>
-              <dd className="mt-1 text-sm text-gray-900 dark:text-white sm:mt-0 sm:col-span-2">{store.email || '-'}</dd>
-            </div>
-             <div className="bg-white dark:bg-gray-800 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Dibuat pada</dt>
-              <dd className="mt-1 text-sm text-gray-900 dark:text-white sm:mt-0 sm:col-span-2">{new Date(store.createdAt).toLocaleString()}</dd>
-            </div>
-          </dl>
-        </div>
-         <div className="px-4 py-5 sm:px-6 flex justify-end">
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Detail Toko
+            </h1>
             <button
-                onClick={() => router.push(`/manager/edit-store/${storeId}`)}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              onClick={() => router.push('/manager/stores')}
+              className={`px-4 py-2 rounded-md ${
+                darkMode 
+                  ? 'bg-gray-700 text-white hover:bg-gray-600' 
+                  : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+              }`}
             >
-                Edit Toko
+              Kembali
             </button>
+          </div>
+          <p className={`mt-1 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            Informasi lengkap tentang toko {store.name}
+          </p>
+        </div>
+
+        <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} p-6 mb-6`}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                Informasi Toko
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Nama Toko
+                  </label>
+                  <p className={`mt-1 ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                    {store.name}
+                  </p>
+                </div>
+                
+                <div>
+                  <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Deskripsi
+                  </label>
+                  <p className={`mt-1 ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                    {store.description || '-'}
+                  </p>
+                </div>
+                
+                <div>
+                  <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Status
+                  </label>
+                  <span className={`mt-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    store.status === 'ACTIVE' 
+                      ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100' 
+                      : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
+                  }`}>
+                    {store.status}
+                  </span>
+                </div>
+                
+                <div>
+                  <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Tanggal Dibuat
+                  </label>
+                  <p className={`mt-1 ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                    {new Date(store.createdAt).toLocaleDateString('id-ID', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                Kontak & Alamat
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Alamat
+                  </label>
+                  <p className={`mt-1 ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                    {store.address || '-'}
+                  </p>
+                </div>
+                
+                <div>
+                  <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    No. Telepon
+                  </label>
+                  <p className={`mt-1 ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                    {store.phone || '-'}
+                  </p>
+                </div>
+                
+                <div>
+                  <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Email
+                  </label>
+                  <p className={`mt-1 ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                    {store.email || '-'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end space-x-4">
+          <button
+            onClick={() => router.push(`/manager/stores/${store.id}/edit`)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md"
+          >
+            Edit Toko
+          </button>
         </div>
       </div>
-    </main>
+    </ProtectedRoute>
   );
 }

@@ -12,6 +12,7 @@ model User {
   name           String
   username       String     @unique
   employeeNumber String?    @unique
+  code           String?    // Kode unik untuk user yang bisa dibaca (unik per toko)
   gender         String?
   address        String?
   phone          String?
@@ -28,6 +29,7 @@ model User {
   cashierSales   Sale[]     @relation("CashierSales")
   tempCarts      TempCart[] @relation("AttendantTempCarts")
   warehouseDistributions WarehouseDistribution[] @relation("DistributionUser")
+
 }
 
 model Category {
@@ -37,7 +39,6 @@ model Category {
   description String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  icon        String?
   products    Product[]
   store       Store     @relation(fields: [storeId], references: [id])
 
@@ -106,6 +107,7 @@ model Supplier {
 model Member {
   id             String       @id @default(cuid())
   storeId        String
+  code           String       // Kode unik untuk member (unik per toko)
   name           String
   phone          String
   address        String?
@@ -119,6 +121,7 @@ model Member {
 
   @@index([storeId])
   @@unique([phone, storeId])
+  @@unique([code, storeId]) // Kode member unik per toko
 }
 
 model Sale {
@@ -330,6 +333,7 @@ model Expense {
 
 model Store {
   id          String    @id @default(cuid())
+  code        String?   @default("")
   name        String
   description String?
   address     String?

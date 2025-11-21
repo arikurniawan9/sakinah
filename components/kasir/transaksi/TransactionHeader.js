@@ -5,12 +5,13 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { ArrowLeft, Sun, Moon, Expand, Minimize } from 'lucide-react';
-import { useDarkMode } from '../../DarkModeContext';
+import { useUserTheme } from '../../components/UserThemeContext';
 import Tooltip from '../../Tooltip';
 
 const TransactionHeader = () => {
   const { data: session } = useSession();
-  const { darkMode, toggleDarkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {

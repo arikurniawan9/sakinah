@@ -3,13 +3,14 @@
 
 import { useState, useEffect } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { useDarkMode } from '@/components/DarkModeContext';
+import { useUserTheme } from '../../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 
 export default function PrintExpenseReportPage() {
   const { data: session } = useSession();
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const searchParams = useSearchParams();
   
   const [expenses, setExpenses] = useState([]);

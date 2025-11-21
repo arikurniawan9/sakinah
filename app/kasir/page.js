@@ -6,13 +6,14 @@ import ProtectedRoute from '../../components/ProtectedRoute';
 import Link from 'next/link';
 import { Calculator, History, CreditCard, ShoppingCart, AlertTriangle, User } from 'lucide-react';
 import Sidebar from '../../components/Sidebar'; // Import Sidebar
-import { useDarkMode } from '../../components/DarkModeContext'; // Import useDarkMode
+import { useUserTheme } from '../../components/UserThemeContext'; // Import useDarkMode
 import { useState, useEffect } from 'react';
 import ScrollingStockAlert from '../../components/kasir/dashboard/ScrollingStockAlert';
 
 export default function CashierDashboard() {
   const { data: session } = useSession();
-  const { darkMode } = useDarkMode(); // Use dark mode context
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode; // Use dark mode context
   const [summaryData, setSummaryData] = useState({
     transactionsCount: 0,
     totalRevenue: 0,

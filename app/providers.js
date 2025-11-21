@@ -2,26 +2,30 @@
 'use client';
 
 import { SessionProvider } from 'next-auth/react';
-import { DarkModeProvider } from '@/components/DarkModeContext';
 import { ThemeProvider } from '@/components/ThemeContext';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import NotificationProvider from '@/components/NotificationProvider';
+import NotificationProvider from '@/components/notifications/NotificationProvider';
 import AutoLogoutProvider from '@/components/AutoLogoutProvider';
+
+import { DashboardCustomizationProvider } from '@/components/DashboardCustomizationContext';
+import { UserThemeProvider } from '@/components/UserThemeContext';
 
 export function Providers({ children }) {
   return (
     <ErrorBoundary>
-      <DarkModeProvider>
+      <DashboardCustomizationProvider>
         <ThemeProvider>
-          <NotificationProvider>
-            <SessionProvider>
-              <AutoLogoutProvider>
-                {children}
-              </AutoLogoutProvider>
-            </SessionProvider>
-          </NotificationProvider>
+          <UserThemeProvider>
+            <NotificationProvider>
+              <SessionProvider>
+                <AutoLogoutProvider>
+                  {children}
+                </AutoLogoutProvider>
+              </SessionProvider>
+            </NotificationProvider>
+          </UserThemeProvider>
         </ThemeProvider>
-      </DarkModeProvider>
+      </DashboardCustomizationProvider>
     </ErrorBoundary>
   );
 }

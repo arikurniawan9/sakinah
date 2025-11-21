@@ -2,78 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Dark mode toggle switch */
-/* From Uiverse.io by satyamchaudharydev */ 
-/* The switch - the box around the slider */
-.switch {
-  display: block;
-  --width-of-switch: 3.5em;
-  --height-of-switch: 2em;
-  /* size of sliding icon -- sun and moon */
-  --size-of-icon: 1.4em;
-  /* it is like a inline-padding of switch */
-  --slider-offset: 0.3em;
-  position: relative;
-  width: var(--width-of-switch);
-  height: var(--height-of-switch);
-}
-
-/* Hide default HTML checkbox */
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-/* The slider */
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #f4f4f5;
-  transition: .4s;
-  border-radius: 30px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: var(--size-of-icon,1.4em);
-  width: var(--size-of-icon,1.4em);
-  border-radius: 20px;
-  left: var(--slider-offset,0.3em);
-  top: 50%;
-  transform: translateY(-50%);
-  background: linear-gradient(40deg,#ff0080,#ff8c00 70%);
-  transition: .4s;
-}
-
-input:checked + .slider {
-  background-color: #303136;
-}
-
-input:checked + .slider:before {
-  left: calc(100% - (var(--size-of-icon,1.4em) + var(--slider-offset,0.3em)));
-  background: #303136;
-  /* change the value of second inset in box-shadow to change the angle and direction of the moon  */
-  box-shadow: inset -3px -2px 5px -2px #8983f7, inset -10px -4px 0 0 #a3dafb;
-}
-
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
 }
 
 body {
@@ -88,13 +20,81 @@ body {
 
 /* Dark mode body background override */
 html.dark body {
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(24, 24, 27) /* Softer dark background end (gray-900) */
-    )
-    rgb(24, 24, 27); /* Softer dark background start (gray-900) */
-  color: rgb(229, 231, 235); /* Softer off-white text for dark mode (gray-200) */
+  background: #0f172a; /* slate-900 solid background for dark mode */
+  color: #e2e8f0; /* slate-200 text in dark mode */
+}
+
+/* Additional dark mode overrides for better contrast */
+html.dark {
+  --card-background: 17, 24, 39; /* gray-900 */
+  --card-border: 31, 41, 55;    /* gray-800 */
+}
+
+/* Custom styles for login button with animated border */
+.login-btn {
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+  transition: all 0.3s ease;
+}
+
+.login-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(192, 132, 252, 0.4), transparent);
+  transition: 0.5s;
+  z-index: -1;
+}
+
+.login-btn:hover::before {
+  left: 100%;
+}
+
+.login-btn-outline {
+  position: relative;
+  border: 2px solid transparent;
+  background: linear-gradient(45deg, #4f46e5, #7c3aed) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: destination-out;
+  mask-composite: exclude;
+  background-origin: border-box;
+  transition: all 0.3s ease;
+}
+
+.login-btn-outline:hover {
+  box-shadow: 0 0 15px rgba(79, 70, 229, 0.5);
+  transform: translateY(-2px);
+}
+
+/* Special styling for login buttons to ensure visibility */
+.login-btn-outline {
+  border: 2px solid transparent !important; /* Ensure border is visible */
+  min-width: 80px; /* Minimum width to ensure button is visible */
+}
+
+.login-btn-outline span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Gradient background for login card */
+.login-card-bg {
+  background: linear-gradient(135deg, #f0f9ff, #e0e7ff);
+}
+
+.dark .login-card-bg {
+  background: linear-gradient(135deg, #1e293b, #334155);
+}
+
+/* Card theme purple with dark mode support */
+.card-theme-purple {
+  @apply bg-white shadow-lg rounded-lg p-6 border border-gray-200 dark:border-gray-700 dark:bg-gray-800;
 }
 
 @layer utilities {
@@ -108,12 +108,24 @@ html.dark body {
   background: linear-gradient(135deg, #c084fc, #a78bfa);
 }
 
+.dark .bg-theme-purple-gradient {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
 .text-theme-purple {
   color: #c084fc;
 }
 
+.dark .text-theme-purple {
+  color: #a78bfa;
+}
+
 .border-theme-purple {
   border-color: #c084fc;
+}
+
+.dark .border-theme-purple {
+  border-color: #7c3aed;
 }
 
 .btn-theme-purple {
@@ -122,6 +134,10 @@ html.dark body {
 
 .card-theme-purple {
   @apply bg-white shadow-lg rounded-lg p-6 border border-theme-purple-200;
+}
+
+.dark .card-theme-purple {
+  @apply bg-gray-800 border-gray-700;
 }
 
 /* Custom Scrollbar Styles */
@@ -325,17 +341,13 @@ html {
 
 /* From Uiverse.io by reglobby */
 .user-profile {
-  width: 100px;
-  height: 40px;
+  width: 110px; /* Reduced size */
+  height: 44px;  /* Reduced size */
   border-radius: 12px;
   cursor: pointer;
   transition: 0.3s ease;
-  background: linear-gradient(
-    to bottom right,
-    #2e8eff 0%,
-    rgba(46, 142, 255, 0) 30%
-  );
-  background-color: rgba(46, 142, 255, 0.2);
+  background: transparent;
+  background-color: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -343,37 +355,38 @@ html {
 
 .user-profile:hover,
 .user-profile:focus {
-  background-color: rgba(46, 142, 255, 0.7);
-  box-shadow: 0 0 10px rgba(46, 142, 255, 0.5);
+  background-color: rgba(100, 116, 139, 0.2);
+  box-shadow: 0 0 10px rgba(129, 140, 248, 0.5);
   outline: none;
 }
 
+/* Default to light mode styles */
 .user-profile-inner {
-  width: 96px;
-  height: 36px;
+  width: 106px; /* Reduced size */
+  height: 40px; /* Reduced size */
   border-radius: 10px;
-  background-color: #ffffff;
+  background-color: #f3f4f6; /* Tailwind gray-100 for light theme */
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  color: #000;
+  gap: 8px; /* Reduced gap */
+  color: #1f2937; /* Tailwind gray-800 text */
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.875rem; /* Reduced font size */
 }
 
 .user-profile-inner svg {
-  width: 20px;
-  height: 20px;
-  fill: #000;
+  width: 20px; /* Reduced size */
+  height: 20px; /* Reduced size */
+  fill: #1f2937; /* Tailwind gray-800 fill */
 }
 
-/* Dark mode variant */
+/* Dark mode variant for inner button */
 .dark .user-profile-inner {
-  background-color: #1f2937;
-  color: #fff;
+  background-color: #374151; /* Tailwind gray-700 for dark theme */
+  color: #e5e7eb; /* Tailwind gray-200 text */
 }
 
 .dark .user-profile-inner svg {
-  fill: #fff;
+  fill: #e5e7eb; /* Tailwind gray-200 fill */
 }

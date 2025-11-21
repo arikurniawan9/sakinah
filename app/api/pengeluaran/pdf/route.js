@@ -43,9 +43,9 @@ export async function GET(request) {
         // Search condition
         search ? {
           OR: [
-            { description: { contains: search, mode: 'insensitive' } },
-            { category: { name: { contains: search, mode: 'insensitive' } } },
-            { user: { name: { contains: search, mode: 'insensitive' } } },
+            { description: { contains: search } },
+            { category: { name: { contains: search } } },
+            { user: { name: { contains: search } } },
           ]
         } : {},
         

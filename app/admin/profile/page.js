@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { useDarkMode } from '@/components/DarkModeContext';
+import { useUserTheme } from '../../../components/UserThemeContext';
 import { useTheme } from '@/components/ThemeContext';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -13,7 +13,8 @@ import Breadcrumb from '@/components/Breadcrumb';
 
 export default function AdminProfilePage() {
   const { data: session, update: updateSession } = useSession();
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const { themeColor } = useTheme();
 
   const [formData, setFormData] = useState({

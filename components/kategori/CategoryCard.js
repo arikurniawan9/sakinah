@@ -1,18 +1,16 @@
 // components/kategori/CategoryCard.js
 'use client';
 
-import * as LucideIcons from 'lucide-react';
 import { Edit, Trash2, Package } from 'lucide-react';
 
 export default function CategoryCard({ category, onEdit, onDelete, darkMode }) {
-  const IconComponent = category.icon ? LucideIcons[category.icon] || Package : Package;
 
   return (
     <div className={`relative group rounded-xl shadow-md transition-all duration-300 ${darkMode ? 'bg-gray-800 hover:shadow-cyan-500/20 hover:shadow-lg' : 'bg-white hover:shadow-xl'}`}>
       <div className="p-6 pb-14"> {/* pb-14 to make space for the fixed buttons */}
         <div className="flex items-start justify-between">
           <div className={`w-12 h-12 flex items-center justify-center rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-cyan-50'}`}>
-            <IconComponent className={`h-7 w-7 ${darkMode ? 'text-cyan-400' : 'text-cyan-600'}`} />
+            <Package className={`h-7 w-7 ${darkMode ? 'text-cyan-400' : 'text-cyan-600'}`} />
           </div>
           <div className={`text-sm font-medium px-2 py-1 rounded-full ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
             {category.productCount || 0} Produk
@@ -27,7 +25,7 @@ export default function CategoryCard({ category, onEdit, onDelete, darkMode }) {
           </p>
         </div>
       </div>
-      
+
       {/* Action buttons in bottom right corner */}
       <div className="absolute bottom-3 right-3 flex items-center space-x-2">
         <button

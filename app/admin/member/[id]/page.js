@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useDarkMode } from '../../../../components/DarkModeContext';
+import { useUserTheme } from '../../../../components/UserThemeContext';
 import TransactionDetailModal from '../../../../components/TransactionDetailModal';
 import { ROLES } from '@/lib/constants';
 import { ArrowLeft, User, ShoppingBag, Package, Wallet, Calendar, CreditCard } from 'lucide-react';
@@ -12,7 +12,8 @@ import { ArrowLeft, User, ShoppingBag, Package, Wallet, Calendar, CreditCard } f
 export default function MemberDetailPage({ params }) {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const [member, setMember] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);

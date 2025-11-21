@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import ProtectedRoute from '../../../../../components/ProtectedRoute';
-import { useDarkMode } from '../../../../../components/DarkModeContext';
+import { useUserTheme } from '../../../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react';
 import { Calendar, Search, Package, User, CreditCard, Filter, Plus, Eye, Download } from 'lucide-react';
 import DataTable from '../../../../../components/DataTable';
@@ -12,7 +12,8 @@ import Link from 'next/link';
 
 export default function PurchaseHistoryPage() {
   const { data: session } = useSession();
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

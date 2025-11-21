@@ -12,11 +12,43 @@ export default function LoginForm({ role, title, icon, redirectUrl }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const { data: session, status } = useSession();
 
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Client-side validation
+    if (!username.trim()) {
+      setError('Username harus diisi');
+      setLoading(false);
+      return;
+    }
+
+    if (!password) {
+      setError('Password harus diisi');
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password minimal 6 karakter');
+      setLoading(false);
+      return;
+    }
+
+    // Check username format (alphanumeric and underscore only)
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      setError('Username hanya boleh mengandung huruf, angka, dan underscore');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -44,7 +76,7 @@ export default function LoginForm({ role, title, icon, redirectUrl }) {
     }
   }, [status, session, router, role, redirectUrl]);
 
-  if (status === 'loading') {
+  if (status === 'loading' || !isMounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pastel-purple-50 to-pastel-purple-100">
         <div className="text-center">
@@ -96,16 +128,19 @@ export default function LoginForm({ role, title, icon, redirectUrl }) {
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                 Password
               </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-pastel-purple-500 focus:border-pastel-purple-500 sm:text-sm"
-                placeholder="Masukkan password"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="appearance-none relative block w-full px-4 py-3 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-pastel-purple-500 focus:border-pastel-purple-500 sm:text-sm"
+                  placeholder="Masukkan password"
+                />
+              </div>
             </div>
           </div>
 

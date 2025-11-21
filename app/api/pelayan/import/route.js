@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { parse } from 'csv-parse/sync';
 import bcrypt from 'bcryptjs';
+import { generateShortCode } from '@/lib/utils';
 
 const prisma = new PrismaClient();
 
@@ -71,13 +72,56 @@ export async function POST(request) {
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
         
+        // Check if code is provided in the import file
+        let userCode = null;
+        if (record['Kode'] || record['Code']) {
+          userCode = (record['Kode'] || record['Code']).trim();
+
+          // Check if code already exists
+          const existingCode = await prisma.user.findUnique({
+            where: { code: userCode }
+          });
+
+          if (existingCode) {
+            errors.push(`Baris ${i + 2}: Kode "${userCode}" sudah digunakan oleh pengguna lain`);
+            continue;
+          }
+        } else {
+          // Generate a unique code if not provided
+          let uniqueCode;
+          let attempt = 0;
+          const maxAttempts = 10;
+
+          do {
+            uniqueCode = generateShortCode('USR');
+            attempt++;
+
+            // Check if code already exists
+            const existingCode = await prisma.user.findUnique({
+              where: { code: uniqueCode }
+            });
+
+            if (!existingCode) {
+              break; // Found unique code
+            }
+          } while (attempt < maxAttempts);
+
+          if (attempt >= maxAttempts) {
+            errors.push(`Baris ${i + 2}: Gagal membuat kode unik, silakan coba lagi`);
+            continue;
+          }
+
+          userCode = uniqueCode;
+        }
+
         // Create user with ATTENDANT role
         await prisma.user.create({
           data: {
             name: name.trim(),
             username: username.trim(),
             password: hashedPassword,
-            role: 'ATTENDANT'
+            role: 'ATTENDANT',
+            code: userCode // Add the code
           }
         });
         

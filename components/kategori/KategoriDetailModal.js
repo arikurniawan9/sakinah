@@ -62,10 +62,6 @@ export default function KategoriDetailModal({
                       </div>
                     </div>
 
-                    <div className="pt-1">
-                      <p className={`text-[10px] font-medium uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Icon</p>
-                      <p className={`mt-0.5 text-xs ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>{category.icon || '-'}</p>
-                    </div>
                   </div>
                 </div>
               </div>

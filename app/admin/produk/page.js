@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
-import { useDarkMode } from '../../../components/DarkModeContext';
+import { useUserTheme } from '../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react'; // Import useSession
 import { toast } from 'react-toastify';
 import useSWR from 'swr';
@@ -21,7 +21,8 @@ import ConfirmationModal from '../../../components/ConfirmationModal';
 import Breadcrumb from '../../../components/Breadcrumb';
 
 export default function ProductManagement() {
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const { data: session } = useSession(); // Get session data
   const isAdmin = session?.user?.role === 'ADMIN'; // Determine if user is admin
 

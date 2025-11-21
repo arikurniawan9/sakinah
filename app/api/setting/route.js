@@ -11,17 +11,25 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Cek apakah pengguna memiliki akses ke toko
+  if (!session.user.storeId) {
+    return NextResponse.json({ error: 'User tidak memiliki akses ke toko' }, { status: 400 });
+  }
+
   try {
-    // Ambil pengaturan toko, buat jika belum ada
-    let setting = await prisma.setting.findFirst();
-    
+    // Ambil pengaturan toko berdasarkan storeId yang sedang aktif
+    let setting = await prisma.setting.findUnique({
+      where: { storeId: session.user.storeId }
+    });
+
     if (!setting) {
-      // Buat setting default jika belum ada
+      // Buat setting default untuk toko ini jika belum ada
       setting = await prisma.setting.create({
         data: {
-          shopName: 'TOKO SAKINAH',
-          address: 'Jl. Raya No. 123, Kota Anda',
-          phone: '0812-3456-7890',
+          storeId: session.user.storeId,
+          shopName: 'Toko Baru', // Gunakan nama toko yang lebih umum atau ambil dari tabel store
+          address: '',
+          phone: '',
         }
       });
     }
@@ -40,18 +48,25 @@ export async function PUT(request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Cek apakah pengguna memiliki akses ke toko
+  if (!session.user.storeId) {
+    return NextResponse.json({ error: 'User tidak memiliki akses ke toko' }, { status: 400 });
+  }
+
   try {
     const body = await request.json();
     const { shopName, address, phone } = body;
 
-    // Cek apakah setting sudah ada
-    const existingSetting = await prisma.setting.findFirst();
+    // Cek apakah setting sudah ada untuk toko ini
+    const existingSetting = await prisma.setting.findUnique({
+      where: { storeId: session.user.storeId }
+    });
 
     let setting;
     if (existingSetting) {
-      // Update setting yang sudah ada
+      // Update setting yang sudah ada untuk toko ini
       setting = await prisma.setting.update({
-        where: { id: existingSetting.id },
+        where: { storeId: session.user.storeId },
         data: {
           shopName,
           address,
@@ -59,9 +74,10 @@ export async function PUT(request) {
         }
       });
     } else {
-      // Buat setting baru jika belum ada
+      // Buat setting baru untuk toko ini jika belum ada
       setting = await prisma.setting.create({
         data: {
+          storeId: session.user.storeId,
           shopName,
           address,
           phone,

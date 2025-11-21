@@ -38,6 +38,11 @@ const PelayanTable = ({
             <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
               darkMode ? 'text-gray-300' : 'text-pastel-purple-700'
             }`}>
+              Kode
+            </th>
+            <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+              darkMode ? 'text-gray-300' : 'text-pastel-purple-700'
+            }`}>
               Nama
             </th>
             <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
@@ -105,6 +110,11 @@ const PelayanTable = ({
                         : 'text-purple-600 focus:ring-purple-500 border-gray-300'
                     }`}
                   />
+                </td>
+                <td className={`px-6 py-4 text-sm ${
+                  darkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}>
+                  {attendant.code || '-'}
                 </td>
                 <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
                   darkMode ? 'text-white' : 'text-gray-900'

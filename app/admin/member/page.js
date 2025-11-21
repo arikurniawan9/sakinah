@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
-import { useDarkMode } from '../../../components/DarkModeContext';
+import { useUserTheme } from '../../../components/UserThemeContext';
 
 import { useMemberTable } from '../../../lib/hooks/useMemberTable';
 import { useMemberForm } from '../../../lib/hooks/useMemberForm';
@@ -15,7 +15,8 @@ import DataTable from '../../../components/DataTable';
 import Breadcrumb from '../../../components/Breadcrumb';
 
 export default function MemberManagement() {
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
 
   const {
     members,
@@ -120,8 +121,9 @@ export default function MemberManagement() {
       if (!response.ok) throw new Error('Gagal mengambil data untuk export');
       const data = await response.json();
 
-      let csvContent = 'Nama,Telepon,Alamat,Tipe Keanggotaan,Diskon,Tanggal Dibuat,Tanggal Diubah\n';
+      let csvContent = 'Kode Member,Nama,Telepon,Alamat,Tipe Keanggotaan,Diskon,Tanggal Dibuat,Tanggal Diubah\n';
       data.members.forEach(member => {
+        const code = `"${member.code || ''}"`;
         const name = `"${member.name.split('"').join('""')}"`;
         const phone = `"${member.phone ? member.phone.split('"').join('""') : ''}"`;
         const address = `"${member.address ? member.address.split('"').join('""') : ''}"`;
@@ -129,7 +131,7 @@ export default function MemberManagement() {
         const discount = `"${member.discount}"`;
         const createdAt = `"${new Date(member.createdAt).toLocaleString()}"`;
         const updatedAt = `"${new Date(member.updatedAt).toLocaleString()}"`;
-        csvContent += `${name},${phone},${address},${membershipType},${discount},${createdAt},${updatedAt}\n`;
+        csvContent += `${code},${name},${phone},${address},${membershipType},${discount},${createdAt},${updatedAt}\n`;
       });
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -159,6 +161,12 @@ export default function MemberManagement() {
 
   // Define columns for DataTable
   const columns = [
+    {
+      key: 'code',
+      title: 'Kode Member',
+      render: (value) => value || '-',
+      sortable: true
+    },
     {
       key: 'name',
       title: 'Nama',

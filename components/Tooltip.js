@@ -1,107 +1,137 @@
-import React, { useState, useRef, useEffect } from 'react';
-import ReactDOM from 'react-dom';
+// components/Tooltip.js
+'use client';
 
-const Tooltip = ({ children, content }) => {
+import { useState, useEffect, useRef } from 'react';
+
+const Tooltip = ({ children, content, position = 'top', darkMode = false }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const childRef = useRef(null);
-  const [tooltipStyle, setTooltipStyle] = useState({});
-  const [portalRoot, setPortalRoot] = useState(null);
-  const tooltipRef = useRef(null); // Ref for the tooltip element itself
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const triggerRef = useRef(null);
+  const timeoutRef = useRef(null);
 
   useEffect(() => {
-    let element = document.getElementById('tooltip-root');
-    if (!element) {
-      element = document.createElement('div');
-      element.setAttribute('id', 'tooltip-root');
-      document.body.appendChild(element);
+    // Check if the element overflows its container
+    if (triggerRef.current) {
+      const element = triggerRef.current;
+      setIsOverflowing(element.scrollWidth > element.clientWidth || 
+                      element.scrollHeight > element.clientHeight);
     }
-    setPortalRoot(element);
-
-    return () => {
-      if (element && element.parentNode === document.body && element.children.length === 0) {
-        document.body.removeChild(element);
-      }
-    };
   }, []);
 
-  const calculatePosition = () => {
-    if (!childRef.current || !tooltipRef.current) return;
-
-    const childRect = childRef.current.getBoundingClientRect();
-    const tooltipRect = tooltipRef.current.getBoundingClientRect();
-    const style = {};
-
-    // Default to positioning to the left
-    style.left = `${childRect.left - 8}px`; // 8px padding from the element
-    style.top = `${childRect.top + childRect.height / 2}px`;
-    style.transform = 'translateY(-50%) translateX(-100%)'; // Center vertically, shift left by 100% of tooltip width
-
-    // Prevent tooltip from going off-screen to the left
-    if (childRect.left - 8 - tooltipRect.width < 0) {
-      // If it goes off-screen left, position to the right instead
-      style.left = `${childRect.right + 8}px`;
-      style.transform = 'translateY(-50%)';
-    }
-
-    // Prevent tooltip from going off-screen to the top/bottom
-    if (childRect.top < 0) {
-      style.top = '8px'; // Stick to top with some padding
-      style.transform = 'none'; // Reset transform if sticking to top
-    } else if (childRect.bottom > window.innerHeight) {
-      style.top = `${window.innerHeight - childRect.height - 8}px`; // Stick to bottom
-      style.transform = 'none'; // Reset transform if sticking to bottom
-    }
-
-    setTooltipStyle(style);
+  const showTooltip = () => {
+    timeoutRef.current = setTimeout(() => {
+      setIsVisible(true);
+    }, 500); // Delay 500ms sebelum menampilkan tooltip
   };
 
-  useEffect(() => {
-    if (isVisible) {
-      // Recalculate position after the tooltip content has rendered and its size is known
-      const timeoutId = setTimeout(calculatePosition, 0); 
-      window.addEventListener('scroll', calculatePosition);
-      window.addEventListener('resize', calculatePosition);
-      return () => {
-        clearTimeout(timeoutId);
-        window.removeEventListener('scroll', calculatePosition);
-        window.removeEventListener('resize', calculatePosition);
-      };
+  const hideTooltip = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
     }
-  }, [isVisible, content, portalRoot]); // Recalculate if content changes or portal is ready
-
-  const handleMouseEnter = () => {
-    setIsVisible(true);
-  };
-
-  const handleMouseLeave = () => {
     setIsVisible(false);
   };
 
-  if (!portalRoot) {
-    return (
-      <div ref={childRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} className="cursor-pointer">
-        {children}
-      </div>
-    );
-  }
+  // Hanya tampilkan tooltip jika teks overflow atau jika tooltip selalu ditampilkan
+  const shouldShowTooltip = isOverflowing || !triggerRef.current?.classList.contains('truncate');
 
   return (
-    <>
-      <div ref={childRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} className="cursor-pointer">
+    <div 
+      className="relative inline-block"
+      onMouseEnter={shouldShowTooltip ? showTooltip : undefined}
+      onMouseLeave={shouldShowTooltip ? hideTooltip : undefined}
+      onFocus={shouldShowTooltip ? showTooltip : undefined}
+      onBlur={shouldShowTooltip ? hideTooltip : undefined}
+    >
+      <div ref={triggerRef} className="focus:outline-none">
         {children}
       </div>
-      {isVisible && ReactDOM.createPortal(
-        <div
-          ref={tooltipRef} // Attach ref to the tooltip element
-          className="absolute z-50 whitespace-nowrap text-sm text-white bg-gray-900 px-2 py-1 rounded-md shadow-lg"
-          style={tooltipStyle}
+      
+      {isVisible && (
+        <div 
+          className={`
+            absolute z-50 px-3 py-2 text-sm rounded-lg shadow-lg
+            ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900 border border-gray-200'}
+            whitespace-nowrap
+          `}
+          style={{
+            [position]: '100%',
+            left: position === 'top' || position === 'bottom' ? '50%' : '100%',
+            transform: 
+              position === 'top' ? 'translate(-50%, -10px)' :
+              position === 'bottom' ? 'translate(-50%, 10px)' :
+              position === 'left' ? 'translateX(-10px)' :
+              'translateX(10px)',
+          }}
         >
           {content}
-        </div>,
-        portalRoot
+          <div 
+            className={`
+              absolute w-2 h-2 rotate-45
+              ${darkMode ? 'bg-gray-800' : 'bg-white border-r border-b border-gray-200'}
+            `}
+            style={{
+              [position === 'top' ? 'bottom' : 
+               position === 'bottom' ? 'top' : 
+               position === 'left' ? 'right' : 'left']: '-4px',
+              [position === 'top' || position === 'bottom' ? 'left' : 
+               position === 'left' ? 'bottom' : 'bottom']: '50%',
+              transform: 'translate(-50%, -50%)',
+            }}
+          />
+        </div>
       )}
-    </>
+    </div>
   );
 };
 
-export default Tooltip;
+// Versi sederhana dari tooltip
+const SimpleTooltip = ({ children, content, position = 'top', darkMode = false }) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  return (
+    <div 
+      className="relative inline-block"
+      onMouseEnter={() => setIsVisible(true)}
+      onMouseLeave={() => setIsVisible(false)}
+    >
+      {children}
+      
+      {isVisible && (
+        <div 
+          className={`
+            absolute z-50 px-3 py-2 text-sm rounded-lg shadow-lg
+            ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900 border border-gray-200'}
+            whitespace-nowrap
+          `}
+          style={{
+            [position]: '100%',
+            left: position === 'top' || position === 'bottom' ? '50%' : '100%',
+            transform: 
+              position === 'top' ? 'translate(-50%, -10px)' :
+              position === 'bottom' ? 'translate(-50%, 10px)' :
+              position === 'left' ? 'translateX(-10px)' :
+              'translateX(10px)',
+          }}
+        >
+          {content}
+          <div 
+            className={`
+              absolute w-2 h-2 rotate-45
+              ${darkMode ? 'bg-gray-800' : 'bg-white border-r border-b border-gray-200'}
+            `}
+            style={{
+              [position === 'top' ? 'bottom' : 
+               position === 'bottom' ? 'top' : 
+               position === 'left' ? 'right' : 'left']: '-4px',
+              [position === 'top' || position === 'bottom' ? 'left' : 
+               position === 'left' ? 'bottom' : 'bottom']: '50%',
+              transform: 'translate(-50%, -50%)',
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default SimpleTooltip;

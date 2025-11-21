@@ -84,10 +84,10 @@ export default function CategoryTable({
                   {category.productCount || 0}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <Tooltip content="Lihat Detail">
+                  <Tooltip content="Lihat Produk dalam Kategori">
                     <button
                       onClick={() => onViewDetails(category)}
-                      className={`mr-2 p-1 rounded ${darkMode ? 'text-blue-400 hover:text-blue-300 hover:bg-gray-700' : 'text-blue-600 hover:text-blue-800 hover:bg-blue-100'}`}
+                      className={`mr-2 p-1 rounded ${darkMode ? 'text-green-400 hover:text-green-300 hover:bg-gray-700' : 'text-green-600 hover:text-green-800 hover:bg-green-100'}`}
                     >
                       <Info className="h-4 w-4" />
                     </button>

@@ -2,27 +2,30 @@
 
 import { useState, useEffect } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { useDarkMode } from '@/components/DarkModeContext';
+import { useUserTheme } from '../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react';
 import { useCategoryForm } from '@/lib/hooks/useCategoryForm';
 import { useCategoryTable } from '@/lib/hooks/useCategoryTable';
 import CategoryModal from '@/components/kategori/CategoryModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
-import { AlertTriangle, CheckCircle, Plus, Search, Edit, Trash2, Eye } from 'lucide-react';
+import CategoryProductsModal from '@/components/kategori/CategoryProductsModal';
+import { AlertTriangle, CheckCircle, Plus, Search, Edit, Trash2, Eye, FileText, Download } from 'lucide-react';
 import DataTable from '@/components/DataTable';
 import Breadcrumb from '@/components/Breadcrumb';
+import * as XLSX from 'xlsx';
+import ImportModal from '@/components/kategori/ImportModal'; // ADDED: Import ImportModal
+import { exportCategoryPDF } from '@/utils/exportCategoryPDF';
 
 export default function CategoryManagementPage() {
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === 'ADMIN';
 
-  // Use the new category table hook
   const {
     categories,
     loading,
     error: tableError,
-    searchTerm,
     setSearchTerm,
     itemsPerPage,
     setItemsPerPage,
@@ -38,7 +41,7 @@ export default function CategoryManagementPage() {
     showModal,
     editingCategory,
     formData,
-    setFormData, // Expose setFormData to handle icon change
+    setFormData,
     error: formError,
     setError: setFormError,
     handleInputChange,
@@ -49,56 +52,140 @@ export default function CategoryManagementPage() {
   } = useCategoryForm(fetchCategories);
 
   const [success, setSuccess] = useState('');
-
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState(null);
+  const [itemsToDelete, setItemsToDelete] = useState([]);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [showImportModal, setShowImportModal] = useState(false); // ADDED: State for import modal
+  const [showCategoryProductsModal, setShowCategoryProductsModal] = useState(false); // State for category products modal
+  const [selectedCategory, setSelectedCategory] = useState(null); // Selected category for products modal
+  const [categoryProducts, setCategoryProducts] = useState([]); // Products for the selected category
+  const [loadingProducts, setLoadingProducts] = useState(false); // Loading state for products
 
-  // Wrapper to clear success message on save
-  const handleSave = async () => {
-    setSuccess(''); // Clear previous success message
-    const result = await originalHandleSave();
-    if (result.success) {
-      setSuccess('Kategori berhasil disimpan!');
+  const handleSelectRow = (id) => {
+    setSelectedRows(prev =>
+      prev.includes(id) ? prev.filter(rowId => rowId !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      const allRowIds = categories.map(c => c.id);
+      setSelectedRows(allRowIds);
+    } else {
+      setSelectedRows([]);
     }
   };
 
-  // New handler for IconPicker
+  const handleSave = async () => {
+    setSuccess('');
+    const result = await originalHandleSave();
+    if (result.success) {
+      setSuccess('Kategori berhasil disimpan!');
+      fetchCategories(); // Refresh data on save
+    }
+  };
+
   const handleIconChange = (iconName) => {
     setFormData(prev => ({ ...prev, icon: iconName }));
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (ids) => {
     if (!isAdmin) return;
-    setItemToDelete(id);
+    setItemsToDelete(ids);
     setShowDeleteModal(true);
   };
 
   const handleConfirmDelete = async () => {
-    if (!itemToDelete || !isAdmin) return;
+    if (itemsToDelete.length === 0 || !isAdmin) return;
     setIsDeleting(true);
     setSuccess('');
     setTableError('');
 
     try {
-      const response = await fetch(`/api/kategori?id=${itemToDelete}`, { method: 'DELETE' });
+      const response = await fetch(`/api/kategori`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: itemsToDelete }),
+      });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Gagal menghapus kategori');
 
-      setSuccess('Kategori berhasil dihapus.');
-      // Refresh data
-      setCurrentPage(1);
-      fetchCategories();
+      setSuccess(`Berhasil menghapus ${result.deletedCount} kategori.`);
+      setSelectedRows([]);
+      fetchCategories(); // Refresh data
     } catch (err) {
       setTableError(err.message);
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
-      setItemToDelete(null);
+      setItemsToDelete([]);
     }
   };
 
-  // Clear messages after a delay
+  const handleExport = async () => {
+    try {
+      const response = await fetch('/api/kategori?export=true');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Gagal mengambil data untuk ekspor');
+      }
+
+      const categoriesToExport = data.categories.map((cat, index) => ({
+        'No.': index + 1,
+        'Nama Kategori': cat.name,
+        'Deskripsi': cat.description || '-',
+        'Ikon': cat.icon || '-',
+        'Jumlah Produk': cat._count.products, // Access _count.products for the count
+        'Dibuat Pada': new Date(cat.createdAt).toLocaleDateString('id-ID'),
+        'Diperbarui Pada': new Date(cat.updatedAt).toLocaleDateString('id-ID'),
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(categoriesToExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Kategori');
+      XLSX.writeFile(wb, 'kategori_data.xlsx');
+      setSuccess('Data kategori berhasil diekspor.');
+    } catch (err) {
+      setTableError(err.message);
+    }
+  };
+
+  const handleImport = () => setShowImportModal(true); // ADDED: handleImport function
+
+  // Fungsi untuk menampilkan produk dalam kategori
+  const handleViewCategoryProducts = async (category) => {
+    setSelectedCategory(category);
+    setLoadingProducts(true);
+
+    try {
+      const response = await fetch(`/api/products?categoryId=${category.id}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Gagal mengambil produk dalam kategori');
+      }
+
+      setCategoryProducts(data.products || []);
+      setShowCategoryProductsModal(true);
+    } catch (error) {
+      setTableError(error.message);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  // Fungsi untuk export PDF
+  const handleExportPDF = async () => {
+    try {
+      await exportCategoryPDF(darkMode);
+      setSuccess('Laporan PDF berhasil dibuat!');
+    } catch (error) {
+      setTableError(error.message || 'Gagal membuat laporan PDF');
+    }
+  };
+  
   useEffect(() => {
     if (success) {
       const timer = setTimeout(() => setSuccess(''), 5000);
@@ -110,13 +197,16 @@ export default function CategoryManagementPage() {
     }
   }, [success, tableError]);
 
-  // Reset to first page when itemsPerPage changes
   useEffect(() => {
     setCurrentPage(1);
   }, [itemsPerPage]);
 
-  // Define columns for DataTable
   const columns = [
+    {
+      key: 'no',
+      title: 'No.',
+      render: (_, __, index) => (currentPage - 1) * itemsPerPage + index + 1,
+    },
     {
       key: 'name',
       title: 'Nama',
@@ -129,28 +219,37 @@ export default function CategoryManagementPage() {
       sortable: true
     },
     {
+      key: 'productCount',
+      title: 'Jumlah Produk',
+      sortable: true,
+      render: (value) => value || 0,
+    },
+    {
       key: 'createdAt',
       title: 'Tanggal Dibuat',
       render: (value) => new Date(value).toLocaleDateString('id-ID'),
       sortable: true
     },
-    {
-      key: 'updatedAt',
-      title: 'Tanggal Diubah',
-      render: (value) => new Date(value).toLocaleDateString('id-ID'),
-      sortable: true
-    }
   ];
 
-  // Enhanced data with action handlers
-  const enhancedCategories = categories.map(category => ({
-    ...category,
-    onViewDetails: (cat) => console.log('View details', cat), // Placeholder for now
-    onEdit: isAdmin ? () => openModalForEdit(category) : undefined,
-    onDelete: isAdmin ? () => handleDelete(category.id) : undefined
-  }));
+  const renderRowActions = (row) => (
+    <>
+      <button
+        onClick={() => handleViewCategoryProducts(row)}
+        className="p-1 text-green-500 hover:text-green-700 mr-2"
+        title="Lihat Produk dalam Kategori"
+      >
+        <Eye size={18} />
+      </button>
+      <button onClick={() => openModalForEdit(row)} className="p-1 text-blue-500 hover:text-blue-700 mr-2">
+        <Edit size={18} />
+      </button>
+      <button onClick={() => handleDelete([row.id])} className="p-1 text-red-500 hover:text-red-700">
+        <Trash2 size={18} />
+      </button>
+    </>
+  );
 
-  // Pagination data for DataTable
   const paginationData = {
     currentPage,
     totalPages,
@@ -177,28 +276,34 @@ export default function CategoryManagementPage() {
 
         <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
           <DataTable
-            data={enhancedCategories}
+            data={categories}
             columns={columns}
             loading={loading}
-            selectedRows={[]}
-            onSelectAll={undefined}
-            onSelectRow={undefined}
+            selectedRows={selectedRows}
+            onSelectAll={handleSelectAll}
+            onSelectRow={handleSelectRow}
             onAdd={isAdmin ? openModalForCreate : undefined}
             onSearch={setSearchTerm}
-            onExport={undefined} // No export function yet
+            onExport={handleExport} // Pass handleExport
+            onExportPDF={handleExportPDF} // Pass handleExportPDF
             onItemsPerPageChange={setItemsPerPage}
             darkMode={darkMode}
             actions={isAdmin}
             showToolbar={true}
             showAdd={isAdmin}
-            showExport={false}
+            showExport={true} // Show export button
+            showExportPDF={true} // Show export PDF button
             showItemsPerPage={true}
             pagination={paginationData}
-            mobileColumns={['name', 'description']} // Show key information on mobile
+            mobileColumns={['name', 'description']}
+            rowActions={renderRowActions}
+            onDeleteMultiple={() => handleDelete(selectedRows)}
+            selectedRowsCount={selectedRows.length}
+            onImport={handleImport} // ADDED: Pass handleImport
+            showImport={isAdmin} // ADDED: Show import button
           />
         </div>
 
-        {/* Alerts */}
         {error && (
           <div className="fixed bottom-4 right-4 z-50 flex items-center p-4 rounded-lg bg-red-500/10 text-red-400 shadow-lg">
             <AlertTriangle className="h-5 w-5 mr-3" />
@@ -212,7 +317,6 @@ export default function CategoryManagementPage() {
           </div>
         )}
 
-        {/* Modals */}
         {isAdmin && (
           <>
             <CategoryModal
@@ -221,7 +325,7 @@ export default function CategoryManagementPage() {
               handleSave={handleSave}
               formData={formData}
               handleInputChange={handleInputChange}
-              handleIconChange={handleIconChange} // Pass the new handler
+              handleIconChange={handleIconChange}
               editingCategory={editingCategory}
               error={formError}
               setFormError={setFormError}
@@ -231,9 +335,31 @@ export default function CategoryManagementPage() {
               isOpen={showDeleteModal}
               onClose={() => setShowDeleteModal(false)}
               onConfirm={handleConfirmDelete}
-              title="Konfirmasi Hapus"
-              message={`Apakah Anda yakin ingin menghapus kategori ini? Semua produk terkait harus dipindahkan terlebih dahulu.`}
+              title={`Konfirmasi Hapus ${itemsToDelete.length} Kategori`}
+              message={`Apakah Anda yakin ingin menghapus kategori yang dipilih? Tindakan ini tidak dapat dibatalkan.`}
               isLoading={isDeleting}
+            />
+            {/* ADDED: ImportModal Placeholder */}
+            {showImportModal && (
+              <ImportModal
+                isOpen={showImportModal}
+                onClose={() => setShowImportModal(false)}
+                onImportSuccess={() => {
+                  fetchCategories();
+                  setShowImportModal(false);
+                  setSuccess('Import kategori berhasil!');
+                }}
+                darkMode={darkMode}
+              />
+            )}
+
+            {/* Modal untuk menampilkan produk dalam kategori */}
+            <CategoryProductsModal
+              isOpen={showCategoryProductsModal}
+              onClose={() => setShowCategoryProductsModal(false)}
+              category={selectedCategory}
+              products={categoryProducts}
+              darkMode={darkMode}
             />
           </>
         )}

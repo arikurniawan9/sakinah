@@ -1,16 +1,18 @@
 // components/kasir/KasirCategoryToolbar.js
 'use client';
 
-import { Search, X } from 'lucide-react';
+import { Search, X, FileText } from 'lucide-react';
 // Tooltip is no longer needed if no action buttons are present, but keeping it for now in case other elements use it.
-// import Tooltip from '../Tooltip'; 
+// import Tooltip from '../Tooltip';
 
-export default function KasirCategoryToolbar({ 
-  searchTerm, 
-  setSearchTerm, 
-  itemsPerPage, 
-  setItemsPerPage, 
-  darkMode 
+export default function KasirCategoryToolbar({
+  searchTerm,
+  setSearchTerm,
+  itemsPerPage,
+  setItemsPerPage,
+  onExportPDF, // ADDED: Export PDF handler
+  showExportPDF = false, // ADDED: Show export PDF button
+  darkMode
 }) {
   return (
     <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
@@ -52,6 +54,19 @@ export default function KasirCategoryToolbar({
           </select>
         </div>
       </div>
+
+      {/* Right side: Export PDF button */}
+      {showExportPDF && onExportPDF && (
+        <div className="flex justify-end">
+          <button
+            onClick={onExportPDF}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md ${darkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'} text-white font-medium transition-colors`}
+          >
+            <FileText className="h-4 w-4" />
+            <span>Export PDF</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

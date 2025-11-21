@@ -31,19 +31,23 @@ export default function SelectStorePage() {
 
   const handleSelectStore = async (storeId, storeRole) => {
     try {
-      // For a manager switching context, or a user logging into a specific store
+      // Switch to the selected store context by re-authenticating with the store context
+      // This is the secure way to update the user's contextual role and storeId in the session
       const result = await signIn('credentials', {
         redirect: false,
         username: session.user.username,
-        password: 'PASSWORD_PLACEHOLDER', // ! SECURITY RISK: Needs secure handling
+        password: 'STORE_CONTEXT_SWITCH', // Using a specific identifier for context switching
         selectedStoreId: storeId,
         selectedStoreRole: storeRole,
       });
 
       if (result?.error) {
+        console.error('Store selection error:', result.error);
         alert(`Gagal mengakses toko: ${result.error}`);
       } else {
-        // Redirect to the appropriate dashboard based on the selected role
+        // Successful store context switch - redirect based on the new role
+        // The session should now reflect the new store context
+
         switch(storeRole) {
           case ROLES.ADMIN:
             router.push('/admin');

@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
-import { useDarkMode } from '../../../components/DarkModeContext';
+import { useUserTheme } from '../../../components/UserThemeContext';
 
 import { useKasirTable } from '../../../lib/hooks/useKasirTable';
 import { useKasirForm } from '../../../lib/hooks/useKasirForm';
@@ -18,7 +18,8 @@ import FloatingAddButton from '../../../components/kasir/FloatingAddButton';
 import Breadcrumb from '../../../components/Breadcrumb';
 
 export default function CashierManagement() {
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
 
   const {
     cashiers,

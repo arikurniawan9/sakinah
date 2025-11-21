@@ -35,7 +35,6 @@ export async function GET(request) {
         member: {
           name: {
             contains: search,
-            mode: 'insensitive',
           },
         },
       });

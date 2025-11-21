@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { useDarkMode } from '@/components/DarkModeContext';
+import { useUserTheme } from '../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react';
 import { useSupplierForm } from '@/lib/hooks/useSupplierForm';
 import { useTableSelection } from '@/lib/hooks/useTableSelection'; // Reintroduce for table view
@@ -34,7 +34,8 @@ const CardSkeleton = ({ darkMode }) => (
 );
 
 export default function SupplierManagementPage() {
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === 'ADMIN';
 

@@ -4,7 +4,7 @@
 import { Printer, X } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import { useRef } from 'react';
-import { useDarkMode } from '../../DarkModeContext';
+import { useUserTheme } from '../../components/UserThemeContext';
 
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat('id-ID', {
@@ -126,7 +126,8 @@ const ReceiptContent = ({ transaction }) => {
 };
 
 const TransactionReceipt = ({ transaction, onClose }) => {
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const componentRef = useRef();
 
   const handlePrint = useReactToPrint({

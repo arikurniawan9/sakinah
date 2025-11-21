@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { useDarkMode } from '@/components/DarkModeContext';
+import { useUserTheme } from '../../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react';
 import ExpenseCategoryTable from '@/components/admin/ExpenseCategoryTable';
 import ExpenseCategoryModal from '@/components/admin/ExpenseCategoryModal';
@@ -13,7 +13,8 @@ import { AlertTriangle, Plus, Search, Folder } from 'lucide-react';
 
 export default function ExpenseCategoryManagement() {
   const { data: session } = useSession();
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

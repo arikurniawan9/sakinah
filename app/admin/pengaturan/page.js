@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { useDarkMode } from '@/components/DarkModeContext';
+import { useUserTheme } from '../../../components/UserThemeContext';
 import { useTheme } from '@/components/ThemeContext';
 import { Settings, Store, Shield, Cog, Upload, Download, Trash2, Loader2 } from 'lucide-react';
 import Breadcrumb from '@/components/Breadcrumb';
@@ -13,7 +13,8 @@ import 'react-toastify/dist/ReactToastify.css';
 
 export default function PengaturanIndex() {
   const { data: session } = useSession();
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const { themeColor } = useTheme();
 
   const [activeTab, setActiveTab] = useState('toko'); // Default to 'toko' tab

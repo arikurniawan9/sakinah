@@ -3,11 +3,17 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const ProtectedRoute = ({ children, requiredRole }) => {
   const { data: session, status } = useSession();
   const router = useRouter();
+
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -21,7 +27,7 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     }
   }, [status, session, router, requiredRole]);
 
-  if (status === 'loading') {
+  if (status === 'loading' || !isMounted) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pastel-purple-500"></div>

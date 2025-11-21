@@ -8,7 +8,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { subDays } from 'date-fns';
 
 import ProtectedRoute from '../../components/ProtectedRoute';
-import { useDarkMode } from '../../components/DarkModeContext';
+import { useUserTheme } from '../../components/UserThemeContext';
 import useDashboardData from '../../lib/hooks/useDashboardData';
 import StatCard from '../../components/admin/StatCard';
 import RecentActivityTable from '../../components/admin/RecentActivityTable';
@@ -35,7 +35,8 @@ const formatCurrency = (value) => {
 
 export default function AdminDashboard() {
   const { data: session } = useSession();
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   
   const [startDate, setStartDate] = useState(subDays(new Date(), 6));
   const [endDate, setEndDate] = useState(new Date());

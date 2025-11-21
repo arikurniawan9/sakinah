@@ -4,9 +4,9 @@
 import { useState, useEffect } from 'react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import Sidebar from '../../../components/Sidebar';
-import { useDarkMode } from '../../../components/DarkModeContext';
+import { useUserTheme } from '../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react';
-import { Home } from 'lucide-react';
+import { Home, FileText, Download } from 'lucide-react';
 
 import { useCategoryTable } from '../../../lib/hooks/useCategoryTable';
 
@@ -14,9 +14,12 @@ import CategoryTable from '../../../components/kategori/CategoryTable';
 import KasirCategoryToolbar from '../../../components/kasir/KasirCategoryToolbar';
 import Pagination from '../../../components/produk/Pagination';
 import KategoriDetailModal from '../../../components/kategori/KategoriDetailModal';
+import CategoryProductsModal from '../../../components/kategori/CategoryProductsModal';
+import { exportCategoryPDF } from '../../../utils/exportCategoryPDF';
 
 export default function KasirCategoryView() {
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const { data: session } = useSession();
   const isCashier = session?.user?.role === 'CASHIER';
 
@@ -41,14 +44,51 @@ export default function KasirCategoryView() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedCategoryForDetail, setSelectedCategoryForDetail] = useState(null);
 
+  // State untuk modal produk kategori
+  const [showCategoryProductsModal, setShowCategoryProductsModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [categoryProducts, setCategoryProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+
+  // Fungsi untuk export PDF
+  const handleExportPDF = async () => {
+    try {
+      await exportCategoryPDF(darkMode);
+      setSuccess('Laporan PDF berhasil dibuat!');
+    } catch (error) {
+      setTableError(error.message || 'Gagal membuat laporan PDF');
+    }
+  };
+
   useEffect(() => {
     // Fetch initial data if needed
     fetchCategories();
   }, [fetchCategories]);
 
+  // Fungsi untuk melihat produk dalam kategori
+  const handleViewCategoryProducts = async (category) => {
+    setSelectedCategory(category);
+    setLoadingProducts(true);
+
+    try {
+      const response = await fetch(`/api/products?categoryId=${category.id}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Gagal mengambil produk dalam kategori');
+      }
+
+      setCategoryProducts(data.products || []);
+      setShowCategoryProductsModal(true);
+    } catch (error) {
+      setTableError(error.message);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
   const handleViewDetails = (category) => {
-    setSelectedCategoryForDetail(category);
-    setShowDetailModal(true);
+    handleViewCategoryProducts(category);
   };
 
   const error = tableError;
@@ -89,6 +129,8 @@ export default function KasirCategoryView() {
                   setItemsPerPage(value);
                   setCurrentPage(1);
                 }}
+                onExportPDF={handleExportPDF}
+                showExportPDF={true}
                 darkMode={darkMode}
               />
 
@@ -130,6 +172,15 @@ export default function KasirCategoryView() {
             isOpen={showDetailModal}
             onClose={() => setShowDetailModal(false)}
             category={selectedCategoryForDetail}
+            darkMode={darkMode}
+          />
+
+          {/* Modal untuk menampilkan produk dalam kategori */}
+          <CategoryProductsModal
+            isOpen={showCategoryProductsModal}
+            onClose={() => setShowCategoryProductsModal(false)}
+            category={selectedCategory}
+            products={categoryProducts}
             darkMode={darkMode}
           />
         </main>

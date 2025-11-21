@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useDarkMode } from '../../../../components/DarkModeContext';
+import { useUserTheme } from '../../../../components/UserThemeContext';
 import Link from 'next/link';
 import { ArrowLeft, User, Phone, MapPin, TrendingUp, Calendar } from 'lucide-react';
 
@@ -19,7 +19,8 @@ const InfoPill = ({ icon: Icon, label, value, darkMode }) => (
 
 export default function PelayanDetailPage() {
   const { id } = useParams();
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const [pelayan, setPelayan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

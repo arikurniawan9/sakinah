@@ -60,6 +60,7 @@ async function main() {
     await prisma.store.create({
       data: {
         name: 'Toko Pusat',
+        code: 'TK001', // Tambahkan kode unik
         description: 'Toko utama perusahaan',
         address: 'Jl. Utama No. 1, Jakarta',
         phone: '021-12345678',
@@ -71,6 +72,7 @@ async function main() {
     await prisma.store.create({
       data: {
         name: 'Toko Cabang Barat',
+        code: 'TK002', // Tambahkan kode unik
         description: 'Toko cabang di wilayah barat',
         address: 'Jl. Barat Raya No. 10, Jakarta',
         phone: '021-87654321',
@@ -82,6 +84,7 @@ async function main() {
     await prisma.store.create({
       data: {
         name: 'Toko Cabang Timur',
+        code: 'TK003', // Tambahkan kode unik
         description: 'Toko cabang di wilayah timur',
         address: 'Jl. Timur Indah No. 5, Jakarta',
         phone: '021-11223344',

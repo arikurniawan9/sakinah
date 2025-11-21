@@ -3,10 +3,11 @@
 
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { useDarkMode } from './DarkModeContext';
+import { useUserTheme } from './UserThemeContext';
 
 export default function NotificationProvider({ children }) {
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
 
   // Konfigurasi default untuk notifikasi
   const toastConfig = {

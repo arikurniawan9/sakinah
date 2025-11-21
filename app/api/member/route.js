@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
+import { generateShortCode } from '@/lib/utils';
 
 // GET: Mengambil semua member
 export async function GET(request) {
@@ -23,8 +24,8 @@ export async function GET(request) {
     const whereClause = search 
       ? {
           OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { phone: { contains: search, mode: 'insensitive' } },
+            { name: { contains: search } },
+            { phone: { contains: search } },
           ],
         }
       : {};
@@ -99,6 +100,69 @@ export async function POST(request) {
       );
     }
 
+    // Determine the storeId based on the user's role
+    let storeId;
+    if (session.user.role === 'MANAGER' || session.user.role === 'WAREHOUSE') {
+      // For MANAGER or WAREHOUSE, check if they have a selected store
+      if (session.user.storeId) {
+        storeId = session.user.storeId;
+      } else {
+        return NextResponse.json(
+          { error: 'Silakan pilih toko terlebih dahulu' },
+          { status: 400 }
+        );
+      }
+    } else {
+      // For other roles (ADMIN, CASHIER, ATTENDANT), get their assigned store
+      const storeUser = await prisma.storeUser.findFirst({
+        where: {
+          userId: session.user.id,
+          status: 'ACTIVE',
+        },
+        select: {
+          storeId: true
+        }
+      });
+
+      if (!storeUser) {
+        return NextResponse.json(
+          { error: 'User tidak memiliki akses ke toko manapun' },
+          { status: 400 }
+        );
+      }
+
+      storeId = storeUser.storeId;
+    }
+
+    // Generate unique code for the member
+    let uniqueCode;
+    let attempt = 0;
+    const maxAttempts = 10; // Maximum attempts to generate unique code
+
+    do {
+      uniqueCode = generateShortCode('MEM');
+      attempt++;
+
+      // Check if code already exists for this store
+      const existingCode = await prisma.member.findFirst({
+        where: {
+          code: uniqueCode,
+          storeId: storeId
+        }
+      });
+
+      if (!existingCode) {
+        break; // Found unique code
+      }
+    } while (attempt < maxAttempts);
+
+    if (attempt >= maxAttempts) {
+      return NextResponse.json(
+        { error: 'Gagal membuat kode unik, silakan coba lagi' },
+        { status: 500 }
+      );
+    }
+
     const newMember = await prisma.member.create({
       data: {
         name,
@@ -106,6 +170,8 @@ export async function POST(request) {
         address: address || null,
         membershipType: membershipType || 'SILVER', // Default to SILVER
         discount: membershipType === 'GOLD' ? 10 : membershipType === 'PLATINUM' ? 15 : 5, // Default 5% for SILVER
+        code: uniqueCode,
+        storeId: storeId // Assign to the appropriate store
       },
     });
 

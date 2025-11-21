@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { generateShortCode } from '@/lib/utils';
 
 // GET /api/pelayan - Get all attendants with pagination and search
 export async function GET(request) {
@@ -83,6 +84,32 @@ export async function POST(request) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Generate unique code for the attendant
+    let uniqueCode;
+    let attempt = 0;
+    const maxAttempts = 10; // Maximum attempts to generate unique code
+
+    do {
+      uniqueCode = generateShortCode('USR');
+      attempt++;
+
+      // Check if code already exists
+      const existingCode = await prisma.user.findUnique({
+        where: { code: uniqueCode }
+      });
+
+      if (!existingCode) {
+        break; // Found unique code
+      }
+    } while (attempt < maxAttempts);
+
+    if (attempt >= maxAttempts) {
+      return NextResponse.json(
+        { error: 'Gagal membuat kode unik, silakan coba lagi' },
+        { status: 500 }
+      );
+    }
+
     const newAttendant = await prisma.user.create({
       data: {
         name,
@@ -93,6 +120,7 @@ export async function POST(request) {
         phone,
         address,
         status,
+        code: uniqueCode, // Add the generated code
       },
     });
 
@@ -123,6 +151,7 @@ export async function PUT(request) {
       phone,
       address,
       status,
+      // code is not included here since we don't want to allow changing it
     };
 
     if (password) {

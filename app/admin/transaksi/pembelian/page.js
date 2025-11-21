@@ -3,13 +3,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import ProtectedRoute from '../../../../components/ProtectedRoute';
-import { useDarkMode } from '../../../../components/DarkModeContext';
+import { useUserTheme } from '../../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react';
 import { X, Plus, Search, Package, ShoppingCart, CreditCard, Save, CheckCircle, Barcode, Camera } from 'lucide-react';
 
 export default function PurchaseTransaction() {
   const { data: session } = useSession();
-  const { darkMode } = useDarkMode();
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
   const [searchTerm, setSearchTerm] = useState('');
   const [barcodeInput, setBarcodeInput] = useState('');
   const [products, setProducts] = useState([]);

@@ -1,8 +1,8 @@
 // app/api/warehouse/stock/[id]/route.js
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { authOptions } from '@/lib/authOptions';
+import prisma from '@/lib/prisma';
 
 // GET - Get a single warehouse product
 export async function GET(request, { params }) {

@@ -1,8 +1,8 @@
 // app/api/warehouse/purchase-adjustment/route.js
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { authOptions } from '@/lib/authOptions';
+import prisma from '@/lib/prisma';
 
 export async function POST(request) {
   try {

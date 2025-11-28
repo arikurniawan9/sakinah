@@ -244,6 +244,7 @@ export default function PelayanManagement() {
               error={formError}
               setFormError={setFormError}
               darkMode={darkMode}
+              isAttendantForm={true}
             />
             <ConfirmationModal
               isOpen={showDeleteModal}

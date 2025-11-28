@@ -11,30 +11,55 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
     // Ambil data toko dari API
     const fetchStoreInfo = async () => {
       try {
-        const response = await fetch('/api/setting');
+        const response = await fetch('/api/stores/current');
         if (response.ok) {
           const data = await response.json();
           setStoreInfo({
-            name: data.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+            name: data.name || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
             address: data.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
             phone: data.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
           });
         } else {
-          // Gunakan environment variables atau default jika API gagal
+          // Coba endpoint lama sebagai fallback
+          const settingResponse = await fetch('/api/setting');
+          if (settingResponse.ok) {
+            const settingData = await settingResponse.json();
+            setStoreInfo({
+              name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+              address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+              phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+            });
+          } else {
+            // Gunakan environment variables atau default jika API gagal
+            setStoreInfo({
+              name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+              address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+              phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching store info:', error);
+        // Coba endpoint alternatif jika terjadi error
+        try {
+          const settingResponse = await fetch('/api/setting');
+          if (settingResponse.ok) {
+            const settingData = await settingResponse.json();
+            setStoreInfo({
+              name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+              address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
+              phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
+            });
+          }
+        } catch (fallbackError) {
+          console.error('Error fetching store info from fallback:', fallbackError);
+          // Gunakan default jika terjadi error
           setStoreInfo({
             name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
             address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
             phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
           });
         }
-      } catch (error) {
-        console.error('Error fetching store info:', error);
-        // Gunakan default jika terjadi error
-        setStoreInfo({
-          name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
-          address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
-          phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
-        });
       }
     };
 

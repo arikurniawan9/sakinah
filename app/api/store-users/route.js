@@ -126,7 +126,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Store ID not found in session' }, { status: 400 });
     }
 
-    const { name, username, employeeNumber, code, password, role } = await request.json();
+    const { name, username, employeeNumber, code, password, role, address, phone } = await request.json();
 
     // Validation
     if (!name || !username || !password || !role) {
@@ -187,6 +187,8 @@ export async function POST(request) {
         employeeNumber: employeeNumber ? employeeNumber.trim() : null,
         code: code ? code.trim() : null, // Use the provided code if available
         password: hashedPassword,
+        address,
+        phone,
         role: 'USER', // Set role in user table as 'USER' to indicate it's a general user account (not to be confused with store role)
         status: 'AKTIF',
       }

@@ -64,12 +64,12 @@ export async function GET(request) {
     const totalDistributed = totalDistributedResult._sum.quantity || 0;
 
     return NextResponse.json({
-      totalUniqueProductsInWarehouse,
+      totalUniqueProductsInWarehouse: totalUniqueProductsInWarehouse || 0,
       totalQuantityInWarehouse: totalQuantityInWarehouse._sum.quantity || 0,
-      totalStoresLinked,
-      pendingDistributions,
-      lowStockItems,
-      totalDistributed,
+      totalStoresLinked: totalStoresLinked || 0,
+      pendingDistributions: pendingDistributions || 0,
+      lowStockItems: lowStockItems || 0,
+      totalDistributed: totalDistributed || 0,
     });
   } catch (error) {
     console.error('Error fetching warehouse stats:', error);

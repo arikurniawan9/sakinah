@@ -29,11 +29,11 @@ export async function GET(request) {
 
     const skip = (page - 1) * limit;
 
-    // Klausa where dasar - hanya ambil user dengan role ATTENDANT (sesuai dengan konstanta ROLES)
+    // Klausa where dasar - hanya ambil user dengan role ATTENDANT (berdasarkan skema Prisma dan ROLES constant)
     const baseWhereClause = {
       storeId: storeId,
-      role: 'ATTENDANT', // Sesuai dengan konstanta ROLES
-      status: 'ACTIVE',  // Hanya pengguna aktif
+      role: 'ATTENDANT', // Sesuai dengan ROLES.ATTENDANT
+      status: 'ACTIVE',  // Default sesuai dengan skema Prisma
     };
 
     // Tambahkan pencarian jika ada

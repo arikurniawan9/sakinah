@@ -109,7 +109,7 @@ export default function RiwayatPenjualan() {
                 Lihat dan kelola riwayat transaksi penjualan
               </p>
             </div>
-            <button className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-pastel-purple-600 hover:bg-pastel-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pastel-purple-500`}>
+            <button className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-theme-purple-600 hover:bg-theme-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-purple-500`}>
               <Receipt className="h-4 w-4 mr-2" />
               Ekspor Laporan
             </button>
@@ -130,7 +130,7 @@ export default function RiwayatPenjualan() {
                   darkMode 
                     ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
                     : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                } focus:ring-2 focus:ring-pastel-purple-500 focus:border-transparent`}
+                } focus:ring-2 focus:ring-theme-purple-500 focus:border-transparent`}
               />
             </div>
             <div className="relative">
@@ -143,7 +143,7 @@ export default function RiwayatPenjualan() {
                   darkMode 
                     ? 'bg-gray-700 border-gray-600 text-white' 
                     : 'bg-white border-gray-300 text-gray-900'
-                } focus:ring-2 focus:ring-pastel-purple-500 focus:border-transparent`}
+                } focus:ring-2 focus:ring-theme-purple-500 focus:border-transparent`}
               />
             </div>
             <div className="relative">
@@ -156,7 +156,7 @@ export default function RiwayatPenjualan() {
                   darkMode 
                     ? 'bg-gray-700 border-gray-600 text-white' 
                     : 'bg-white border-gray-300 text-gray-900'
-                } focus:ring-2 focus:ring-pastel-purple-500 focus:border-transparent`}
+                } focus:ring-2 focus:ring-theme-purple-500 focus:border-transparent`}
               />
             </div>
           </div>
@@ -199,7 +199,7 @@ export default function RiwayatPenjualan() {
                   <tr>
                     <td colSpan="6" className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pastel-purple-500"></div>
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-theme-purple-500"></div>
                         <span className={`ml-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Memuat...</span>
                       </div>
                     </td>
@@ -236,7 +236,7 @@ export default function RiwayatPenjualan() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <button
                           onClick={() => setSelectedTransaction(transaction)}
-                          className={`inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-pastel-purple-600 hover:bg-pastel-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pastel-purple-500`}
+                          className={`inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-theme-purple-600 hover:bg-theme-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-purple-500`}
                         >
                           <Eye className="h-4 w-4 mr-1" />
                           Detail

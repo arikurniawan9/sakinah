@@ -183,24 +183,32 @@ export default function UserManagement() {
     },
   ];
 
-  const renderRowActions = (row) => (
-    <>
-      <button
-        onClick={() => openModalForEdit(row)}
-        className="p-1 text-blue-500 hover:text-blue-700 mr-2"
-        title="Edit"
-      >
-        <Edit size={18} />
-      </button>
-      <button
-        onClick={() => handleDelete([row.id])}
-        className="p-1 text-red-500 hover:text-red-700"
-        title="Hapus"
-      >
-        <Trash2 size={18} />
-      </button>
-    </>
-  );
+  const renderRowActions = (row) => {
+    const isCurrentUser = row.id === session?.user?.id;
+    const disabledClass = isCurrentUser ? 'opacity-50 cursor-not-allowed' : '';
+    const buttonTitle = isCurrentUser ? "Anda tidak dapat mengubah data sendiri" : "";
+
+    return (
+      <>
+        <button
+          onClick={() => !isCurrentUser && openModalForEdit(row)}
+          className={`p-1 text-blue-500 hover:text-blue-700 mr-2 ${disabledClass}`}
+          title={isCurrentUser ? buttonTitle : "Edit"}
+          disabled={isCurrentUser}
+        >
+          <Edit size={18} />
+        </button>
+        <button
+          onClick={() => !isCurrentUser && handleDelete([row.id])}
+          className={`p-1 text-red-500 hover:text-red-700 ${disabledClass}`}
+          title={isCurrentUser ? buttonTitle : "Hapus"}
+          disabled={isCurrentUser}
+        >
+          <Trash2 size={18} />
+        </button>
+      </>
+    );
+  };
 
   const paginationData = {
     currentPage,

@@ -117,7 +117,6 @@ const Sidebar = ({ children }) => {
     { title: "Kategori", href: "/admin/kategori", icon: Tag, type: 'item', roles: ['ADMIN'] },
     { title: "Supplier", href: "/admin/supplier", icon: Truck, type: 'item', roles: ['ADMIN'] },
     { title: "Member", href: "/admin/member", icon: UserRound, type: 'item', roles: ['ADMIN'] },
-    { title: "Pelayan", href: "/admin/pelayan", icon: Users, type: 'item', roles: ['ADMIN'] },
     { title: "User", href: "/admin/users", icon: Users, type: 'item', roles: ['ADMIN'] },
     { title: "Laporan", type: 'heading', roles: ['ADMIN'] },
     { title: "Laporan", href: "/admin/laporan", icon: BarChart3, type: 'item', roles: ['ADMIN'] },
@@ -211,12 +210,9 @@ const Sidebar = ({ children }) => {
                         href={item.href}
                         className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                           isActive
-                            ? `text-white`
+                            ? `text-white bg-theme-purple-gradient`
                             : `${darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'}`
                         }`}
-                        style={{
-                          backgroundColor: isActive ? themeColor : '',
-                        }}
                       >
                         {linkContent}
                       </Link>
@@ -227,13 +223,9 @@ const Sidebar = ({ children }) => {
                       onClick={() => isMobile && setIsMobileMenuOpen(false)}
                       className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                         isActive
-                          ? 'text-white'
+                          ? 'text-white bg-theme-purple-gradient'
                           : `${darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'}`
                       }`}
-                      style={{
-                        backgroundColor: isActive ? themeColor : '',
-                        borderRight: isActive ? `4px solid ${themeColor}` : '',
-                      }}
                     >
                       {linkContent}
                     </Link>

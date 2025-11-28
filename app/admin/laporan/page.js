@@ -77,9 +77,9 @@ export default function ReportDashboard() {
             <button
               className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
                 darkMode
-                  ? 'bg-pastel-purple-600 hover:bg-pastel-purple-700'
-                  : 'bg-pastel-purple-600 hover:bg-pastel-purple-700'
-              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pastel-purple-500 min-w-[100px]`}
+                  ? 'bg-theme-purple-600 hover:bg-theme-purple-700'
+                  : 'bg-theme-purple-600 hover:bg-theme-purple-700'
+              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-purple-500 min-w-[100px]`}
             >
               <Download className="h-4 w-4 mr-1" />
               <span>Export</span>
@@ -88,7 +88,7 @@ export default function ReportDashboard() {
         </div>
 
         {/* Report Filters */}
-        <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-pastel-purple-200'} shadow rounded-lg p-4 sm:p-6 mb-6 border`}>
+        <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-theme-purple-200'} shadow rounded-lg p-4 sm:p-6 mb-6 border`}>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
@@ -97,10 +97,10 @@ export default function ReportDashboard() {
               <select
                 value={reportType}
                 onChange={(e) => setReportType(e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-pastel-purple-500 focus:border-pastel-purple-500 sm:text-sm ${
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-theme-purple-500 focus:border-theme-purple-500 sm:text-sm ${
                   darkMode 
                     ? 'border-gray-600 bg-gray-700 text-white' 
-                    : 'border-pastel-purple-300 bg-white text-gray-900'
+                    : 'border-theme-purple-300 bg-white text-gray-900'
                 }`}
               >
                 <option className={`${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-900'}`} value="daily">Harian</option>
@@ -117,10 +117,10 @@ export default function ReportDashboard() {
                 type="date"
                 value={dateRange.startDate}
                 onChange={(e) => setDateRange({...dateRange, startDate: e.target.value})}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-pastel-purple-500 focus:border-pastel-purple-500 sm:text-sm ${
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-theme-purple-500 focus:border-theme-purple-500 sm:text-sm ${
                   darkMode 
                     ? 'border-gray-600 bg-gray-700 text-white' 
-                    : 'border-pastel-purple-300 bg-white text-gray-900'
+                    : 'border-theme-purple-300 bg-white text-gray-900'
                 }`}
               />
             </div>
@@ -132,10 +132,10 @@ export default function ReportDashboard() {
                 type="date"
                 value={dateRange.endDate}
                 onChange={(e) => setDateRange({...dateRange, endDate: e.target.value})}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-pastel-purple-500 focus:border-pastel-purple-500 sm:text-sm ${
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-theme-purple-500 focus:border-theme-purple-500 sm:text-sm ${
                   darkMode 
                     ? 'border-gray-600 bg-gray-700 text-white' 
-                    : 'border-pastel-purple-300 bg-white text-gray-900'
+                    : 'border-theme-purple-300 bg-white text-gray-900'
                 }`}
               />
             </div>
@@ -144,9 +144,9 @@ export default function ReportDashboard() {
                 onClick={handleFilter}
                 className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium ${
                   darkMode 
-                    ? 'bg-pastel-purple-600 text-white hover:bg-pastel-purple-700' 
-                    : 'bg-pastel-purple-600 text-white hover:bg-pastel-purple-700'
-                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pastel-purple-500`}
+                    ? 'bg-theme-purple-600 text-white hover:bg-theme-purple-700' 
+                    : 'bg-theme-purple-600 text-white hover:bg-theme-purple-700'
+                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-purple-500`}
               >
                 <Search className="h-4 w-4 inline mr-1" />
                 Filter

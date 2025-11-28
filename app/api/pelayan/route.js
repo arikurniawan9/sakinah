@@ -78,7 +78,8 @@ export async function GET(request) {
     // Ekstrak data pengguna dari hasil
     const attendants = storeUsers.map(storeUser => ({
       ...storeUser.user,
-      role: storeUser.role // Termasuk informasi role
+      role: storeUser.role, // Termasuk informasi role
+      employeeNumber: storeUser.user.employeeNumber || '', // Pastikan employee number juga dikembalikan
     }));
 
     // Jika parameter simple ada, kembalikan hanya array pelayan (tanpa metadata pagination)

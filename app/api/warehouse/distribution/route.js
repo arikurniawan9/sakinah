@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
-import globalPrisma from '@/lib/prisma';
-import { getTenantPrismaClient } from '@/utils/tenantUtils';
+import prisma from '@/lib/prisma';
 import { ROLES, WAREHOUSE_STORE_ID } from '@/lib/constants';
 
 export async function POST(request) {
@@ -26,7 +25,7 @@ export async function POST(request) {
     }
 
     // Ensure the target store exists
-    const targetStore = await globalPrisma.store.findUnique({
+    const targetStore = await prisma.store.findUnique({
       where: { id: storeId }
     });
 
@@ -35,35 +34,33 @@ export async function POST(request) {
     }
 
     // Use a transaction to ensure atomicity
-    const newDistribution = await globalPrisma.$transaction(async (prisma) => {
+    const newDistribution = await prisma.$transaction(async (tx) => {
       let totalAmount = 0;
 
       // First, check stock and calculate total amount
       for (const item of items) {
-        const warehouseProduct = await prisma.warehouseProduct.findUnique({
+        const warehouseProduct = await tx.warehouseProduct.findUnique({
           where: {
             productId_warehouseId: {
               productId: item.productId,
-              warehouseId: WAREHOUSE_STORE_ID, // Assuming central warehouse has a fixed ID or lookup
+              warehouseId: WAREHOUSE_STORE_ID,
             },
           },
+          include: {
+            product: true // Include the actual product to get purchase price
+          }
         });
 
         if (!warehouseProduct || warehouseProduct.quantity < item.quantity) {
           throw new Error(`Stok produk ${item.productId} tidak mencukupi di gudang`);
         }
 
-        const product = await prisma.product.findUnique({
-          where: { id: item.productId }
-        });
-        if (!product) {
-          throw new Error(`Produk dengan ID ${item.productId} tidak ditemukan`);
-        }
-        totalAmount += item.quantity * product.purchasePrice; // Use product's purchase price as unit price for distribution
+        // Use the product's purchase price for calculation
+        totalAmount += item.quantity * warehouseProduct.product.purchasePrice;
       }
 
       // Create WarehouseDistribution record
-      const distribution = await prisma.warehouseDistribution.create({
+      const distribution = await tx.warehouseDistribution.create({
         data: {
           warehouseId: WAREHOUSE_STORE_ID, // Central warehouse
           storeId,
@@ -72,15 +69,26 @@ export async function POST(request) {
           status: distributionStatus || 'DELIVERED',
           notes: body.notes || null,
           totalAmount,
-          // Items details are stored within the distribution record if needed, or handled separately
-          // For now, assume items are just for stock update
         },
       });
 
       // Update WarehouseProduct quantities and target store's Product stock
       for (const item of items) {
+        // Find warehouse product by ID
+        const warehouseProduct = await tx.warehouseProduct.findUnique({
+          where: {
+            productId_warehouseId: {
+              productId: item.productId,
+              warehouseId: WAREHOUSE_STORE_ID,
+            },
+          },
+          include: {
+            product: true
+          }
+        });
+
         // Decrement warehouse stock
-        await prisma.warehouseProduct.update({
+        await tx.warehouseProduct.update({
           where: {
             productId_warehouseId: {
               productId: item.productId,
@@ -91,40 +99,48 @@ export async function POST(request) {
             quantity: {
               decrement: item.quantity,
             },
-            reserved: { // Decrement reserved if this was from a reservation
-                decrement: item.quantity, // Assuming distributed items were previously reserved
-            }
           },
         });
 
-        // Update or create product stock in target store
-        const tenantPrisma = getTenantPrismaClient(storeId);
-        await tenantPrisma.product.upsert({
+        // Find the corresponding product in the target store
+        let existingStoreProduct = await tx.product.findFirst({
           where: {
-            // Need a unique constraint on productCode and storeId for upsert to work reliably
-            // Assuming productCode is unique per store.
-            productCode_storeId: { // This assumes such a unique constraint exists in schema.prisma for Product
-                productCode: (await prisma.product.findUnique({ where: { id: item.productId } })).productCode,
-                storeId: storeId,
-            }
-          },
-          update: {
-            stock: {
-              increment: item.quantity,
-            },
-          },
-          create: {
-            id: item.productId, // Keep same ID as warehouse product
-            storeId: storeId,
-            categoryId: (await prisma.product.findUnique({ where: { id: item.productId } })).categoryId,
-            name: (await prisma.product.findUnique({ where: { id: item.productId } })).name,
-            productCode: (await prisma.product.findUnique({ where: { id: item.productId } })).productCode,
-            stock: item.quantity,
-            purchasePrice: (await prisma.product.findUnique({ where: { id: item.productId } })).purchasePrice,
-            supplierId: (await prisma.product.findUnique({ where: { id: item.productId } })).supplierId,
-            // image, description can be copied as well
-          },
+            productCode: warehouseProduct.product.productCode,
+            storeId: storeId
+          }
         });
+
+        if (existingStoreProduct) {
+          // If the product exists, update the stock
+          await tx.product.update({
+            where: { id: existingStoreProduct.id },
+            data: {
+              stock: {
+                increment: item.quantity,
+              },
+              // Optionally update other fields if needed
+              name: warehouseProduct.product.name,
+              categoryId: warehouseProduct.product.categoryId,
+              purchasePrice: warehouseProduct.product.purchasePrice,
+              supplierId: warehouseProduct.product.supplierId,
+            },
+          });
+        } else {
+          // If the product doesn't exist, create it in the target store
+          await tx.product.create({
+            data: {
+              name: warehouseProduct.product.name,
+              productCode: warehouseProduct.product.productCode,
+              categoryId: warehouseProduct.product.categoryId,
+              stock: item.quantity,
+              purchasePrice: warehouseProduct.product.purchasePrice,
+              supplierId: warehouseProduct.product.supplierId,
+              description: warehouseProduct.product.description || null,
+              image: warehouseProduct.image || null,
+              storeId: storeId, // This is the target store
+            }
+          });
+        }
       }
 
       return distribution;
@@ -138,5 +154,113 @@ export async function POST(request) {
   } catch (error) {
     console.error('Error creating warehouse distribution:', error);
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+  }
+}
+
+// GET - Get warehouse distributions with filtering
+export async function GET(request) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Only WAREHOUSE or MANAGER roles can access warehouse distributions
+    if (session.user.role !== ROLES.WAREHOUSE && session.user.role !== ROLES.MANAGER) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const storeId = searchParams.get('storeId'); // Filter by specific store
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+
+    // Parameter untuk filtering berdasarkan tanggal
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+
+    if (page < 1 || limit < 1 || limit > 100) {
+      return NextResponse.json({ error: 'Parameter pagination tidak valid' }, { status: 400 });
+    }
+
+    const offset = (page - 1) * limit;
+
+    // Membangun klausa where untuk filtering
+    const whereClause = {
+      warehouseId: WAREHOUSE_STORE_ID, // Hanya distribusi dari gudang pusat
+      ...(storeId && { storeId }), // Filter berdasarkan toko jika disediakan
+      ...(startDate && {
+        distributedAt: {
+          gte: new Date(startDate),
+        }
+      }),
+      ...(endDate && {
+        distributedAt: {
+          lte: new Date(`${endDate}T23:59:59Z`), // Include full end date
+        }
+      }),
+    };
+
+    const [distributions, totalCount] = await Promise.all([
+      prisma.warehouseDistribution.findMany({
+        where: whereClause,
+        skip: offset,
+        take: limit,
+        include: {
+          warehouse: {
+            select: {
+              id: true,
+              name: true,
+            }
+          },
+          store: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            }
+          },
+          distributedByUser: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+            }
+          },
+          items: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  productCode: true,
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          distributedAt: 'desc',
+        },
+      }),
+      prisma.warehouseDistribution.count({ where: whereClause }),
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return NextResponse.json({
+      distributions,
+      pagination: {
+        page,
+        limit,
+        total: totalCount,
+        totalPages,
+        hasMore: page < totalPages,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching warehouse distributions:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

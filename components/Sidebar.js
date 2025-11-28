@@ -118,6 +118,7 @@ const Sidebar = ({ children }) => {
     { title: "Supplier", href: "/admin/supplier", icon: Truck, type: 'item', roles: ['ADMIN'] },
     { title: "Member", href: "/admin/member", icon: UserRound, type: 'item', roles: ['ADMIN'] },
     { title: "User", href: "/admin/users", icon: Users, type: 'item', roles: ['ADMIN'] },
+    { title: "Pelayan", href: "/admin/pelayan", icon: UserRound, type: 'item', roles: ['ADMIN'] },
     { title: "Laporan", type: 'heading', roles: ['ADMIN'] },
     { title: "Laporan", href: "/admin/laporan", icon: BarChart3, type: 'item', roles: ['ADMIN'] },
     { title: "Laporan Laba Rugi", href: "/admin/laporan/labarugi", icon: BarChart3, type: 'item', roles: ['ADMIN'] },

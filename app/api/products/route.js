@@ -78,6 +78,17 @@ export async function GET(request) {
       whereClause.categoryId = categoryId;
     }
 
+    // Tambahkan filter berdasarkan search term
+    const search = searchParams.get('search');
+    if (search) {
+      whereClause.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { productCode: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+
+
     const products = await prisma.product.findMany({
       where: whereClause,
       include: {

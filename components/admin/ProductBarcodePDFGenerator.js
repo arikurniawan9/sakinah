@@ -4,9 +4,9 @@ import JsBarcode from 'jsbarcode';
 // Fungsi untuk menghasilkan PDF dengan barcode produk dalam format standar
 export const generateProductBarcodePDF = (products, options = {}) => {
   const {
-    barcodeWidth = 50,  // Lebar barcode dalam mm
+    barcodeWidth = 38,  // Lebar barcode dalam mm (diperkecil)
     barcodeHeight = 15, // Tinggi barcode dalam mm
-    labelWidth = 70,    // Lebar label dalam mm
+    labelWidth = 50,    // Lebar label dalam mm (diperkecil)
     labelHeight = 25,   // Tinggi label dalam mm
     margin = 5,         // Margin dalam mm
     fontSize = 8,       // Ukuran font dalam pt
@@ -73,11 +73,12 @@ export const generateProductBarcodePDF = (products, options = {}) => {
         }
 
         if (includeProductCode) {
-          doc.setFontSize(fontSize - 2); // Sedikit lebih kecil dari nama produk
+          doc.setFontSize(fontSize + 2); // Ukuran font diperbesar
+          const spacedProductCode = product.productCode.split('').join(' '); // Tambahkan spasi antar karakter
           doc.text(
-            product.productCode,
+            spacedProductCode,
             currentX + labelWidth / 2,
-            currentY + barcodeHeight + 8 + (includeProductName ? 2 : 0),
+            currentY + barcodeHeight + 5, // Posisikan lebih jauh dari barcode
             { align: 'center' }
           );
         }
@@ -169,7 +170,7 @@ const drawStandardBarcodeInPDF = (doc, code, x, y, width, height) => {
     // Generate barcode menggunakan JsBarcode dengan format yang sesuai
     JsBarcode(canvas, code, {
       format: format,      // Format barcode yang ditentukan berdasarkan isi kode
-      width: 1.5,         // Lebar bar
+      width: 1,         // Lebar bar
       height: height * mmToPx, // Tinggi barcode dalam px
       displayValue: false, // Kita akan menambahkan teks secara manual
       fontOptions: '',

@@ -370,14 +370,14 @@ export default function ProductManagement() {
 
       // Panggil fungsi untuk menghasilkan PDF dengan barcode
       generateProductBarcodePDF(productsToPrint, {
-        barcodeWidth: 50,      // Lebar barcode dalam mm
+        barcodeWidth: 38,      // Lebar barcode dalam mm
         barcodeHeight: 15,     // Tinggi barcode dalam mm
-        labelWidth: 70,        // Lebar label dalam mm
+        labelWidth: 50,        // Lebar label dalam mm
         labelHeight: 25,       // Tinggi label dalam mm
         margin: 5,             // Margin dalam mm
         fontSize: 8,           // Ukuran font dalam pt
         darkMode: darkMode,
-        includeProductName: true,   // Sertakan nama produk
+        includeProductName: false,   // TIDAK menyertakan nama produk
         includeProductCode: true    // Sertakan kode produk
       });
 

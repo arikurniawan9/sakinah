@@ -201,25 +201,15 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
 
       <div className="my-2">
         {items.map((item, index) => {
-          const productNameLines = splitTextForThermal(item.name || '', 20);
           return (
             <div key={index} className="text-xs mb-1">
-              <div className="flex flex-col">
-                {productNameLines.map((line, lineIndex) => (
-                  <div key={lineIndex} className="flex justify-between">
-                    <span className="flex-1">{line}</span>
-                    {lineIndex === 0 && (
-                      <span className="w-16 text-right">{item.quantity}x</span>
-                    )}
-                  </div>
-                ))}
-                <div className="flex justify-between">
-                  <span className="text-right text-xs">@{formatCurrency(item.originalPrice || 0)}</span>
-                  <span className="w-16 text-right">{formatCurrency(item.originalPrice * item.quantity || 0)}</span>
-                </div>
+              <div>{item.name}</div>
+              <div className="flex justify-between mt-1">
+                <span>{item.quantity} x @{formatCurrency(item.originalPrice || 0)}</span>
+                <span>{formatCurrency(item.originalPrice * item.quantity || 0)}</span>
               </div>
               {item.originalPrice !== item.priceAfterItemDiscount && (
-                <div className="flex justify-between text-right text-xs italic">
+                <div className="flex justify-between text-right text-xs italic mt-1">
                   <span></span>
                   <span className="text-right">Pot:{formatCurrency(item.originalPrice - item.priceAfterItemDiscount)}</span>
                 </div>
@@ -272,19 +262,6 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
           <span>Bayar</span>
           <span>{formatCurrency(payment || 0)}</span>
         </div>
-        {/* Tampilkan status pembayaran */}
-        <div className="flex justify-between text-sm font-bold">
-          {status === 'UNPAID' ? (
-            <span className="text-red-500">Status: HUTANG</span>
-          ) : status === 'PARTIALLY_PAID' ? (
-            <span className="text-yellow-500">Status: DP</span>
-          ) : (
-            <span className="text-green-500">Status: LUNAS</span>
-          )}
-          <span></span>
-        </div>
-
-
         {/* Tampilkan sisa hutang jika statusnya hutang */}
         {payment < grandTotal && grandTotal > 0 && (
           <div className="flex justify-between text-sm">
@@ -300,6 +277,16 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
 
       <div className="my-2 border-t border-black pt-1">
         <div className="text-xs text-center">
+          {/* Tampilkan status pembayaran di atas metode pembayaran */}
+          <div className="flex justify-between text-sm font-bold mb-1">
+            {status === 'UNPAID' ? (
+              <span className="text-red-500 mx-auto">Status: HUTANG</span>
+            ) : status === 'PARTIALLY_PAID' ? (
+              <span className="text-yellow-500 mx-auto">Status: DP</span>
+            ) : (
+              <span className="text-green-500 mx-auto">Status: LUNAS</span>
+            )}
+          </div>
           <div className="mb-1">Metode: {paymentMethod || 'CASH'}</div>
           {/* Tampilkan nomor referensi jika metode pembayaran bukan tunai */}
           {paymentMethod && paymentMethod !== 'CASH' && referenceNumber && (

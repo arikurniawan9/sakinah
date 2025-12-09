@@ -155,10 +155,13 @@ const Sidebar = ({ children }) => {
     // WAREHOUSE menus
     { title: "Dashboard", href: "/warehouse", icon: Home, type: 'item', roles: ['WAREHOUSE'] },
     { title: "Stok Gudang", href: "/warehouse/stock", icon: Package, type: 'item', roles: ['WAREHOUSE'] },
+    { title: "Produk Gudang", href: "/warehouse/products", icon: Package, type: 'item', roles: ['WAREHOUSE'] },
     { title: "Pembelian Gudang", href: "/warehouse/purchase", icon: ShoppingCart, type: 'item', roles: ['WAREHOUSE'] },
     { title: "Distribusi ke Toko", href: "/warehouse/distribution", icon: TrendingUp, type: 'item', roles: ['WAREHOUSE'] },
-
-    { title: "Pengaturan", href: "/warehouse/settings", icon: Settings, type: 'item', roles: ['WAREHOUSE'] },
+    { title: "Riwayat Distribusi", href: "/warehouse/distribution/history", icon: History, type: 'item', roles: ['WAREHOUSE'] },
+    { title: "Pengaturan", type: 'heading', roles: ['WAREHOUSE'] },
+    { title: "Pengaturan Umum", href: "/warehouse/settings", icon: Settings, type: 'item', roles: ['WAREHOUSE'] },
+    { title: "Profil Saya", href: "/warehouse/profile", icon: UserCog, type: 'item', roles: ['WAREHOUSE'] },
 
   ];
 
@@ -360,7 +363,13 @@ const Sidebar = ({ children }) => {
                           ? '/admin/profile'
                           : session?.user?.role === 'MANAGER'
                           ? '/manager/profile'
-                          : '/kasir/profile'
+                          : session?.user?.role === 'WAREHOUSE'
+                          ? '/warehouse/profile'
+                          : session?.user?.role === 'CASHIER'
+                          ? '/kasir/profile'
+                          : session?.user?.role === 'ATTENDANT'
+                          ? '/pelayan/profile'
+                          : '/login' // fallback to login if role not recognized
                       }
                       onClick={() => setIsUserMenuOpen(false)}
                       className={`w-full text-left flex items-center px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-100'}`}

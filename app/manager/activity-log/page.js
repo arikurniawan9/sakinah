@@ -200,116 +200,6 @@ export default function ActivityLogPage() {
     </div>
   ), []);
 
-  const renderDetails = useCallback((_, log) => {
-    // Fungsi untuk mendapatkan nama item dari newValue atau oldValue
-    const getItemName = () => {
-      if (log.newValue) {
-        try {
-          const parsedValue = JSON.parse(log.newValue);
-          if (log.entity === 'STORE' && parsedValue.name) return parsedValue.name;
-          if (log.entity === 'USER' && parsedValue.name) return parsedValue.name;
-          if (log.entity === 'PRODUCT' && parsedValue.name) return parsedValue.name;
-          if (log.entity === 'SALE' && parsedValue.invoiceNumber) return `Faktur ${parsedValue.invoiceNumber}`;
-        } catch (e) {
-          // Jika parsing gagal, abaikan
-        }
-      }
-      if (log.oldValue) {
-        try {
-          const parsedValue = JSON.parse(log.oldValue);
-          if (log.entity === 'STORE' && parsedValue.name) return parsedValue.name;
-          if (log.entity === 'USER' && parsedValue.name) return parsedValue.name;
-          if (log.entity === 'PRODUCT' && parsedValue.name) return parsedValue.name;
-          if (log.entity === 'SALE' && parsedValue.invoiceNumber) return `Faktur ${parsedValue.invoiceNumber}`;
-        } catch (e) {
-          // Jika parsing gagal, abaikan
-        }
-      }
-      return log.entityId || 'Tidak dikenal';
-    };
-
-    // Fungsi untuk mendapatkan ringkasan informasi dari nilai
-    const getValueSummary = (value) => {
-      if (!value) return '';
-      try {
-        const parsed = JSON.parse(value);
-
-        if (log.entity === 'SALE') {
-          // Untuk penjualan, tampilkan ringkasan
-          const total = parsed.total ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(parsed.total) : '0';
-          const items = parsed.saleDetails ? parsed.saleDetails.length : 0;
-          return `${items} item, Total: ${total}`;
-        } else if (log.entity === 'PRODUCT') {
-          // Untuk produk, tampilkan harga dan stok
-          const price = parsed.purchasePrice ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(parsed.purchasePrice) : '0';
-          return `Harga: ${price}, Stok: ${parsed.stock || 0}`;
-        } else if (log.entity === 'STORE') {
-          // Untuk toko, tampilkan alamat
-          return parsed.address || 'Alamat tidak tersedia';
-        } else if (log.entity === 'USER') {
-          // Untuk user, tampilkan role
-          return parsed.role || 'Role tidak tersedia';
-        }
-
-        return '';
-      } catch (e) {
-        return '';
-      }
-    };
-
-    const itemName = getItemName();
-    const summary = getValueSummary(log.newValue) || getValueSummary(log.oldValue);
-
-    return (
-      <div className="text-sm">
-        <div className="font-medium text-sm mb-1 truncate max-w-xs" title={itemName}>
-          {itemName}
-        </div>
-        {summary && (
-          <div className="text-xs text-gray-600 dark:text-gray-300 mb-1 truncate max-w-xs" title={summary}>
-            {summary}
-          </div>
-        )}
-        {log.entityId && (
-          <div className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded mb-1">
-            ID: {log.entityId}
-          </div>
-        )}
-        {log.oldValue && (
-          <details className="mt-1">
-            <summary className="text-xs text-gray-500 dark:text-gray-400 cursor-pointer hover:underline">
-              Nilai Lama
-            </summary>
-            <pre className="text-xs bg-red-50 dark:bg-red-900/20 p-2 rounded mt-1 overflow-x-auto max-w-xs">
-              {(() => {
-                try {
-                  return JSON.stringify(JSON.parse(log.oldValue), null, 2);
-                } catch (e) {
-                  return log.oldValue;
-                }
-              })()}
-            </pre>
-          </details>
-        )}
-        {log.newValue && (
-          <details className="mt-1">
-            <summary className="text-xs text-gray-500 dark:text-gray-400 cursor-pointer hover:underline">
-              Nilai Baru
-            </summary>
-            <pre className="text-xs bg-green-50 dark:bg-green-900/20 p-2 rounded mt-1 overflow-x-auto max-w-xs">
-              {(() => {
-                try {
-                  return JSON.stringify(JSON.parse(log.newValue), null, 2);
-                } catch (e) {
-                  return log.newValue;
-                }
-              })()}
-            </pre>
-          </details>
-        )}
-      </div>
-    );
-  }, []);
 
   // Columns configuration for the DataTable
   const columns = useMemo(() => [
@@ -337,12 +227,85 @@ export default function ActivityLogPage() {
     },
     {
       key: 'entityId',
-      title: 'Nama/ID'
-    },
-    {
-      key: 'details',
-      title: 'Rincian',
-      render: renderDetails
+      title: 'Nama/ID',
+      render: (_, log) => {
+        // Fungsi untuk mendapatkan nama item dari newValue atau oldValue
+        const getItemName = () => {
+          if (log.newValue) {
+            try {
+              const parsedValue = JSON.parse(log.newValue);
+              if (log.entity === 'STORE' && parsedValue.name) return parsedValue.name;
+              if (log.entity === 'USER' && parsedValue.name) return parsedValue.name;
+              if (log.entity === 'PRODUCT' && parsedValue.name) return parsedValue.name;
+              if (log.entity === 'SALE' && parsedValue.invoiceNumber) return `Faktur ${parsedValue.invoiceNumber}`;
+            } catch (e) {
+              // Jika parsing gagal, abaikan
+            }
+          }
+          if (log.oldValue) {
+            try {
+              const parsedValue = JSON.parse(log.oldValue);
+              if (log.entity === 'STORE' && parsedValue.name) return parsedValue.name;
+              if (log.entity === 'USER' && parsedValue.name) return parsedValue.name;
+              if (log.entity === 'PRODUCT' && parsedValue.name) return parsedValue.name;
+              if (log.entity === 'SALE' && parsedValue.invoiceNumber) return `Faktur ${parsedValue.invoiceNumber}`;
+            } catch (e) {
+              // Jika parsing gagal, abaikan
+            }
+          }
+          return log.entityId || 'Tidak dikenal';
+        };
+
+        // Fungsi untuk mendapatkan ringkasan informasi dari nilai
+        const getValueSummary = (value) => {
+          if (!value) return '';
+          try {
+            const parsed = JSON.parse(value);
+
+            if (log.entity === 'SALE') {
+              // Untuk penjualan, tampilkan ringkasan
+              const total = parsed.total ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(parsed.total) : '0';
+              const items = parsed.saleDetails ? parsed.saleDetails.length : 0;
+              return `${items} item, Total: ${total}`;
+            } else if (log.entity === 'PRODUCT') {
+              // Untuk produk, tampilkan harga dan stok
+              const price = parsed.purchasePrice ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(parsed.purchasePrice) : '0';
+              return `Harga: ${price}, Stok: ${parsed.stock || 0}`;
+            } else if (log.entity === 'STORE') {
+              // Untuk toko, tampilkan alamat
+              return parsed.address || 'Alamat tidak tersedia';
+            } else if (log.entity === 'USER') {
+              // Untuk user, tampilkan role
+              return parsed.role || 'Role tidak tersedia';
+            }
+
+            return '';
+          } catch (e) {
+            return '';
+          }
+        };
+
+        const itemName = getItemName();
+        const summary = getValueSummary(log.newValue) || getValueSummary(log.oldValue);
+
+        return (
+          <div className="text-sm">
+            <div className="font-medium text-sm mb-1 truncate max-w-xs" title={itemName}>
+              {itemName}
+            </div>
+            {summary && (
+              <div className="text-xs text-gray-600 dark:text-gray-300 mb-1 truncate max-w-xs" title={summary}>
+                {summary}
+              </div>
+            )}
+            {log.entityId && (
+              <div className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded mb-1">
+                ID: {log.entityId}
+              </div>
+            )}
+          </div>
+        );
+      }
     },
     {
       key: 'createdAt',
@@ -366,7 +329,7 @@ export default function ActivityLogPage() {
         </div>
       )
     }
-  ], [state.currentPage, state.itemsPerPage, renderUser, renderAction, renderEntity, renderDetails, renderTimestamp, router]);
+  ], [state.currentPage, state.itemsPerPage, renderUser, renderAction, renderEntity, renderTimestamp, router]);
 
   // Mobile columns configuration
   const mobileColumns = useMemo(() => [
@@ -381,82 +344,88 @@ export default function ActivityLogPage() {
             <span className="inline-block">{renderEntity(log.entity)}</span>
           </div>
           <div className="text-xs mt-1">{format(parseISO(log.createdAt), 'dd MMM yyyy, HH:mm', { locale: id })}</div>
-          {/* Fungsi untuk mendapatkan nama item dari newValue atau oldValue */}
-          {(() => {
-            let itemName = null;
-            let itemSummary = '';
-
-            if (log.newValue) {
-              try {
-                const parsedValue = JSON.parse(log.newValue);
-                if (log.entity === 'STORE' && parsedValue.name) itemName = parsedValue.name;
-                if (log.entity === 'USER' && parsedValue.name) itemName = parsedValue.name;
-                if (log.entity === 'PRODUCT' && parsedValue.name) itemName = parsedValue.name;
-                if (log.entity === 'SALE' && parsedValue.invoiceNumber) itemName = `Faktur ${parsedValue.invoiceNumber}`;
-
-                // Dapatkan ringkasan item
-                if (log.entity === 'SALE') {
-                  const total = parsedValue.total ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(parsedValue.total) : '0';
-                  const items = parsedValue.saleDetails ? parsedValue.saleDetails.length : 0;
-                  itemSummary = `${items} item, Total: ${total}`;
-                } else if (log.entity === 'PRODUCT') {
-                  const price = parsedValue.purchasePrice ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(parsedValue.purchasePrice) : '0';
-                  itemSummary = `Harga: ${price}, Stok: ${parsedValue.stock || 0}`;
-                } else if (log.entity === 'STORE') {
-                  itemSummary = parsedValue.address || 'Alamat tidak tersedia';
-                } else if (log.entity === 'USER') {
-                  itemSummary = parsedValue.role || 'Role tidak tersedia';
+          {/* Menampilkan informasi item dengan format yang lebih ramah */}
+          <div>
+            {/* Fungsi untuk mendapatkan nama item dari newValue atau oldValue */}
+            {(() => {
+              // Fungsi untuk mendapatkan nama item dari newValue atau oldValue
+              const getItemName = () => {
+                if (log.newValue) {
+                  try {
+                    const parsedValue = JSON.parse(log.newValue);
+                    if (log.entity === 'STORE' && parsedValue.name) return parsedValue.name;
+                    if (log.entity === 'USER' && parsedValue.name) return parsedValue.name;
+                    if (log.entity === 'PRODUCT' && parsedValue.name) return parsedValue.name;
+                    if (log.entity === 'SALE' && parsedValue.invoiceNumber) return `Faktur ${parsedValue.invoiceNumber}`;
+                  } catch (e) {
+                    // Jika parsing gagal, abaikan
+                  }
                 }
-              } catch (e) {
-                // Jika parsing gagal, abaikan
-              }
-            }
-
-            if (!itemName && log.oldValue) {
-              try {
-                const parsedValue = JSON.parse(log.oldValue);
-                if (log.entity === 'STORE' && parsedValue.name) itemName = parsedValue.name;
-                if (log.entity === 'USER' && parsedValue.name) itemName = parsedValue.name;
-                if (log.entity === 'PRODUCT' && parsedValue.name) itemName = parsedValue.name;
-                if (log.entity === 'SALE' && parsedValue.invoiceNumber) itemName = `Faktur ${parsedValue.invoiceNumber}`;
-
-                // Dapatkan ringkasan item dari old value jika baru tidak ditemukan
-                if (!itemSummary && log.entity === 'SALE') {
-                  const total = parsedValue.total ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(parsedValue.total) : '0';
-                  const items = parsedValue.saleDetails ? parsedValue.saleDetails.length : 0;
-                  itemSummary = `${items} item, Total: ${total}`;
-                } else if (!itemSummary && log.entity === 'PRODUCT') {
-                  const price = parsedValue.purchasePrice ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(parsedValue.purchasePrice) : '0';
-                  itemSummary = `Harga: ${price}, Stok: ${parsedValue.stock || 0}`;
-                } else if (!itemSummary && log.entity === 'STORE') {
-                  itemSummary = parsedValue.address || 'Alamat tidak tersedia';
-                } else if (!itemSummary && log.entity === 'USER') {
-                  itemSummary = parsedValue.role || 'Role tidak tersedia';
+                if (log.oldValue) {
+                  try {
+                    const parsedValue = JSON.parse(log.oldValue);
+                    if (log.entity === 'STORE' && parsedValue.name) return parsedValue.name;
+                    if (log.entity === 'USER' && parsedValue.name) return parsedValue.name;
+                    if (log.entity === 'PRODUCT' && parsedValue.name) return parsedValue.name;
+                    if (log.entity === 'SALE' && parsedValue.invoiceNumber) return `Faktur ${parsedValue.invoiceNumber}`;
+                  } catch (e) {
+                    // Jika parsing gagal, abaikan
+                  }
                 }
-              } catch (e) {
-                // Jika parsing gagal, abaikan
-              }
-            }
+                return log.entityId || 'Tidak dikenal';
+              };
 
-            const displayName = itemName || log.entityId || 'Tidak dikenal';
-            return (
-              <div>
-                <div className="text-sm font-medium truncate max-w-xs" title={displayName}>
-                  {displayName}
-                </div>
-                {itemSummary && (
-                  <div className="text-xs text-gray-600 dark:text-gray-300 truncate max-w-xs" title={itemSummary}>
-                    {itemSummary}
+              // Fungsi untuk mendapatkan ringkasan informasi dari nilai
+              const getValueSummary = (value) => {
+                if (!value) return '';
+                try {
+                  const parsed = JSON.parse(value);
+
+                  if (log.entity === 'SALE') {
+                    // Untuk penjualan, tampilkan ringkasan
+                    const total = parsed.total ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(parsed.total) : '0';
+                    const items = parsed.saleDetails ? parsed.saleDetails.length : 0;
+                    return `${items} item, Total: ${total}`;
+                  } else if (log.entity === 'PRODUCT') {
+                    // Untuk produk, tampilkan harga dan stok
+                    const price = parsed.purchasePrice ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(parsed.purchasePrice) : '0';
+                    return `Harga: ${price}, Stok: ${parsed.stock || 0}`;
+                  } else if (log.entity === 'STORE') {
+                    // Untuk toko, tampilkan alamat
+                    return parsed.address || 'Alamat tidak tersedia';
+                  } else if (log.entity === 'USER') {
+                    // Untuk user, tampilkan role
+                    return parsed.role || 'Role tidak tersedia';
+                  }
+
+                  return '';
+                } catch (e) {
+                  return '';
+                }
+              };
+
+              const itemName = getItemName();
+              const summary = getValueSummary(log.newValue) || getValueSummary(log.oldValue);
+
+              return (
+                <div>
+                  <div className="text-sm font-medium truncate max-w-xs" title={itemName}>
+                    {itemName}
                   </div>
-                )}
-              </div>
-            );
-          })()}
-          {log.entityId && (
-            <div className="text-xs font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded mt-1 inline-block">
-              ID: {log.entityId}
-            </div>
-          )}
+                  {summary && (
+                    <div className="text-xs text-gray-600 dark:text-gray-300 truncate max-w-xs" title={summary}>
+                      {summary}
+                    </div>
+                  )}
+                  {log.entityId && (
+                    <div className="text-xs font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded mt-1 inline-block">
+                      ID: {log.entityId}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
           {/* Aksi untuk mobile */}
           <div className="flex justify-center space-x-2 mt-2">
             <button

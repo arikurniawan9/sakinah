@@ -330,7 +330,7 @@ export default function ActivityDetailPage() {
                         );
                       };
 
-                      // Tampilkan data dengan format yang lebih user-friendly
+                      // Tampilkan data dengan format yang lebih user-friendly berdasarkan entitas
                       if (activity.entity === 'SALE') {
                         return createSaleTable(parsedValue, true);
                       } else if (activity.entity === 'PRODUCT') {
@@ -429,12 +429,18 @@ export default function ActivityDetailPage() {
                           </div>
                         );
                       } else {
-                        // Jika tidak ada format khusus, tampilkan format JSON biasa
-                        return (
-                          <pre className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg text-sm overflow-x-auto max-h-96 overflow-y-auto">
-                            {JSON.stringify(parsedValue, null, 2)}
-                          </pre>
-                        );
+                        // Jika data terlihat seperti penjualan tetapi entitas bukan SALE, periksa struktur data
+                        // Ini untuk menangani kasus dimana entitas mungkin tidak diatur dengan benar
+                        if (parsedValue.invoiceNumber && parsedValue.total !== undefined && parsedValue.saleDetails) {
+                          return createSaleTable(parsedValue, true);
+                        } else {
+                          // Jika tidak ada format khusus, tampilkan format JSON biasa
+                          return (
+                            <pre className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg text-sm overflow-x-auto max-h-96 overflow-y-auto">
+                              {JSON.stringify(parsedValue, null, 2)}
+                            </pre>
+                          );
+                        }
                       }
                     } catch (e) {
                       return (
@@ -532,7 +538,7 @@ export default function ActivityDetailPage() {
                         );
                       };
 
-                      // Tampilkan data dengan format yang lebih user-friendly
+                      // Tampilkan data dengan format yang lebih user-friendly berdasarkan entitas
                       if (activity.entity === 'SALE') {
                         return createSaleTable(parsedValue, false);
                       } else if (activity.entity === 'PRODUCT') {
@@ -631,12 +637,18 @@ export default function ActivityDetailPage() {
                           </div>
                         );
                       } else {
-                        // Jika tidak ada format khusus, tampilkan format JSON biasa
-                        return (
-                          <pre className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg text-sm overflow-x-auto max-h-96 overflow-y-auto">
-                            {JSON.stringify(parsedValue, null, 2)}
-                          </pre>
-                        );
+                        // Jika data terlihat seperti penjualan tetapi entitas bukan SALE, periksa struktur data
+                        // Ini untuk menangani kasus dimana entitas mungkin tidak diatur dengan benar
+                        if (parsedValue.invoiceNumber && parsedValue.total !== undefined && parsedValue.saleDetails) {
+                          return createSaleTable(parsedValue, false);
+                        } else {
+                          // Jika tidak ada format khusus, tampilkan format JSON biasa
+                          return (
+                            <pre className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg text-sm overflow-x-auto max-h-96 overflow-y-auto">
+                              {JSON.stringify(parsedValue, null, 2)}
+                            </pre>
+                          );
+                        }
                       }
                     } catch (e) {
                       return (

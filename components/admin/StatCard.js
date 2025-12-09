@@ -1,13 +1,19 @@
 import React from 'react';
 import Link from 'next/link';
 
-const StatCard = ({ title, value, icon: Icon, bgColorClass, textColorClass, darkMode, href, loading = false }) => {
+const StatCard = ({ title, value, icon: Icon, bgColorClass, textColorClass, darkMode, href, loading = false, warning = false }) => {
   // Validasi nilai sebelum ditampilkan
   const displayValue = value !== undefined && value !== null ? value : 0;
 
   // Tentukan kelas default jika tidak disediakan
-  const defaultBgColor = darkMode ? 'bg-indigo-600' : 'bg-indigo-500';
+  let defaultBgColor = darkMode ? 'bg-indigo-600' : 'bg-indigo-500';
   const defaultTextColor = 'text-white';
+
+  // Gunakan warna peringatan jika warning=true
+  if (warning) {
+    defaultBgColor = darkMode ? 'bg-yellow-600' : 'bg-yellow-500';
+  }
+
   const actualBgColor = bgColorClass || defaultBgColor;
   const actualTextColor = textColorClass || defaultTextColor;
 

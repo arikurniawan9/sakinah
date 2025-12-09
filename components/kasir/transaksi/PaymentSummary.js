@@ -21,7 +21,8 @@ const PaymentSummary = memo(({
   setAdditionalDiscount,
   sessionStatus,
   selectedMember,
-  selectedAttendant
+  selectedAttendant,
+  clearForm
 }) => {
   const [showReferenceModal, setShowReferenceModal] = useState(false);
   const [localReferenceNumber, setLocalReferenceNumber] = useState('');
@@ -258,6 +259,10 @@ const PaymentSummary = memo(({
             </div>
           )}
 
+          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1 px-2">
+            <span>(Alt+S)</span>
+            <span>(Alt+Enter)</span>
+          </div>
           <div className="flex space-x-2">
             <button
               onClick={() => {
@@ -269,7 +274,7 @@ const PaymentSummary = memo(({
                 }
               }}
               disabled={isUnpaidDisabled}
-              className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-1/2 flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
@@ -286,7 +291,7 @@ const PaymentSummary = memo(({
             <button
               onClick={handlePaymentSubmission}
               disabled={isPaidDisabled}
-              className="w-full flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-1/2 flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
@@ -301,9 +306,23 @@ const PaymentSummary = memo(({
               )}
             </button>
           </div>
-          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1 px-2">
-            <span>(Alt+S)</span>
-            <span>(Alt+Enter)</span>
+
+          {/* Tombol Clear Form di bawah tombol pembayaran */}
+          <div className="mt-2">
+            <button
+              onClick={clearForm}
+              disabled={loading}
+              className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                darkMode
+                  ? 'bg-gray-600 hover:bg-gray-700 focus:ring-gray-500'
+                  : 'bg-gray-500 hover:bg-gray-600 focus:ring-gray-400'
+              } focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              Bersihkan Form
+            </button>
+            <div className="text-center mt-1 text-xs text-gray-500 dark:text-gray-400">
+              (Shift+R)
+            </div>
           </div>
         </div>
       </div>

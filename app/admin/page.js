@@ -21,7 +21,9 @@ import {
   UserRound,
   DollarSign,
   TrendingUp,
-  CalendarIcon
+  CalendarIcon,
+  Package,
+  AlertCircle
 } from 'lucide-react';
 
 // Helper to format currency
@@ -62,6 +64,9 @@ export default function AdminDashboard() {
     }
   }, [startDate, endDate]);
 
+  const [pendingDistributions, setPendingDistributions] = useState(0);
+  const [pendingDistributionsLoading, setPendingDistributionsLoading] = useState(true);
+
   const {
     totalSales,
     totalProfit,
@@ -74,6 +79,28 @@ export default function AdminDashboard() {
     loading,
     error,
   } = useDashboardData(startDate, endDate);
+
+  // Fetch pending warehouse distributions count
+  useEffect(() => {
+    const fetchPendingDistributions = async () => {
+      try {
+        setPendingDistributionsLoading(true);
+        const response = await fetch('/api/admin/distributions/pending-count');
+        const data = await response.json();
+        if (response.ok) {
+          setPendingDistributions(data.pendingDistributions || 0);
+        }
+      } catch (err) {
+        console.error('Error fetching pending distributions:', err);
+      } finally {
+        setPendingDistributionsLoading(false);
+      }
+    };
+
+    if (status === 'authenticated' && session?.user?.storeId) {
+      fetchPendingDistributions();
+    }
+  }, [status, session]);
 
   const breadcrumbItems = [{ title: 'Dashboard', href: '/admin' }];
 
@@ -172,10 +199,19 @@ export default function AdminDashboard() {
         {/* System Summary */}
         <div className="mb-8">
           <h3 className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-gray-800'} mb-4`}>Ringkasan Sistem</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <StatCard title="Total Produk" value={totalProductsCount} icon={ShoppingBag} darkMode={darkMode} href="/admin/produk" loading={loading} />
             <StatCard title="Total Member" value={totalMembersCount} icon={UserRound} darkMode={darkMode} href="/admin/member" loading={loading} />
             <StatCard title="Karyawan Aktif" value={activeEmployeesCount} icon={Users} darkMode={darkMode} href="/admin/pelayan" loading={loading} />
+            <StatCard
+              title="Distribusi Tertunda"
+              value={pendingDistributions}
+              icon={Package}
+              darkMode={darkMode}
+              href="/admin/distributions/pending"
+              loading={pendingDistributionsLoading}
+              warning={pendingDistributions > 0}
+            />
           </div>
         </div>
 

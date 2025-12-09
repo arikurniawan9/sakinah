@@ -28,6 +28,7 @@ import { useReactToPrint } from "react-to-print";
 import { printThermalReceipt } from "@/utils/thermalPrint";
 import { useProductSearch } from "@/lib/hooks/kasir/useProductSearch";
 import { useNotification } from "@/components/notifications/NotificationProvider";
+import { useTransactionCart } from "@/lib/hooks/kasir/useTransactionCart";
 
 export default function KasirTransaksiPage() {
   const { data: session } = useSession();
@@ -37,14 +38,12 @@ export default function KasirTransaksiPage() {
   const router = useRouter();
 
   // State Management
-  const [cart, setCart] = useState([]);
   const [members, setMembers] = useState([]);
   const [selectedMember, setSelectedMember] = useState(null);
   const [attendants, setAttendants] = useState([]);
   const [selectedAttendant, setSelectedAttendant] = useState(null);
   const [defaultMember, setDefaultMember] = useState(null); // State for the default member
   const [payment, setPayment] = useState(0);
-  const [calculation, setCalculation] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [showAttendantsModal, setShowAttendantsModal] = useState(false);
@@ -66,51 +65,22 @@ export default function KasirTransaksiPage() {
   const [successDetails, setSuccessDetails] = useState(null);
   const [storeInfo, setStoreInfo] = useState({ name: '', id: '' });
 
-  // --- Cart Logic ---
-  const removeFromCart = useCallback((productId) => {
-    setCart((prevCart) => prevCart.filter((item) => item.productId !== productId));
-  }, []);
+  // --- Cart Logic using custom hook ---
+  const {
+    cart,
+    setCart,
+    calculation,
+    initializeNotification,
+    removeFromCart,
+    updateQuantity,
+    addToCart,
+    calculateTransaction
+  } = useTransactionCart();
 
-  const updateQuantity = useCallback((productId, newQuantity) => {
-    if (newQuantity <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-    setCart((prevCart) =>
-      prevCart.map((item) => {
-        if (item.productId === productId) {
-          if (newQuantity > item.stock) {
-            alert(`Jumlah maksimum ${item.name} adalah ${item.stock} (stok tersedia).`);
-            return { ...item, quantity: Math.min(newQuantity, item.stock) };
-          }
-          return { ...item, quantity: newQuantity };
-        }
-        return item;
-      })
-    );
-  }, [removeFromCart]);
-
-  const addToCart = useCallback((product) => {
-    const existingItem = cart.find((item) => item.productId === product.id);
-    if (existingItem) {
-      updateQuantity(product.id, existingItem.quantity + 1);
-    } else {
-      setCart((prevCart) => [
-        ...prevCart,
-        {
-          productId: product.id,
-          name: product.name,
-          productCode: product.productCode,
-          quantity: 1,
-          stock: product.stock,
-          priceTiers: product.priceTiers,
-        },
-      ]);
-    }
-    if (product.stock < 5) {
-      setShowLowStockModal(true);
-    }
-  }, [cart, updateQuantity]);
+  // Inisialisasi notifikasi di hook
+  useEffect(() => {
+    initializeNotification(showNotification);
+  }, [initializeNotification, showNotification]);
 
   // --- Product Search Logic ---
   const {
@@ -151,34 +121,56 @@ export default function KasirTransaksiPage() {
 
   const [isUnpaidConfirmModalOpen, setIsUnpaidConfirmModalOpen] = useState(false);
 
+  // Fungsi untuk membersihkan form transaksi
+  const clearForm = useCallback(() => {
+    setCart([]);
+    setSelectedMember(null);
+    setSelectedAttendant(null);
+    setPayment(0);
+    setSearchTerm("");
+    setAdditionalDiscount(0);
+    setPaymentMethod("CASH");
+    setReferenceNumber("");
+  }, [
+    setCart,
+    setSelectedMember,
+    setSelectedAttendant,
+    setPayment,
+    setSearchTerm,
+    setAdditionalDiscount,
+    setPaymentMethod,
+    setReferenceNumber,
+  ]);
+
   const handleUnpaidPayment = useCallback(async () => {
     setIsUnpaidConfirmModalOpen(false); // Close modal before processing
     if (!session?.user?.id) {
-      alert("Sesi pengguna tidak ditemukan. Harap login kembali.");
+      showNotification("Sesi pengguna tidak ditemukan. Harap login kembali.", 'error');
       setLoading(false);
       return;
     }
     if (cart.length === 0) {
-      alert(
-        "Keranjang belanja kosong! Tambahkan produk sebelum memproses pembayaran."
+      showNotification(
+        "Keranjang belanja kosong! Tambahkan produk sebelum memproses pembayaran.",
+        'error'
       );
       setLoading(false);
       return;
     }
     if (!selectedAttendant) {
-      alert("Pelayan harus dipilih sebelum memproses transaksi!");
+      showNotification("Pelayan harus dipilih sebelum memproses transaksi!", 'error');
       setLoading(false);
       return;
     }
     if (!selectedMember || selectedMember.name === 'Pelanggan Umum') {
-      alert("Member harus dipilih sebelum menyimpan sebagai hutang!");
+      showNotification("Member harus dipilih sebelum menyimpan sebagai hutang!", 'error');
       setLoading(false);
       return;
     }
 
     // Validasi bahwa jumlah pembayaran tidak melebihi total
     if (payment > calculation.grandTotal) {
-      alert("Jumlah pembayaran tidak boleh melebihi total tagihan!");
+      showNotification("Jumlah pembayaran tidak boleh melebihi total tagihan!", 'error');
       setLoading(false);
       return;
     }
@@ -234,11 +226,11 @@ export default function KasirTransaksiPage() {
         setAdditionalDiscount(0);
         setReferenceNumber(""); // Reset reference number after successful transaction
       } else {
-        alert(`Gagal: ${result.error}`);
+        showNotification(`Gagal: ${result.error}`, 'error');
       }
     } catch (error) {
       console.error("Error processing unpaid payment:", error);
-      alert("Terjadi kesalahan saat memproses pembayaran hutang");
+      showNotification("Terjadi kesalahan saat memproses pembayaran hutang", 'error');
     } finally {
       setLoading(false);
     }
@@ -247,12 +239,12 @@ export default function KasirTransaksiPage() {
   const initiateUnpaidPayment = () => {
     // Tambahkan konfirmasi untuk pembayaran hutang
     if (!selectedMember || selectedMember.name === 'Pelanggan Umum') {
-      alert("Member harus dipilih untuk transaksi hutang!");
+      showNotification("Member harus dipilih untuk transaksi hutang!", 'error');
       return;
     }
-    
+
     if (cart.length === 0) {
-      alert("Keranjang belanja kosong!");
+      showNotification("Keranjang belanja kosong!", 'error');
       return;
     }
     
@@ -277,7 +269,7 @@ export default function KasirTransaksiPage() {
   // Fungsi untuk unlock dengan password
   const handleUnlock = async () => {
     if (!unlockPassword.trim()) {
-      alert('Silakan masukkan password Anda');
+      showNotification('Silakan masukkan password Anda', 'error');
       return;
     }
 
@@ -303,34 +295,35 @@ export default function KasirTransaksiPage() {
         setUnlockPassword('');
       } else {
         // Password salah
-        alert('Password salah. Silakan coba lagi.');
+        showNotification('Password salah. Silakan coba lagi.', 'error');
         setUnlockPassword(''); // Kosongkan field password setelah salah
       }
     } catch (error) {
       console.error('Error verifying password:', error);
-      alert('Terjadi kesalahan saat memverifikasi password.');
+      showNotification('Terjadi kesalahan saat memverifikasi password.', 'error');
     }
   };
 
   const handlePaidPayment = useCallback(async () => {
     setIsConfirmModalOpen(false); // Close modal on action
     if (!session?.user?.id) {
-      alert("Sesi pengguna tidak ditemukan. Harap login kembali.");
+      showNotification("Sesi pengguna tidak ditemukan. Harap login kembali.", 'error');
       setLoading(false); // Ensure loading state is reset
       return;
     }
     if (cart.length === 0) {
-      alert(
-        "Keranjang belanja kosong! Tambahkan produk sebelum memproses pembayaran."
+      showNotification(
+        "Keranjang belanja kosong! Tambahkan produk sebelum memproses pembayaran.",
+        'error'
       );
       return;
     }
     if (!selectedAttendant) {
-      alert("Pelayan harus dipilih sebelum memproses transaksi!");
+      showNotification("Pelayan harus dipilih sebelum memproses transaksi!", 'error');
       return;
     }
     if (!calculation || payment < calculation.grandTotal) {
-      alert("Jumlah pembayaran kurang!");
+      showNotification("Jumlah pembayaran kurang!", 'error');
       return;
     }
 
@@ -442,11 +435,11 @@ export default function KasirTransaksiPage() {
           receiptPayload.invoiceNumber = result.id;
         }
 
-        // Cek apakah pembayaran non-tunai (QRIS/Transfer) dengan referensi yang valid
-        const isNonCashWithReference = paymentMethod !== 'CASH' && referenceNumber && referenceNumber.trim() !== '';
+        // Cek apakah pembayaran lunas (tidak ada hutang)
+        const isFullyPaid = calculation && payment >= calculation.grandTotal;
 
-        if (isNonCashWithReference) {
-          // Cetak otomatis untuk pembayaran QRIS/Transfer dengan referensi
+        if (isFullyPaid) {
+          // Langsung cetak tanpa tampilkan modal untuk pembayaran lunas
           printThermalReceipt(receiptPayload)
             .then(() => {
               console.log("Cetak thermal otomatis berhasil");
@@ -458,7 +451,7 @@ export default function KasirTransaksiPage() {
               setShowReceiptModal(true);
             });
         } else {
-          // Tampilkan modal cetak untuk pembayaran tunai atau pembayaran non-tunai tanpa referensi
+          // Tampilkan modal cetak untuk pembayaran hutang
           setReceiptData(receiptPayload);
           setShowReceiptModal(true);
         }
@@ -472,11 +465,11 @@ export default function KasirTransaksiPage() {
         setSearchTerm("");
         setAdditionalDiscount(0); // Reset additional discount after successful transaction
       } else {
-        alert(`Gagal: ${result.error}`);
+        showNotification(`Gagal: ${result.error}`, 'error');
       }
     } catch (error) {
       console.error("Error processing payment:", error);
-      alert("Terjadi kesalahan saat memproses pembayaran");
+      showNotification("Terjadi kesalahan saat memproses pembayaran", 'error');
     } finally {
       setLoading(false);
       // Reset reference number in finally block to ensure it's always cleared
@@ -486,7 +479,7 @@ export default function KasirTransaksiPage() {
 
   const handleSuspendSale = async ({ name, notes }) => {
     if (cart.length === 0) {
-      alert("Keranjang kosong, tidak ada yang bisa ditangguhkan.");
+      showNotification("Keranjang kosong, tidak ada yang bisa ditangguhkan.", 'error');
       return;
     }
 
@@ -519,11 +512,11 @@ export default function KasirTransaksiPage() {
         setIsSuspendModalOpen(false);
       } else {
         const result = await response.json();
-        alert(`Gagal menangguhkan penjualan: ${result.error}`);
+        showNotification(`Gagal menangguhkan penjualan: ${result.error}`, 'error');
       }
     } catch (error) {
       console.error("Error suspending sale:", error);
-      alert("Terjadi kesalahan saat menangguhkan penjualan.");
+      showNotification("Terjadi kesalahan saat menangguhkan penjualan.", 'error');
     } finally {
       setLoading(false);
     }
@@ -556,7 +549,7 @@ export default function KasirTransaksiPage() {
       setShowSuccessModal(true);
     } catch (error) {
       console.error("Error deleting suspended sale:", error);
-      alert(error.message);
+      showNotification(error.message, 'error');
     }
   };
 
@@ -665,6 +658,33 @@ export default function KasirTransaksiPage() {
     }
   }, [receiptData]);
 
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      // Clear form with Shift+R
+      if (event.shiftKey && event.key.toLowerCase() === 'r') {
+        event.preventDefault();
+        clearForm();
+      }
+      // Other existing keyboard shortcuts...
+      if (event.altKey && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        // Ini sesuai dengan tombol Simpan sebagai Hutang
+        if (!isUnpaidConfirmModalOpen && calculation && selectedMember && selectedMember.name !== 'Pelanggan Umum' && selectedAttendant) {
+          initiateUnpaidPayment();
+        }
+      }
+      if (event.altKey && event.key === "Enter") {
+        event.preventDefault();
+        if (calculation && payment >= calculation.grandTotal && !loading && selectedAttendant) {
+          initiatePaidPayment();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [clearForm, calculation, payment, loading, selectedMember, selectedAttendant, initiateUnpaidPayment, initiatePaidPayment, isUnpaidConfirmModalOpen]);
+
   const handleReceiptReadyToPrint = () => {
     if (receiptData && receiptRef.current) {
       // Instead of printing directly, let's show the receipt modal
@@ -675,66 +695,9 @@ export default function KasirTransaksiPage() {
   };
 
   useEffect(() => {
-    if (cart.length === 0) {
-      setCalculation(null);
-      return;
-    }
-    let subtotal = 0;
-    let itemDiscount = 0;
-    const calculatedItems = cart.map((item) => {
-      const basePrice = getTierPrice(item, 1);
-      const actualPrice = getTierPrice(item, item.quantity);
-      const discountPerItem = basePrice - actualPrice;
-      const itemSubtotal = actualPrice * item.quantity;
-      const totalItemDiscount = discountPerItem * item.quantity;
-      subtotal += itemSubtotal;
-      itemDiscount += totalItemDiscount;
-      return {
-        ...item,
-        originalPrice: basePrice,
-        priceAfterItemDiscount: actualPrice,
-        itemDiscount: totalItemDiscount,
-        subtotal: itemSubtotal,
-      };
-    });
-
-    let memberDiscount = 0;
-    if (selectedMember?.discount) {
-      // Diskon member dihitung dari subtotal sebelum diskon item
-      memberDiscount = (subtotal * selectedMember.discount) / 100;
-    }
-
-    // Total diskon adalah jumlah dari semua jenis diskon
-    const totalDiscount = itemDiscount + memberDiscount;
-
-    // Hitung grand total setelah diskon member diterapkan
-    const grandTotalAfterMemberDiscount = subtotal - memberDiscount;
-
-    // Terapkan diskon tambahan jika ada
-    const finalGrandTotal = Math.max(0, grandTotalAfterMemberDiscount - additionalDiscount);
-
-    // Total diskon akhir adalah jumlah semua diskon
-    const finalTotalDiscount = totalDiscount + additionalDiscount;
-
-    const newCalculation = {
-      items: calculatedItems,
-      subTotal: subtotal,
-      itemDiscount: itemDiscount,
-      memberDiscount: memberDiscount,
-      additionalDiscount: additionalDiscount,
-      totalDiscount: finalTotalDiscount,
-      tax: 0, // Pajak bisa ditambahkan nanti jika diperlukan
-      grandTotal: Math.max(0, Math.round(finalGrandTotal)), // Pastikan tidak negatif
-    };
-
-    setCalculation(newCalculation);
-
-    // Periksa apakah ada produk dengan stok rendah dan tampilkan modal
-    const hasLowStockItems = calculatedItems.some(item => item.stock < 5);
-    if (hasLowStockItems) {
-      setShowLowStockModal(true);
-    }
-  }, [cart, selectedMember, getTierPrice, additionalDiscount]);
+    // Gunakan fungsi dari hook untuk menghitung transaksi
+    calculateTransaction(cart, selectedMember, additionalDiscount, getTierPrice);
+  }, [cart, selectedMember, additionalDiscount, getTierPrice, calculateTransaction]);
 
   // Fungsi untuk menambah member baru
   const handleAddMember = async (memberData) => {
@@ -760,12 +723,12 @@ export default function KasirTransaksiPage() {
         setSelectedMember(result);
         return result;
       } else {
-        alert(result.error || 'Gagal menambahkan member baru');
+        showNotification(result.error || 'Gagal menambahkan member baru', 'error');
         throw new Error(result.error || 'Gagal menambahkan member baru');
       }
     } catch (error) {
       console.error('Error adding member:', error);
-      alert('Terjadi kesalahan saat menambahkan member baru');
+      showNotification('Terjadi kesalahan saat menambahkan member baru', 'error');
       throw error;
     }
   };
@@ -910,7 +873,18 @@ export default function KasirTransaksiPage() {
               />
               <TransactionCart
                 cart={calculation?.items || []}
-                updateQuantity={updateQuantity}
+                updateQuantity={(productId, newQuantity) => {
+                  const product = calculation?.items?.find(item => item.productId === productId);
+                  if (product) {
+                    updateQuantity(productId, newQuantity, product.stock, product.name);
+                  } else {
+                    // Jika produk tidak ditemukan di calculation, cari informasi dari cart
+                    const cartItem = cart.find(item => item.productId === productId);
+                    if (cartItem) {
+                      updateQuantity(productId, newQuantity, cartItem.stock, cartItem.name);
+                    }
+                  }
+                }}
                 removeFromCart={removeFromCart}
                 darkMode={darkMode}
               />
@@ -931,6 +905,7 @@ export default function KasirTransaksiPage() {
                 setPaymentMethod={setPaymentMethod}
                 selectedMember={selectedMember}
                 selectedAttendant={selectedAttendant}
+                clearForm={clearForm}
               />
             </div>
           </div>
@@ -943,9 +918,6 @@ export default function KasirTransaksiPage() {
             darkMode={darkMode}
           />
         </div>
-      </div>
-      <div className="printable-receipt">
-        <Receipt ref={receiptRef} receiptData={receiptData} onReadyToPrint={handleReceiptReadyToPrint} />
       </div>
       <ConfirmationModal
         isOpen={isConfirmModalOpen}

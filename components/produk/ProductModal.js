@@ -3,6 +3,7 @@
 
 import { Save, X, Plus, Trash2 } from 'lucide-react';
 import Tooltip from '../Tooltip';
+import AutoCompleteSearch from '../AutoCompleteSearch'; // Import AutoCompleteSearch
 
 export default function ProductModal({ 
   showModal, 
@@ -15,11 +16,36 @@ export default function ProductModal({
   removeTier,
   handleSave, 
   darkMode,
-  categories,
-  suppliers,
-  onSuccess // Added onSuccess prop
+  categories, // This can now be removed or kept for initial display
+  suppliers,  // This can now be removed or kept for initial display
+  onSuccess 
 }) {
   if (!showModal) return null;
+
+  // Search function for categories
+  const searchCategories = async (query) => {
+    if (!query) return [];
+    const response = await fetch(`/api/kategori/search?q=${query}`);
+    const data = await response.json();
+    return data.categories || [];
+  };
+
+  // Search function for suppliers
+  const searchSuppliers = async (query) => {
+    if (!query) return [];
+    const response = await fetch(`/api/supplier/search?q=${query}`);
+    const data = await response.json();
+    return data.suppliers || [];
+  };
+
+  // Handle selection from AutoCompleteSearch
+  const handleCategorySelect = (category) => {
+    handleInputChange({ target: { name: 'categoryId', value: category.id } });
+  };
+
+  const handleSupplierSelect = (supplier) => {
+    handleInputChange({ target: { name: 'supplierId', value: supplier.id } });
+  };
 
   return (
     <div className="fixed z-[100] inset-0 overflow-y-auto">
@@ -68,21 +94,21 @@ export default function ProductModal({
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                         <div>
                           <label htmlFor="categoryId" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Kategori</label>
-                          <select name="categoryId" id="categoryId" value={formData.categoryId} onChange={handleInputChange} className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200 bg-white text-gray-900'}`}>
-                            <option value="">Pilih Kategori</option>
-                            {categories.map(category => (
-                              <option key={category.id} value={category.id}>{category.name}</option>
-                            ))}
-                          </select>
+                          <AutoCompleteSearch
+                            placeholder="Cari kategori..."
+                            searchFunction={searchCategories}
+                            onSelect={handleCategorySelect}
+                            darkMode={darkMode}
+                          />
                         </div>
                         <div>
                           <label htmlFor="supplierId" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Supplier</label>
-                          <select name="supplierId" id="supplierId" value={formData.supplierId} onChange={handleInputChange} className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200 bg-white text-gray-900'}`}>
-                            <option value="">Pilih Supplier</option>
-                            {suppliers.map(supplier => (
-                              <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
-                            ))}
-                          </select>
+                          <AutoCompleteSearch
+                            placeholder="Cari supplier..."
+                            searchFunction={searchSuppliers}
+                            onSelect={handleSupplierSelect}
+                            darkMode={darkMode}
+                          />
                         </div>
                         <div className="sm:col-span-2">
                           <label htmlFor="description" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Deskripsi</label>

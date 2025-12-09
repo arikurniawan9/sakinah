@@ -79,20 +79,11 @@ export default function ProductDetailModal({
 
                 {/* Pricing Section */}
                 <div className={`border-t pt-2.5 ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <h4 className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-800'} mb-2`}>Detail Harga</h4>
-
-                  <div className="flex items-start space-x-2 mb-2">
-                    <DollarSign className={`flex-shrink-0 h-3.5 w-3.5 mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-                    <div>
-                      <p className={`text-[10px] font-medium uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Harga Beli</p>
-                      <p className={`mt-0.5 text-xs ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>Rp {product.purchasePrice?.toLocaleString('id-ID') || '0'}</p>
-                    </div>
-                  </div>
+                  <h4 className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-800'} mb-2`}>Tingkatan Harga Jual</h4>
 
                   <div>
-                    <p className={`text-[10px] font-medium uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Tingkatan Harga Jual</p>
                     {product.priceTiers && product.priceTiers.length > 0 ? (
-                      <div className="mt-1.5 space-y-1">
+                      <div className="space-y-1">
                         {product.priceTiers.sort((a, b) => a.minQty - b.minQty).map((tier, index) => (
                           <div key={index} className={`flex justify-between items-center py-1 px-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
                             <span className={`text-xs ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>

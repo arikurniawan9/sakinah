@@ -74,13 +74,17 @@ const Receipt = React.forwardRef(({ receiptData, onReadyToPrint }, ref) => {
       <hr className="my-2 border-black" />
       <div>
         {items.map((item) => (
-          <div key={item.productId || Math.random()} className="flex justify-between">
-            <div className="flex-1 break-words">
-              <div>{item.name}</div>
-              <div className="text-xs">{item.quantity} x {formatCurrency(item.originalPrice || 0)}</div>
+          <div key={item.productId || Math.random()} className="mb-1">
+            <div className="break-words">
+              {item.name}
             </div>
-            <div className="text-right flex-shrink-0 ml-2">
-              {formatCurrency(item.originalPrice * item.quantity || 0)}
+            <div className="flex justify-between mt-1">
+              <div>
+                {item.quantity} x @{formatCurrency(item.originalPrice || 0)}
+              </div>
+              <div>
+                {formatCurrency(item.originalPrice * item.quantity || 0)}
+              </div>
             </div>
           </div>
         ))}
@@ -125,6 +129,17 @@ const Receipt = React.forwardRef(({ receiptData, onReadyToPrint }, ref) => {
         <span>{formatCurrency(grandTotal || 0)}</span>
       </div>
       <hr className="my-2 border-black" />
+      {/* Tampilkan status pembayaran di atas metode pembayaran */}
+      <div className="flex justify-between font-bold">
+        {status === 'UNPAID' ? (
+          <span className="text-red-500">Status: HUTANG</span>
+        ) : status === 'PARTIALLY_PAID' ? (
+          <span className="text-yellow-500">Status: DP</span>
+        ) : (
+          <span className="text-green-500">Status: LUNAS</span>
+        )}
+        <span></span>
+      </div>
       <div className="flex justify-between">
         <span>Metode Bayar</span>
         <span>{paymentMethod}</span>

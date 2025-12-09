@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
-import { ROLES, WAREHOUSE_STORE_ID } from '@/lib/constants';
+import { ROLES } from '@/lib/constants';
+import { logWarehouseDistribution } from '@/lib/auditLogger';
 
 export async function POST(request) {
   try {
@@ -33,6 +34,16 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Toko tujuan tidak ditemukan' }, { status: 404 });
     }
 
+    // Get the central warehouse (assuming there's one central warehouse)
+    let centralWarehouse = await prisma.warehouse.findFirst({
+      where: { name: 'Gudang Pusat' }
+    });
+
+    if (!centralWarehouse) {
+      // If no central warehouse exists, return error
+      return NextResponse.json({ error: 'Gudang pusat tidak ditemukan' }, { status: 404 });
+    }
+
     // Use a transaction to ensure atomicity
     const newDistribution = await prisma.$transaction(async (tx) => {
       let totalAmount = 0;
@@ -43,7 +54,7 @@ export async function POST(request) {
           where: {
             productId_warehouseId: {
               productId: item.productId,
-              warehouseId: WAREHOUSE_STORE_ID,
+              warehouseId: centralWarehouse.id,
             },
           },
           include: {
@@ -59,27 +70,15 @@ export async function POST(request) {
         totalAmount += item.quantity * warehouseProduct.product.purchasePrice;
       }
 
-      // Create WarehouseDistribution record
-      const distribution = await tx.warehouseDistribution.create({
-        data: {
-          warehouseId: WAREHOUSE_STORE_ID, // Central warehouse
-          storeId,
-          distributedBy,
-          distributedAt: new Date(distributionDate),
-          status: distributionStatus || 'DELIVERED',
-          notes: body.notes || null,
-          totalAmount,
-        },
-      });
-
-      // Update WarehouseProduct quantities and target store's Product stock
+      // Create individual warehouse distribution records for each product
+      const distributionRecords = [];
       for (const item of items) {
         // Find warehouse product by ID
         const warehouseProduct = await tx.warehouseProduct.findUnique({
           where: {
             productId_warehouseId: {
               productId: item.productId,
-              warehouseId: WAREHOUSE_STORE_ID,
+              warehouseId: centralWarehouse.id,
             },
           },
           include: {
@@ -92,7 +91,7 @@ export async function POST(request) {
           where: {
             productId_warehouseId: {
               productId: item.productId,
-              warehouseId: WAREHOUSE_STORE_ID,
+              warehouseId: centralWarehouse.id,
             },
           },
           data: {
@@ -102,45 +101,43 @@ export async function POST(request) {
           },
         });
 
-        // Find the corresponding product in the target store
-        let existingStoreProduct = await tx.product.findFirst({
-          where: {
-            productCode: warehouseProduct.product.productCode,
-            storeId: storeId
-          }
+        // Create individual warehouse distribution record for this product
+        const distributionRecord = await tx.warehouseDistribution.create({
+          data: {
+            warehouseId: centralWarehouse.id, // Central warehouse
+            storeId,
+            productId: item.productId,
+            quantity: item.quantity,
+            unitPrice: item.purchasePrice || warehouseProduct.product.purchasePrice, // Use provided price or product's purchase price
+            totalAmount: item.quantity * (item.purchasePrice || warehouseProduct.product.purchasePrice),
+            status: distributionStatus || 'PENDING_ACCEPTANCE',
+            notes: body.notes || null,
+            distributedAt: new Date(distributionDate),
+            distributedBy,
+          },
         });
 
-        if (existingStoreProduct) {
-          // If the product exists, update the stock
-          await tx.product.update({
-            where: { id: existingStoreProduct.id },
-            data: {
-              stock: {
-                increment: item.quantity,
-              },
-              // Optionally update other fields if needed
-              name: warehouseProduct.product.name,
-              categoryId: warehouseProduct.product.categoryId,
-              purchasePrice: warehouseProduct.product.purchasePrice,
-              supplierId: warehouseProduct.product.supplierId,
-            },
-          });
-        } else {
-          // If the product doesn't exist, create it in the target store
-          await tx.product.create({
-            data: {
-              name: warehouseProduct.product.name,
-              productCode: warehouseProduct.product.productCode,
-              categoryId: warehouseProduct.product.categoryId,
-              stock: item.quantity,
-              purchasePrice: warehouseProduct.product.purchasePrice,
-              supplierId: warehouseProduct.product.supplierId,
-              description: warehouseProduct.product.description || null,
-              image: warehouseProduct.image || null,
-              storeId: storeId, // This is the target store
-            }
-          });
-        }
+        distributionRecords.push(distributionRecord);
+      }
+
+      // Return the first distribution record as reference
+      const distribution = distributionRecords[0];
+
+      // Log aktivitas distribusi gudang
+      // Ambil IP address dan user agent dari request
+      const requestHeaders = new Headers(request.headers);
+      const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
+      const userAgent = requestHeaders.get('user-agent') || '';
+
+      // Log untuk setiap item distribusi
+      for (const item of distributionRecords) {
+        await logWarehouseDistribution(
+          session.user.id,
+          item,
+          ipAddress,
+          userAgent,
+          storeId // log ke store tujuan
+        );
       }
 
       return distribution;
@@ -157,9 +154,19 @@ export async function POST(request) {
   }
 }
 
-// GET - Get warehouse distributions with filtering
+// GET - Get warehouse distributions with filtering or get specific distribution by ID
 export async function GET(request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const distributionId = searchParams.get('id');
+    const storeId = searchParams.get('storeId'); // Filter by specific store
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+
+    // Parameter untuk filtering berdasarkan tanggal
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+
     const session = await getServerSession(authOptions);
 
     if (!session) {
@@ -171,15 +178,114 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const storeId = searchParams.get('storeId'); // Filter by specific store
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    // Get the central warehouse for the query
+    const centralWarehouse = await prisma.warehouse.findFirst({
+      where: { name: 'Gudang Pusat' }
+    });
 
-    // Parameter untuk filtering berdasarkan tanggal
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
+    if (!centralWarehouse) {
+      return NextResponse.json({ error: 'Gudang pusat tidak ditemukan' }, { status: 404 });
+    }
 
+    // If ID is provided, return specific distribution for receipt printing
+    // We need to get all distribution records for the same distribution batch
+    // The current implementation creates individual records for each product
+    // So we'll find all records with the same distributedAt time, storeId, and warehouseId
+    if (distributionId) {
+      // First, get the reference distribution to get the distributedAt time, storeId, etc.
+      const referenceDistribution = await prisma.warehouseDistribution.findFirst({
+        where: {
+          id: distributionId,
+          warehouseId: centralWarehouse.id, // Ensure it's from the central warehouse
+        },
+        include: {
+          warehouse: {
+            select: {
+              id: true,
+              name: true,
+            }
+          },
+          store: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            }
+          },
+          product: {
+            select: {
+              id: true,
+              name: true,
+              productCode: true,
+              purchasePrice: true,
+            }
+          },
+          distributedByUser: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+            }
+          },
+        },
+      });
+
+      if (!referenceDistribution) {
+        return NextResponse.json({ error: 'Distribusi tidak ditemukan' }, { status: 404 });
+      }
+
+      // Now get all distribution records with the same distributedAt, storeId, and warehouseId
+      // This captures all items in the same distribution batch
+      const allDistributionItems = await prisma.warehouseDistribution.findMany({
+        where: {
+          distributedAt: referenceDistribution.distributedAt,
+          storeId: referenceDistribution.storeId,
+          warehouseId: referenceDistribution.warehouseId,
+          distributedBy: referenceDistribution.distributedBy,
+        },
+        include: {
+          warehouse: {
+            select: {
+              id: true,
+              name: true,
+            }
+          },
+          store: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            }
+          },
+          product: {
+            select: {
+              id: true,
+              name: true,
+              productCode: true,
+              purchasePrice: true,
+            }
+          },
+          distributedByUser: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+            }
+          },
+        },
+        orderBy: {
+          product: { name: 'asc' }
+        }
+      });
+
+      // Return the first record as the main reference but with all items
+      return NextResponse.json({
+        ...referenceDistribution,
+        items: allDistributionItems
+      });
+    }
+
+    // Otherwise, return list of distributions with pagination
     if (page < 1 || limit < 1 || limit > 100) {
       return NextResponse.json({ error: 'Parameter pagination tidak valid' }, { status: 400 });
     }
@@ -188,7 +294,7 @@ export async function GET(request) {
 
     // Membangun klausa where untuk filtering
     const whereClause = {
-      warehouseId: WAREHOUSE_STORE_ID, // Hanya distribusi dari gudang pusat
+      warehouseId: centralWarehouse.id, // Hanya distribusi dari gudang pusat
       ...(storeId && { storeId }), // Filter berdasarkan toko jika disediakan
       ...(startDate && {
         distributedAt: {
@@ -221,6 +327,14 @@ export async function GET(request) {
               code: true,
             }
           },
+          product: {
+            select: {
+              id: true,
+              name: true,
+              productCode: true,
+              purchasePrice: true,
+            }
+          },
           distributedByUser: {
             select: {
               id: true,
@@ -228,17 +342,6 @@ export async function GET(request) {
               username: true,
             }
           },
-          items: {
-            include: {
-              product: {
-                select: {
-                  id: true,
-                  name: true,
-                  productCode: true,
-                }
-              }
-            }
-          }
         },
         orderBy: {
           distributedAt: 'desc',

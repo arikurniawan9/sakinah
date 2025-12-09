@@ -142,23 +142,22 @@ export const printThermalReceipt = async (receiptData) => {
           </div>
 
           <div class="my-2">
-            ${receiptData.items.map(item => `
-              <div class="text-xs mb-1">
-                <div class="flex justify-between">
-                  <span class="flex-1">${item.name || ''}</span>
-                  <span class="w-16 text-right">${item.quantity}x</span>
+            ${receiptData.items.map(item => {
+              return `
+                <div class="text-xs mb-1">
+                  <div>${item.name}</div>
+                  <div class="flex justify-between mt-1">
+                    <span>${item.quantity} x @${formatCurrencyForPrint(item.originalPrice || 0)}</span>
+                    <span>${formatCurrencyForPrint(item.originalPrice * item.quantity || 0)}</span>
+                  </div>
+                  ${item.originalPrice !== item.priceAfterItemDiscount ?
+                    `<div class="flex justify-between text-right text-xs italic mt-1">
+                      <span></span>
+                      <span class="text-right">Pot:${formatCurrencyForPrint(item.originalPrice - item.priceAfterItemDiscount)}</span>
+                    </div>` : ''}
                 </div>
-                <div class="flex justify-between">
-                  <span class="text-right">@${formatCurrencyForPrint(item.originalPrice || 0)}</span>
-                  <span class="w-16 text-right">${formatCurrencyForPrint(item.originalPrice * item.quantity || 0)}</span>
-                </div>
-                ${item.originalPrice !== item.priceAfterItemDiscount ?
-                  `<div class="flex justify-between text-right text-xs italic">
-                    <span></span>
-                    <span class="text-right">Pot:${formatCurrencyForPrint(item.originalPrice - item.priceAfterItemDiscount)}</span>
-                  </div>` : ''}
-              </div>
-            `).join('')}
+              `;
+            }).join('')}
           </div>
 
           <div class="my-2 border-t pt-1">
@@ -200,14 +199,6 @@ export const printThermalReceipt = async (receiptData) => {
               <span>Bayar</span>
               <span>${formatCurrencyForPrint(receiptData.payment || 0)}</span>
             </div>
-            <!-- Tampilkan status pembayaran -->
-            <div class="flex justify-between text-sm font-bold">
-              ${receiptData.status === 'UNPAID' ? '<span class="text-red-500">Status: HUTANG</span>' :
-                receiptData.status === 'PARTIALLY_PAID' ? '<span class="text-yellow-500">Status: DP</span>' :
-                '<span class="text-green-500">Status: LUNAS</span>'}
-              <span></span>
-            </div>
-
             <!-- Tampilkan sisa hutang jika statusnya hutang -->
             ${receiptData.payment < receiptData.grandTotal && receiptData.grandTotal > 0 ? `
               <div class="flex justify-between text-sm">
@@ -223,6 +214,12 @@ export const printThermalReceipt = async (receiptData) => {
 
           <div class="my-2 border-t pt-1">
             <div class="text-xs text-center">
+              <!-- Tampilkan status pembayaran di atas metode pembayaran -->
+              <div class="flex justify-between text-sm font-bold mb-1">
+                ${receiptData.status === 'UNPAID' ? '<span class="text-red-500 mx-auto">Status: HUTANG</span>' :
+                  receiptData.status === 'PARTIALLY_PAID' ? '<span class="text-yellow-500 mx-auto">Status: DP</span>' :
+                  '<span class="text-green-500 mx-auto">Status: LUNAS</span>'}
+              </div>
               <div class="mb-1">Metode: ${receiptData.paymentMethod || 'CASH'}</div>
               <!-- Tampilkan nomor referensi jika metode pembayaran bukan tunai -->
               ${receiptData.paymentMethod && receiptData.paymentMethod !== 'CASH' && receiptData.referenceNumber ? `

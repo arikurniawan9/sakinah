@@ -1,0 +1,1192 @@
+{
+  "store": {
+    "id": "cmillqdx00001amkjyi99pief",
+    "name": "Toko Pusat",
+    "code": "TK001",
+    "createdAt": "2025-11-30T10:53:04.885Z",
+    "updatedAt": "2025-11-30T10:53:04.885Z"
+  },
+  "categories": [
+    {
+      "id": "cmiog4xnb0000103419e0axcl",
+      "name": "Aksesoris",
+      "description": null,
+      "createdAt": "2025-12-02T10:39:44.471Z",
+      "updatedAt": "2025-12-02T10:39:44.471Z"
+    },
+    {
+      "id": "cmiog4z2v000910346u3r8m1j",
+      "name": "Pakaian Pria",
+      "description": null,
+      "createdAt": "2025-12-02T10:39:46.327Z",
+      "updatedAt": "2025-12-02T10:39:46.327Z"
+    },
+    {
+      "id": "cmiog4zvp000e1034cyz22exo",
+      "name": "Pakaian Wanita",
+      "description": null,
+      "createdAt": "2025-12-02T10:39:47.366Z",
+      "updatedAt": "2025-12-02T10:39:47.366Z"
+    },
+    {
+      "id": "cmiygc3hk000eyfw007opgw07",
+      "name": "Electronics",
+      "description": null,
+      "createdAt": "2025-12-09T10:43:00.392Z",
+      "updatedAt": "2025-12-09T10:43:00.392Z"
+    },
+    {
+      "id": "cmiygc45l000iyfw0rmctmbxb",
+      "name": "Fashion",
+      "description": null,
+      "createdAt": "2025-12-09T10:43:01.257Z",
+      "updatedAt": "2025-12-09T10:43:01.257Z"
+    },
+    {
+      "id": "cmiygc5ii000qyfw0g970xhgw",
+      "name": "Food",
+      "description": null,
+      "createdAt": "2025-12-09T10:43:03.019Z",
+      "updatedAt": "2025-12-09T10:43:03.019Z"
+    },
+    {
+      "id": "cmiygc669000uyfw0h6s9y3q4",
+      "name": "Footwear",
+      "description": null,
+      "createdAt": "2025-12-09T10:43:03.874Z",
+      "updatedAt": "2025-12-09T10:43:03.874Z"
+    },
+    {
+      "id": "cmiygc6wr000yyfw0j3ey4gru",
+      "name": "Books",
+      "description": null,
+      "createdAt": "2025-12-09T10:43:04.828Z",
+      "updatedAt": "2025-12-09T10:43:04.828Z"
+    },
+    {
+      "id": "cmiygc7q90013yfw04jy5b6hv",
+      "name": "Beverages",
+      "description": null,
+      "createdAt": "2025-12-09T10:43:05.890Z",
+      "updatedAt": "2025-12-09T10:43:05.890Z"
+    },
+    {
+      "id": "cmiygc8i80018yfw0g4fyea41",
+      "name": "Personal Care",
+      "description": null,
+      "createdAt": "2025-12-09T10:43:06.897Z",
+      "updatedAt": "2025-12-09T10:43:06.897Z"
+    },
+    {
+      "id": "cmiygc979001dyfw02i12xonh",
+      "name": "Bags",
+      "description": null,
+      "createdAt": "2025-12-09T10:43:07.798Z",
+      "updatedAt": "2025-12-09T10:43:07.798Z"
+    },
+    {
+      "id": "cmiygca4x001iyfw0xsbsdfmb",
+      "name": "Toys",
+      "description": null,
+      "createdAt": "2025-12-09T10:43:09.009Z",
+      "updatedAt": "2025-12-09T10:43:09.009Z"
+    },
+    {
+      "id": "cmiygcc3l001vyfw06u41uynf",
+      "name": "Pharmacy",
+      "description": null,
+      "createdAt": "2025-12-09T10:43:11.553Z",
+      "updatedAt": "2025-12-09T10:43:11.553Z"
+    }
+  ],
+  "products": [
+    {
+      "id": "cmiygcbrq001tyfw0rda5gzk4",
+      "name": "Pasta Gigi Herbal",
+      "productCode": "PG-HRL",
+      "stock": 180,
+      "purchasePrice": 10000,
+      "description": "Pasta gigi dengan ekstrak daun sirih",
+      "createdAt": "2025-12-09T10:42:57.372Z",
+      "updatedAt": "2025-12-09T10:42:57.372Z",
+      "categoryId": "cmiygc8i80018yfw0g4fyea41",
+      "supplierId": "cmiygcbk0001ryfw052a74qgd"
+    },
+    {
+      "id": "cmiog50b0000h1034h9u4h0ud",
+      "name": "Gamis",
+      "productCode": "821212198",
+      "stock": 25,
+      "purchasePrice": 6500000,
+      "description": "Gamis modern",
+      "createdAt": "2025-12-02T10:39:44.145Z",
+      "updatedAt": "2025-12-02T10:39:44.145Z",
+      "categoryId": "cmiog4zvp000e1034cyz22exo",
+      "supplierId": "cmiog501n000f1034cgrtxqph"
+    },
+    {
+      "id": "cmiog50yi000l1034itv1n89r",
+      "name": "Roti Tawar Tropicana Slim",
+      "productCode": "821212983",
+      "stock": 197,
+      "purchasePrice": 15000,
+      "description": "Roti gandum sehat tanpa gula",
+      "createdAt": "2025-12-02T10:39:44.145Z",
+      "updatedAt": "2025-12-03T01:18:47.755Z",
+      "categoryId": "cmiog4z2v000910346u3r8m1j",
+      "supplierId": "cmiog50pk000j1034bl4cztxx"
+    },
+    {
+      "id": "cmiog4yqx00071034zi5fuuxx",
+      "name": "Smartphone Samsung Galaxy A14",
+      "productCode": "821212121",
+      "stock": 50,
+      "purchasePrice": 2500000,
+      "description": "Smartphone Android dengan kamera 50MP",
+      "createdAt": "2025-12-02T10:39:44.145Z",
+      "updatedAt": "2025-12-09T10:38:04.479Z",
+      "categoryId": "cmiog4xnb0000103419e0axcl",
+      "supplierId": "cmiog4yi0000510347v1k4mxw"
+    },
+    {
+      "id": "cmiog4zjg000c10349lr2vhue",
+      "name": "Kemeja Denim Pria",
+      "productCode": "821212132",
+      "stock": 93,
+      "purchasePrice": 85000,
+      "description": "Kemeja denim berkualitas tinggi",
+      "createdAt": "2025-12-02T10:39:44.145Z",
+      "updatedAt": "2025-12-04T05:10:08.569Z",
+      "categoryId": "cmiog4z2v000910346u3r8m1j",
+      "supplierId": "cmiog4z9a000a1034wjbrcm1q"
+    },
+    {
+      "id": "cmiygcchj001yyfw0jvcincwv",
+      "name": "Obat Flu Biasa",
+      "productCode": "OFB-004",
+      "stock": 200,
+      "purchasePrice": 8000,
+      "description": "Obat flu aman dan efektif",
+      "createdAt": "2025-12-09T10:42:57.372Z",
+      "updatedAt": "2025-12-09T10:42:57.372Z",
+      "categoryId": "cmiygcc3l001vyfw06u41uynf",
+      "supplierId": "cmiygcc9b001wyfw0c8xe22xr"
+    },
+    {
+      "id": "cmiygc3t2000gyfw0a95vbqkv",
+      "name": "Smartphone Samsung Galaxy A14",
+      "productCode": "SM-A14",
+      "stock": 50,
+      "purchasePrice": 2500000,
+      "description": "Smartphone Android dengan kamera 50MP",
+      "createdAt": "2025-12-09T10:42:57.371Z",
+      "updatedAt": "2025-12-09T10:42:57.371Z",
+      "categoryId": "cmiygc3hk000eyfw007opgw07",
+      "supplierId": "cmiog4yi0000510347v1k4mxw"
+    },
+    {
+      "id": "cmiygcd4t0022yfw00gzbauu2",
+      "name": "Celana Jeans Wanita",
+      "productCode": "CJW-002",
+      "stock": 80,
+      "purchasePrice": 120000,
+      "description": "Celana jeans wanita modern",
+      "createdAt": "2025-12-09T10:42:57.372Z",
+      "updatedAt": "2025-12-09T10:42:57.372Z",
+      "categoryId": "cmiygc45l000iyfw0rmctmbxb",
+      "supplierId": "cmiygccwe0020yfw0qxr38dyi"
+    },
+    {
+      "id": "cmitpqmql0008efsd7vkvokif",
+      "name": "adas adaf afa afas fas f afasfawawa",
+      "productCode": "434343",
+      "stock": 16,
+      "purchasePrice": 25000,
+      "description": "",
+      "createdAt": "2025-12-06T03:07:24.190Z",
+      "updatedAt": "2025-12-06T03:09:23.171Z",
+      "categoryId": "cmiog4xnb0000103419e0axcl",
+      "supplierId": "cmiog4yi0000510347v1k4mxw"
+    },
+    {
+      "id": "cmiygc4js000kyfw08oaca8z2",
+      "name": "Kemeja Denim Pria",
+      "productCode": "KDP-001",
+      "stock": 100,
+      "purchasePrice": 85000,
+      "description": "Kemeja denim berkualitas tinggi",
+      "createdAt": "2025-12-09T10:42:57.371Z",
+      "updatedAt": "2025-12-09T10:42:57.371Z",
+      "categoryId": "cmiygc45l000iyfw0rmctmbxb",
+      "supplierId": "cmiog4z9a000a1034wjbrcm1q"
+    },
+    {
+      "id": "cmiog4y2w00031034xoe0han1",
+      "name": "Sepatu Sport Nike Air Max",
+      "productCode": "721212121",
+      "stock": 56,
+      "purchasePrice": 450000,
+      "description": "Sepatu olahraga nyaman dan stylish",
+      "createdAt": "2025-12-02T10:39:44.145Z",
+      "updatedAt": "2025-12-06T04:14:13.620Z",
+      "categoryId": "cmiog4xnb0000103419e0axcl",
+      "supplierId": "cmiog4xts00011034jvpifwm1"
+    },
+    {
+      "id": "cmiygc57b000oyfw08t34ocdy",
+      "name": "Laptop ASUS Vivobook 14",
+      "productCode": "A412",
+      "stock": 25,
+      "purchasePrice": 6500000,
+      "description": "Laptop tipis dan ringan untuk produktivitas",
+      "createdAt": "2025-12-09T10:42:57.371Z",
+      "updatedAt": "2025-12-09T10:42:57.371Z",
+      "categoryId": "cmiygc3hk000eyfw007opgw07",
+      "supplierId": "cmiygc4y3000myfw039eu3592"
+    },
+    {
+      "id": "cmiygc5ua000syfw0i7ba5lhe",
+      "name": "Roti Tawar Tropicana Slim",
+      "productCode": "RT-003",
+      "stock": 200,
+      "purchasePrice": 15000,
+      "description": "Roti gandum sehat tanpa gula",
+      "createdAt": "2025-12-09T10:42:57.371Z",
+      "updatedAt": "2025-12-09T10:42:57.371Z",
+      "categoryId": "cmiygc5ii000qyfw0g970xhgw",
+      "supplierId": "cmiog50pk000j1034bl4cztxx"
+    },
+    {
+      "id": "cmiygc6lq000wyfw0yj18w4wu",
+      "name": "Sepatu Sport Nike Air Max",
+      "productCode": "SN-MAX",
+      "stock": 60,
+      "purchasePrice": 450000,
+      "description": "Sepatu olahraga nyaman dan stylish",
+      "createdAt": "2025-12-09T10:42:57.371Z",
+      "updatedAt": "2025-12-09T10:42:57.371Z",
+      "categoryId": "cmiygc669000uyfw0h6s9y3q4",
+      "supplierId": "cmiog4xts00011034jvpifwm1"
+    },
+    {
+      "id": "cmiygc7e60011yfw0cyr24214",
+      "name": "Buku Novel Best Seller",
+      "productCode": "BN-BS001",
+      "stock": 75,
+      "purchasePrice": 95000,
+      "description": "Novel terlaris terbitan tahun ini",
+      "createdAt": "2025-12-09T10:42:57.371Z",
+      "updatedAt": "2025-12-09T10:42:57.371Z",
+      "categoryId": "cmiygc6wr000yyfw0j3ey4gru",
+      "supplierId": "cmiygc73e000zyfw0sbhsd5y2"
+    },
+    {
+      "id": "cmiygc84y0016yfw0lqzi6oy2",
+      "name": "Kopi Arabica Gayo Premium",
+      "productCode": "KA-GAYO",
+      "stock": 90,
+      "purchasePrice": 45000,
+      "description": "Kopi organik dari dataran tinggi Aceh",
+      "createdAt": "2025-12-09T10:42:57.371Z",
+      "updatedAt": "2025-12-09T10:42:57.371Z",
+      "categoryId": "cmiygc7q90013yfw04jy5b6hv",
+      "supplierId": "cmiygc7wk0014yfw0oibdetyp"
+    },
+    {
+      "id": "cmiygc8wj001byfw0admd1ghi",
+      "name": "Sampo Anti Ketombe",
+      "productCode": "SANK-002",
+      "stock": 120,
+      "purchasePrice": 12000,
+      "description": "Sampo herbal untuk kulit kepala sehat",
+      "createdAt": "2025-12-09T10:42:57.372Z",
+      "updatedAt": "2025-12-09T10:42:57.372Z",
+      "categoryId": "cmiygc8i80018yfw0g4fyea41",
+      "supplierId": "cmiygc8nu0019yfw0gsmoa06x"
+    },
+    {
+      "id": "cmiygc9kx001gyfw0fv8b7ip2",
+      "name": "Tas Ransel Laptop Elegant",
+      "productCode": "TR-ELEG",
+      "stock": 40,
+      "purchasePrice": 200000,
+      "description": "Tas ransel multifungsi untuk laptop",
+      "createdAt": "2025-12-09T10:42:57.372Z",
+      "updatedAt": "2025-12-09T10:42:57.372Z",
+      "categoryId": "cmiygc979001dyfw02i12xonh",
+      "supplierId": "cmiygc9cv001eyfw05the3beu"
+    },
+    {
+      "id": "cmiygcai5001lyfw0j9eo7qkr",
+      "name": "Mainan Edukatif LEGO Duplo",
+      "productCode": "ML-DPL",
+      "stock": 30,
+      "purchasePrice": 180000,
+      "description": "Mainan edukatif untuk anak-anak",
+      "createdAt": "2025-12-09T10:42:57.372Z",
+      "updatedAt": "2025-12-09T10:42:57.372Z",
+      "categoryId": "cmiygca4x001iyfw0xsbsdfmb",
+      "supplierId": "cmiygcaaa001jyfw0u4tv2jte"
+    },
+    {
+      "id": "cmiygcb5k001pyfw07drot4ku",
+      "name": "Susu Segar Ultra Milk",
+      "productCode": "SUM-004",
+      "stock": 150,
+      "purchasePrice": 8000,
+      "description": "Susu segar UHT berkualitas",
+      "createdAt": "2025-12-09T10:42:57.372Z",
+      "updatedAt": "2025-12-09T10:42:57.372Z",
+      "categoryId": "cmiygc5ii000qyfw0g970xhgw",
+      "supplierId": "cmiygcax7001nyfw0ledyk76b"
+    },
+    {
+      "id": "cmiygcds60026yfw03i7zdyh8",
+      "name": "Sabun Mandi Cair",
+      "productCode": "SMC-003",
+      "stock": 110,
+      "purchasePrice": 15000,
+      "description": "Sabun cair dengan ekstrak lidah buaya",
+      "createdAt": "2025-12-09T10:42:57.372Z",
+      "updatedAt": "2025-12-09T10:42:57.372Z",
+      "categoryId": "cmiygc8i80018yfw0g4fyea41",
+      "supplierId": "cmiygcdk00024yfw0lkhpwt6l"
+    }
+  ],
+  "suppliers": [
+    {
+      "id": "cmiog4xts00011034jvpifwm1",
+      "code": "PT AT",
+      "name": "PT Athlete Wear",
+      "contactPerson": null,
+      "address": null,
+      "phone": null,
+      "email": null,
+      "createdAt": "2025-12-02T10:39:44.704Z",
+      "updatedAt": "2025-12-02T10:39:44.704Z"
+    },
+    {
+      "id": "cmiog4yi0000510347v1k4mxw",
+      "code": "PT JA",
+      "name": "PT Jaya Elektronik",
+      "contactPerson": null,
+      "address": null,
+      "phone": null,
+      "email": null,
+      "createdAt": "2025-12-02T10:39:45.576Z",
+      "updatedAt": "2025-12-02T10:39:45.576Z"
+    },
+    {
+      "id": "cmiog4z9a000a1034wjbrcm1q",
+      "code": "PT FA",
+      "name": "PT Fashion Indo",
+      "contactPerson": null,
+      "address": null,
+      "phone": null,
+      "email": null,
+      "createdAt": "2025-12-02T10:39:46.559Z",
+      "updatedAt": "2025-12-02T10:39:46.559Z"
+    },
+    {
+      "id": "cmiog501n000f1034cgrtxqph",
+      "code": "PT RA",
+      "name": "PT RABBANI",
+      "contactPerson": null,
+      "address": null,
+      "phone": null,
+      "email": null,
+      "createdAt": "2025-12-02T10:39:47.579Z",
+      "updatedAt": "2025-12-02T10:39:47.579Z"
+    },
+    {
+      "id": "cmiog50pk000j1034bl4cztxx",
+      "code": "PT TR",
+      "name": "PT Tropicana Sehat",
+      "contactPerson": null,
+      "address": null,
+      "phone": null,
+      "email": null,
+      "createdAt": "2025-12-02T10:39:48.440Z",
+      "updatedAt": "2025-12-02T10:39:48.440Z"
+    },
+    {
+      "id": "cmiygc4y3000myfw039eu3592",
+      "code": "PT TE",
+      "name": "PT Tech Solution",
+      "contactPerson": null,
+      "address": null,
+      "phone": null,
+      "email": null,
+      "createdAt": "2025-12-09T10:43:02.283Z",
+      "updatedAt": "2025-12-09T10:43:02.283Z"
+    },
+    {
+      "id": "cmiygc73e000zyfw0sbhsd5y2",
+      "code": "PT LI",
+      "name": "PT Literasi Nusantara",
+      "contactPerson": null,
+      "address": null,
+      "phone": null,
+      "email": null,
+      "createdAt": "2025-12-09T10:43:05.067Z",
+      "updatedAt": "2025-12-09T10:43:05.067Z"
+    },
+    {
+      "id": "cmiygc7wk0014yfw0oibdetyp",
+      "code": "PT CO",
+      "name": "PT Coffee Plantation",
+      "contactPerson": null,
+      "address": null,
+      "phone": null,
+      "email": null,
+      "createdAt": "2025-12-09T10:43:06.116Z",
+      "updatedAt": "2025-12-09T10:43:06.116Z"
+    },
+    {
+      "id": "cmiygc8nu0019yfw0gsmoa06x",
+      "code": "PT BE",
+      "name": "PT Beauty Care",
+      "contactPerson": null,
+      "address": null,
+      "phone": null,
+      "email": null,
+      "createdAt": "2025-12-09T10:43:07.099Z",
+      "updatedAt": "2025-12-09T10:43:07.099Z"
+    },
+    {
+      "id": "cmiygc9cv001eyfw05the3beu",
+      "code": "PT BA",
+      "name": "PT Bag Collection",
+      "contactPerson": null,
+      "address": null,
+      "phone": null,
+      "email": null,
+      "createdAt": "2025-12-09T10:43:07.999Z",
+      "updatedAt": "2025-12-09T10:43:07.999Z"
+    },
+    {
+      "id": "cmiygcaaa001jyfw0u4tv2jte",
+      "code": "PT FU",
+      "name": "PT Fun Learning",
+      "contactPerson": null,
+      "address": null,
+      "phone": null,
+      "email": null,
+      "createdAt": "2025-12-09T10:43:09.202Z",
+      "updatedAt": "2025-12-09T10:43:09.202Z"
+    },
+    {
+      "id": "cmiygcax7001nyfw0ledyk76b",
+      "code": "PT DA",
+      "name": "PT Dairy Indonesia",
+      "contactPerson": null,
+      "address": null,
+      "phone": null,
+      "email": null,
+      "createdAt": "2025-12-09T10:43:10.027Z",
+      "updatedAt": "2025-12-09T10:43:10.027Z"
+    },
+    {
+      "id": "cmiygcbk0001ryfw052a74qgd",
+      "code": "PT SM",
+      "name": "PT Smile Care",
+      "contactPerson": null,
+      "address": null,
+      "phone": null,
+      "email": null,
+      "createdAt": "2025-12-09T10:43:10.848Z",
+      "updatedAt": "2025-12-09T10:43:10.848Z"
+    },
+    {
+      "id": "cmiygcc9b001wyfw0c8xe22xr",
+      "code": "PT ME",
+      "name": "PT Medika Health",
+      "contactPerson": null,
+      "address": null,
+      "phone": null,
+      "email": null,
+      "createdAt": "2025-12-09T10:43:11.760Z",
+      "updatedAt": "2025-12-09T10:43:11.760Z"
+    },
+    {
+      "id": "cmiygccwe0020yfw0qxr38dyi",
+      "code": "PT MO",
+      "name": "PT Mode Raya",
+      "contactPerson": null,
+      "address": null,
+      "phone": null,
+      "email": null,
+      "createdAt": "2025-12-09T10:43:12.590Z",
+      "updatedAt": "2025-12-09T10:43:12.590Z"
+    },
+    {
+      "id": "cmiygcdk00024yfw0lkhpwt6l",
+      "code": "PT HY",
+      "name": "PT Hygiene Plus",
+      "contactPerson": null,
+      "address": null,
+      "phone": null,
+      "email": null,
+      "createdAt": "2025-12-09T10:43:13.441Z",
+      "updatedAt": "2025-12-09T10:43:13.441Z"
+    }
+  ],
+  "members": [
+    {
+      "id": "cmillqec20005amkj2hczvyct",
+      "code": "UMUM-TK001",
+      "name": "Pelanggan Umum",
+      "phone": "0000",
+      "address": "N/A",
+      "membershipType": "GENERAL",
+      "discount": 0,
+      "createdAt": "2025-11-30T10:53:05.426Z",
+      "updatedAt": "2025-11-30T10:53:05.426Z"
+    },
+    {
+      "id": "cmiogitya000x1034y053hw9f",
+      "code": "MEM2955728",
+      "name": "ari",
+      "phone": "085938594449",
+      "address": "cigalumpit",
+      "membershipType": "SILVER",
+      "discount": 5,
+      "createdAt": "2025-12-02T10:50:32.867Z",
+      "updatedAt": "2025-12-02T10:50:32.867Z"
+    }
+  ],
+  "sales": [
+    {
+      "id": "cmiog8yum000p10344k1khip9",
+      "invoiceNumber": "2025120200001",
+      "cashierId": "cmio9fmpa0000zhk8gzzy7azq",
+      "attendantId": "cmioadg3a000ezhk8cdf447mn",
+      "memberId": "cmillqec20005amkj2hczvyct",
+      "date": "2025-12-02T10:42:52.655Z",
+      "total": 150000,
+      "discount": 0,
+      "additionalDiscount": 0,
+      "tax": 0,
+      "payment": 150000,
+      "change": 0,
+      "status": "PAID",
+      "createdAt": "2025-12-02T10:42:52.655Z",
+      "paymentMethod": "CASH",
+      "referenceNumber": null,
+      "saleDetails": [
+        {
+          "id": "cmiog8yum000r1034u1wv8faq",
+          "productId": "cmiog4zjg000c10349lr2vhue",
+          "quantity": 1,
+          "price": 150000,
+          "discount": 0,
+          "subtotal": 150000
+        }
+      ]
+    },
+    {
+      "id": "cmiogjgow00101034sc2s37aa",
+      "invoiceNumber": "2025120200002",
+      "cashierId": "cmio9fmpa0000zhk8gzzy7azq",
+      "attendantId": "cmioait02000hzhk82av9b0f3",
+      "memberId": "cmiogitya000x1034y053hw9f",
+      "date": "2025-12-02T10:51:02.336Z",
+      "total": 551000,
+      "discount": 29000,
+      "additionalDiscount": 0,
+      "tax": 0,
+      "payment": 0,
+      "change": 0,
+      "status": "PAID",
+      "createdAt": "2025-12-02T10:51:02.336Z",
+      "paymentMethod": "CASH",
+      "referenceNumber": null,
+      "saleDetails": [
+        {
+          "id": "cmiogjgow001210344x3u69hi",
+          "productId": "cmiog4y2w00031034xoe0han1",
+          "quantity": 1,
+          "price": 580000,
+          "discount": 0,
+          "subtotal": 580000
+        }
+      ]
+    },
+    {
+      "id": "cmiogzwd300028qm4zai2cvwn",
+      "invoiceNumber": "2025120200003",
+      "cashierId": "cmio9fmpa0000zhk8gzzy7azq",
+      "attendantId": "cmioadg3a000ezhk8cdf447mn",
+      "memberId": "cmiogitya000x1034y053hw9f",
+      "date": "2025-12-02T11:03:49.143Z",
+      "total": 3040000,
+      "discount": 160000,
+      "additionalDiscount": 0,
+      "tax": 0,
+      "payment": 100000,
+      "change": 0,
+      "status": "PAID",
+      "createdAt": "2025-12-02T11:03:49.143Z",
+      "paymentMethod": "CASH",
+      "referenceNumber": null,
+      "saleDetails": [
+        {
+          "id": "cmiogzwd300048qm4k4o1ohf0",
+          "productId": "cmiog4yqx00071034zi5fuuxx",
+          "quantity": 1,
+          "price": 3200000,
+          "discount": 0,
+          "subtotal": 3200000
+        }
+      ]
+    },
+    {
+      "id": "cmiotomin0002abfatt9p0vuw",
+      "invoiceNumber": "2025120200004",
+      "cashierId": "cmio9fmpa0000zhk8gzzy7azq",
+      "attendantId": "cmioait02000hzhk82av9b0f3",
+      "memberId": "cmillqec20005amkj2hczvyct",
+      "date": "2025-12-02T16:58:58.175Z",
+      "total": 150000,
+      "discount": 0,
+      "additionalDiscount": 0,
+      "tax": 0,
+      "payment": 150000,
+      "change": 0,
+      "status": "PAID",
+      "createdAt": "2025-12-02T16:58:58.175Z",
+      "paymentMethod": "TRANSFER",
+      "referenceNumber": null,
+      "saleDetails": [
+        {
+          "id": "cmiotomin0004abfa9prjlvhu",
+          "productId": "cmiog4zjg000c10349lr2vhue",
+          "quantity": 1,
+          "price": 150000,
+          "discount": 0,
+          "subtotal": 150000
+        }
+      ]
+    },
+    {
+      "id": "cmiou2q4q0009abfaruhm9ylf",
+      "invoiceNumber": "2025120300001",
+      "cashierId": "cmio9fmpa0000zhk8gzzy7azq",
+      "attendantId": "cmioait02000hzhk82av9b0f3",
+      "memberId": "cmillqec20005amkj2hczvyct",
+      "date": "2025-12-02T17:09:56.042Z",
+      "total": 172000,
+      "discount": 0,
+      "additionalDiscount": 0,
+      "tax": 0,
+      "payment": 172000,
+      "change": 0,
+      "status": "PAID",
+      "createdAt": "2025-12-02T17:09:56.042Z",
+      "paymentMethod": "QRIS",
+      "referenceNumber": null,
+      "saleDetails": [
+        {
+          "id": "cmiou2q4q000babfab54aeno2",
+          "productId": "cmiog50yi000l1034itv1n89r",
+          "quantity": 1,
+          "price": 22000,
+          "discount": 0,
+          "subtotal": 22000
+        },
+        {
+          "id": "cmiou2q4q000cabfakv59b72h",
+          "productId": "cmiog4zjg000c10349lr2vhue",
+          "quantity": 1,
+          "price": 150000,
+          "discount": 0,
+          "subtotal": 150000
+        }
+      ]
+    },
+    {
+      "id": "cmip9zbir00024thy4p6xg81r",
+      "invoiceNumber": "2025120300002",
+      "cashierId": "cmio9fmpa0000zhk8gzzy7azq",
+      "attendantId": "cmioait02000hzhk82av9b0f3",
+      "memberId": "cmillqec20005amkj2hczvyct",
+      "date": "2025-12-03T00:35:10.996Z",
+      "total": 172000,
+      "discount": 0,
+      "additionalDiscount": 0,
+      "tax": 0,
+      "payment": 172000,
+      "change": 0,
+      "status": "PAID",
+      "createdAt": "2025-12-03T00:35:10.996Z",
+      "paymentMethod": "TRANSFER",
+      "referenceNumber": null,
+      "saleDetails": [
+        {
+          "id": "cmip9zbir00044thyczwssbgl",
+          "productId": "cmiog50yi000l1034itv1n89r",
+          "quantity": 1,
+          "price": 22000,
+          "discount": 0,
+          "subtotal": 22000
+        },
+        {
+          "id": "cmip9zbir00054thy8hivflwz",
+          "productId": "cmiog4zjg000c10349lr2vhue",
+          "quantity": 1,
+          "price": 150000,
+          "discount": 0,
+          "subtotal": 150000
+        }
+      ]
+    },
+    {
+      "id": "cmipbevzt0002ck090w4qabkb",
+      "invoiceNumber": "2025120300003",
+      "cashierId": "cmio9fmpa0000zhk8gzzy7azq",
+      "attendantId": "cmioait02000hzhk82av9b0f3",
+      "memberId": "cmillqec20005amkj2hczvyct",
+      "date": "2025-12-03T01:15:16.986Z",
+      "total": 150000,
+      "discount": 0,
+      "additionalDiscount": 0,
+      "tax": 0,
+      "payment": 150000,
+      "change": 0,
+      "status": "PAID",
+      "createdAt": "2025-12-03T01:15:16.986Z",
+      "paymentMethod": "TRANSFER",
+      "referenceNumber": "3232322342",
+      "saleDetails": [
+        {
+          "id": "cmipbevzu0004ck09zh7pt0e9",
+          "productId": "cmiog4zjg000c10349lr2vhue",
+          "quantity": 1,
+          "price": 150000,
+          "discount": 0,
+          "subtotal": 150000
+        }
+      ]
+    },
+    {
+      "id": "cmipbjekm0009ck09u6zxnsco",
+      "invoiceNumber": "2025120300004",
+      "cashierId": "cmio9fmpa0000zhk8gzzy7azq",
+      "attendantId": "cmioait02000hzhk82av9b0f3",
+      "memberId": "cmillqec20005amkj2hczvyct",
+      "date": "2025-12-03T01:18:47.686Z",
+      "total": 22000,
+      "discount": 0,
+      "additionalDiscount": 0,
+      "tax": 0,
+      "payment": 22000,
+      "change": 0,
+      "status": "PAID",
+      "createdAt": "2025-12-03T01:18:47.686Z",
+      "paymentMethod": "TRANSFER",
+      "referenceNumber": "879876576",
+      "saleDetails": [
+        {
+          "id": "cmipbjekm000bck09wwvc25rp",
+          "productId": "cmiog50yi000l1034itv1n89r",
+          "quantity": 1,
+          "price": 22000,
+          "discount": 0,
+          "subtotal": 22000
+        }
+      ]
+    },
+    {
+      "id": "cmipc76w8000gck09l8xcydpf",
+      "invoiceNumber": "2025120300005",
+      "cashierId": "cmio9fmpa0000zhk8gzzy7azq",
+      "attendantId": "cmioait02000hzhk82av9b0f3",
+      "memberId": "cmiogitya000x1034y053hw9f",
+      "date": "2025-12-03T01:37:17.480Z",
+      "total": 142500,
+      "discount": 7500,
+      "additionalDiscount": 0,
+      "tax": 0,
+      "payment": 20000,
+      "change": 0,
+      "status": "PAID",
+      "createdAt": "2025-12-03T01:37:17.480Z",
+      "paymentMethod": "QRIS",
+      "referenceNumber": "1234455",
+      "saleDetails": [
+        {
+          "id": "cmipc76w8000ick09w6xz3zc0",
+          "productId": "cmiog4zjg000c10349lr2vhue",
+          "quantity": 1,
+          "price": 150000,
+          "discount": 0,
+          "subtotal": 150000
+        }
+      ]
+    },
+    {
+      "id": "cmiqz8rkt0002inqan6m7elns",
+      "invoiceNumber": "2025120400001",
+      "cashierId": "cmio9fmpa0000zhk8gzzy7azq",
+      "attendantId": "cmioait02000hzhk82av9b0f3",
+      "memberId": "cmillqec20005amkj2hczvyct",
+      "date": "2025-12-04T05:10:08.285Z",
+      "total": 150000,
+      "discount": 0,
+      "additionalDiscount": 0,
+      "tax": 0,
+      "payment": 150000,
+      "change": 0,
+      "status": "PAID",
+      "createdAt": "2025-12-04T05:10:08.285Z",
+      "paymentMethod": "CASH",
+      "referenceNumber": null,
+      "saleDetails": [
+        {
+          "id": "cmiqz8rkt0004inqa7atjuhkv",
+          "productId": "cmiog4zjg000c10349lr2vhue",
+          "quantity": 1,
+          "price": 150000,
+          "discount": 0,
+          "subtotal": 150000
+        }
+      ]
+    },
+    {
+      "id": "cmitnxq7h0002zdjnyde3tund",
+      "invoiceNumber": "2025120600001",
+      "cashierId": "cmio9vr3x0003zhk8pu2val5j",
+      "attendantId": "cmioadg3a000ezhk8cdf447mn",
+      "memberId": "cmillqec20005amkj2hczvyct",
+      "date": "2025-12-06T02:16:56.046Z",
+      "total": 580000,
+      "discount": 0,
+      "additionalDiscount": 0,
+      "tax": 0,
+      "payment": 580000,
+      "change": 0,
+      "status": "PAID",
+      "createdAt": "2025-12-06T02:16:56.046Z",
+      "paymentMethod": "CASH",
+      "referenceNumber": null,
+      "saleDetails": [
+        {
+          "id": "cmitnxq7h0004zdjnj5n5ajgh",
+          "productId": "cmiog4y2w00031034xoe0han1",
+          "quantity": 1,
+          "price": 580000,
+          "discount": 0,
+          "subtotal": 580000
+        }
+      ]
+    },
+    {
+      "id": "cmitounk60002efsdp0lxarvv",
+      "invoiceNumber": "2025120600002",
+      "cashierId": "cmio9vr3x0003zhk8pu2val5j",
+      "attendantId": "cmioadg3a000ezhk8cdf447mn",
+      "memberId": "cmillqec20005amkj2hczvyct",
+      "date": "2025-12-06T02:42:32.262Z",
+      "total": 3200000,
+      "discount": 0,
+      "additionalDiscount": 0,
+      "tax": 0,
+      "payment": 3200000,
+      "change": 0,
+      "status": "PAID",
+      "createdAt": "2025-12-06T02:42:32.262Z",
+      "paymentMethod": "TRANSFER",
+      "referenceNumber": "212132321",
+      "saleDetails": [
+        {
+          "id": "cmitounk60004efsdxxk7sfj5",
+          "productId": "cmiog4yqx00071034zi5fuuxx",
+          "quantity": 1,
+          "price": 3200000,
+          "discount": 0,
+          "subtotal": 3200000
+        }
+      ]
+    },
+    {
+      "id": "cmitpt6h6000fefsdexqdprzh",
+      "invoiceNumber": "2025120600003",
+      "cashierId": "cmio9vr3x0003zhk8pu2val5j",
+      "attendantId": "cmioadg3a000ezhk8cdf447mn",
+      "memberId": "cmillqec20005amkj2hczvyct",
+      "date": "2025-12-06T03:09:23.082Z",
+      "total": 112000,
+      "discount": 8000,
+      "additionalDiscount": 0,
+      "tax": 0,
+      "payment": 112000,
+      "change": 0,
+      "status": "PAID",
+      "createdAt": "2025-12-06T03:09:23.082Z",
+      "paymentMethod": "CASH",
+      "referenceNumber": null,
+      "saleDetails": [
+        {
+          "id": "cmitpt6h6000hefsdexdjxlvf",
+          "productId": "cmitpqmql0008efsd7vkvokif",
+          "quantity": 4,
+          "price": 28000,
+          "discount": 2000,
+          "subtotal": 112000
+        }
+      ]
+    },
+    {
+      "id": "cmits4b9z0002w6p84tteqj5e",
+      "invoiceNumber": "2025120600004",
+      "cashierId": "cmio9fmpa0000zhk8gzzy7azq",
+      "attendantId": "cmioait02000hzhk82av9b0f3",
+      "memberId": "cmillqec20005amkj2hczvyct",
+      "date": "2025-12-06T04:14:01.751Z",
+      "total": 580000,
+      "discount": 0,
+      "additionalDiscount": 0,
+      "tax": 0,
+      "payment": 580000,
+      "change": 0,
+      "status": "PAID",
+      "createdAt": "2025-12-06T04:14:01.751Z",
+      "paymentMethod": "TRANSFER",
+      "referenceNumber": "1234567890",
+      "saleDetails": [
+        {
+          "id": "cmits4b9z0004w6p8b7wm0a7o",
+          "productId": "cmiog4y2w00031034xoe0han1",
+          "quantity": 1,
+          "price": 580000,
+          "discount": 0,
+          "subtotal": 580000
+        }
+      ]
+    },
+    {
+      "id": "cmits4k7j0007w6p8bu3e8pt2",
+      "invoiceNumber": "2025120600005",
+      "cashierId": "cmio9fmpa0000zhk8gzzy7azq",
+      "attendantId": "cmioait02000hzhk82av9b0f3",
+      "memberId": "cmillqec20005amkj2hczvyct",
+      "date": "2025-12-06T04:14:13.327Z",
+      "total": 580000,
+      "discount": 0,
+      "additionalDiscount": 0,
+      "tax": 0,
+      "payment": 580000,
+      "change": 0,
+      "status": "PAID",
+      "createdAt": "2025-12-06T04:14:13.327Z",
+      "paymentMethod": "CASH",
+      "referenceNumber": null,
+      "saleDetails": [
+        {
+          "id": "cmits4k7j0009w6p8sqxlxogf",
+          "productId": "cmiog4y2w00031034xoe0han1",
+          "quantity": 1,
+          "price": 580000,
+          "discount": 0,
+          "subtotal": 580000
+        }
+      ]
+    }
+  ],
+  "purchases": [],
+  "expenses": [],
+  "expenseCategories": [],
+  "settings": {
+    "id": "cmioa8kk9000dzhk83d8y7mn5",
+    "shopName": "Toko Baru",
+    "address": "",
+    "phone": "",
+    "themeColor": "#3c8dbc",
+    "createdAt": "2025-12-02T07:54:36.441Z",
+    "updatedAt": "2025-12-02T07:54:36.441Z"
+  },
+  "auditLogs": [
+    {
+      "id": "cmipbew5o0006ck09wwipaw87",
+      "userId": "cmio9fmpa0000zhk8gzzy7azq",
+      "action": "CREATE",
+      "entity": "Sale",
+      "entityId": "cmipbevzt0002ck090w4qabkb",
+      "oldValue": null,
+      "newValue": "{\"id\":\"cmipbevzt0002ck090w4qabkb\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"invoiceNumber\":\"2025120300003\",\"cashierId\":\"cmio9fmpa0000zhk8gzzy7azq\",\"attendantId\":\"cmioait02000hzhk82av9b0f3\",\"memberId\":\"cmillqec20005amkj2hczvyct\",\"date\":\"2025-12-03T01:15:16.986Z\",\"total\":150000,\"discount\":0,\"additionalDiscount\":0,\"tax\":0,\"payment\":150000,\"change\":0,\"status\":\"PAID\",\"createdAt\":\"2025-12-03T01:15:16.986Z\",\"paymentMethod\":\"TRANSFER\",\"referenceNumber\":\"3232322342\",\"saleDetails\":[{\"id\":\"cmipbevzu0004ck09zh7pt0e9\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"saleId\":\"cmipbevzt0002ck090w4qabkb\",\"productId\":\"cmiog4zjg000c10349lr2vhue\",\"quantity\":1,\"price\":150000,\"discount\":0,\"subtotal\":150000,\"product\":{\"id\":\"cmiog4zjg000c10349lr2vhue\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"categoryId\":\"cmiog4z2v000910346u3r8m1j\",\"name\":\"Kemeja Denim Pria\",\"productCode\":\"821212132\",\"stock\":96,\"purchasePrice\":85000,\"supplierId\":\"cmiog4z9a000a1034wjbrcm1q\",\"image\":null,\"createdAt\":\"2025-12-02T10:39:44.145Z\",\"updatedAt\":\"2025-12-03T00:35:11.511Z\",\"description\":\"Kemeja denim berkualitas tinggi\"}}]}",
+      "ipAddress": null,
+      "userAgent": null,
+      "createdAt": "2025-12-03T01:15:17.196Z"
+    },
+    {
+      "id": "cmipbjepz000dck099ruxggxp",
+      "userId": "cmio9fmpa0000zhk8gzzy7azq",
+      "action": "CREATE",
+      "entity": "Sale",
+      "entityId": "cmipbjekm0009ck09u6zxnsco",
+      "oldValue": null,
+      "newValue": "{\"id\":\"cmipbjekm0009ck09u6zxnsco\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"invoiceNumber\":\"2025120300004\",\"cashierId\":\"cmio9fmpa0000zhk8gzzy7azq\",\"attendantId\":\"cmioait02000hzhk82av9b0f3\",\"memberId\":\"cmillqec20005amkj2hczvyct\",\"date\":\"2025-12-03T01:18:47.686Z\",\"total\":22000,\"discount\":0,\"additionalDiscount\":0,\"tax\":0,\"payment\":22000,\"change\":0,\"status\":\"PAID\",\"createdAt\":\"2025-12-03T01:18:47.686Z\",\"paymentMethod\":\"TRANSFER\",\"referenceNumber\":\"879876576\",\"saleDetails\":[{\"id\":\"cmipbjekm000bck09wwvc25rp\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"saleId\":\"cmipbjekm0009ck09u6zxnsco\",\"productId\":\"cmiog50yi000l1034itv1n89r\",\"quantity\":1,\"price\":22000,\"discount\":0,\"subtotal\":22000,\"product\":{\"id\":\"cmiog50yi000l1034itv1n89r\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"categoryId\":\"cmiog4z2v000910346u3r8m1j\",\"name\":\"Roti Tawar Tropicana Slim\",\"productCode\":\"821212983\",\"stock\":198,\"purchasePrice\":15000,\"supplierId\":\"cmiog50pk000j1034bl4cztxx\",\"image\":null,\"createdAt\":\"2025-12-02T10:39:44.145Z\",\"updatedAt\":\"2025-12-03T00:35:11.116Z\",\"description\":\"Roti gandum sehat tanpa gula\"}}]}",
+      "ipAddress": null,
+      "userAgent": null,
+      "createdAt": "2025-12-03T01:18:47.879Z"
+    },
+    {
+      "id": "cmipc77ij000mck092rgh581r",
+      "userId": "cmio9fmpa0000zhk8gzzy7azq",
+      "action": "CREATE",
+      "entity": "Sale",
+      "entityId": "cmipc76w8000gck09l8xcydpf",
+      "oldValue": null,
+      "newValue": "{\"id\":\"cmipc76w8000gck09l8xcydpf\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"invoiceNumber\":\"2025120300005\",\"cashierId\":\"cmio9fmpa0000zhk8gzzy7azq\",\"attendantId\":\"cmioait02000hzhk82av9b0f3\",\"memberId\":\"cmiogitya000x1034y053hw9f\",\"date\":\"2025-12-03T01:37:17.480Z\",\"total\":142500,\"discount\":7500,\"additionalDiscount\":0,\"tax\":0,\"payment\":20000,\"change\":0,\"status\":\"PARTIALLY_PAID\",\"createdAt\":\"2025-12-03T01:37:17.480Z\",\"paymentMethod\":\"QRIS\",\"referenceNumber\":\"1234455\",\"saleDetails\":[{\"id\":\"cmipc76w8000ick09w6xz3zc0\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"saleId\":\"cmipc76w8000gck09l8xcydpf\",\"productId\":\"cmiog4zjg000c10349lr2vhue\",\"quantity\":1,\"price\":150000,\"discount\":0,\"subtotal\":150000,\"product\":{\"id\":\"cmiog4zjg000c10349lr2vhue\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"categoryId\":\"cmiog4z2v000910346u3r8m1j\",\"name\":\"Kemeja Denim Pria\",\"productCode\":\"821212132\",\"stock\":95,\"purchasePrice\":85000,\"supplierId\":\"cmiog4z9a000a1034wjbrcm1q\",\"image\":null,\"createdAt\":\"2025-12-02T10:39:44.145Z\",\"updatedAt\":\"2025-12-03T01:15:17.061Z\",\"description\":\"Kemeja denim berkualitas tinggi\"}}]}",
+      "ipAddress": null,
+      "userAgent": null,
+      "createdAt": "2025-12-03T01:37:18.284Z"
+    },
+    {
+      "id": "cmiqz8s830006inqazfg500e7",
+      "userId": "cmio9fmpa0000zhk8gzzy7azq",
+      "action": "CREATE",
+      "entity": "Sale",
+      "entityId": "cmiqz8rkt0002inqan6m7elns",
+      "oldValue": null,
+      "newValue": "{\"id\":\"cmiqz8rkt0002inqan6m7elns\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"invoiceNumber\":\"2025120400001\",\"cashierId\":\"cmio9fmpa0000zhk8gzzy7azq\",\"attendantId\":\"cmioait02000hzhk82av9b0f3\",\"memberId\":\"cmillqec20005amkj2hczvyct\",\"date\":\"2025-12-04T05:10:08.285Z\",\"total\":150000,\"discount\":0,\"additionalDiscount\":0,\"tax\":0,\"payment\":150000,\"change\":0,\"status\":\"PAID\",\"createdAt\":\"2025-12-04T05:10:08.285Z\",\"paymentMethod\":\"CASH\",\"referenceNumber\":null,\"saleDetails\":[{\"id\":\"cmiqz8rkt0004inqa7atjuhkv\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"saleId\":\"cmiqz8rkt0002inqan6m7elns\",\"productId\":\"cmiog4zjg000c10349lr2vhue\",\"quantity\":1,\"price\":150000,\"discount\":0,\"subtotal\":150000,\"product\":{\"id\":\"cmiog4zjg000c10349lr2vhue\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"categoryId\":\"cmiog4z2v000910346u3r8m1j\",\"name\":\"Kemeja Denim Pria\",\"productCode\":\"821212132\",\"stock\":94,\"purchasePrice\":85000,\"supplierId\":\"cmiog4z9a000a1034wjbrcm1q\",\"image\":null,\"createdAt\":\"2025-12-02T10:39:44.145Z\",\"updatedAt\":\"2025-12-03T01:37:17.678Z\",\"description\":\"Kemeja denim berkualitas tinggi\"}}]}",
+      "ipAddress": null,
+      "userAgent": null,
+      "createdAt": "2025-12-04T05:10:09.124Z"
+    },
+    {
+      "id": "cmitounpx0006efsddjcqm1gr",
+      "userId": "cmio9vr3x0003zhk8pu2val5j",
+      "action": "CREATE",
+      "entity": "Sale",
+      "entityId": "cmitounk60002efsdp0lxarvv",
+      "oldValue": null,
+      "newValue": "{\"id\":\"cmitounk60002efsdp0lxarvv\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"invoiceNumber\":\"2025120600002\",\"cashierId\":\"cmio9vr3x0003zhk8pu2val5j\",\"attendantId\":\"cmioadg3a000ezhk8cdf447mn\",\"memberId\":\"cmillqec20005amkj2hczvyct\",\"date\":\"2025-12-06T02:42:32.262Z\",\"total\":3200000,\"discount\":0,\"additionalDiscount\":0,\"tax\":0,\"payment\":3200000,\"change\":0,\"status\":\"PAID\",\"createdAt\":\"2025-12-06T02:42:32.262Z\",\"paymentMethod\":\"TRANSFER\",\"referenceNumber\":\"212132321\",\"saleDetails\":[{\"id\":\"cmitounk60004efsdxxk7sfj5\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"saleId\":\"cmitounk60002efsdp0lxarvv\",\"productId\":\"cmiog4yqx00071034zi5fuuxx\",\"quantity\":1,\"price\":3200000,\"discount\":0,\"subtotal\":3200000,\"product\":{\"id\":\"cmiog4yqx00071034zi5fuuxx\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"categoryId\":\"cmiog4xnb0000103419e0axcl\",\"name\":\"Smartphone Samsung Galaxy A14\",\"productCode\":\"821212121\",\"stock\":49,\"purchasePrice\":2500000,\"supplierId\":\"cmiog4yi0000510347v1k4mxw\",\"image\":null,\"createdAt\":\"2025-12-02T10:39:44.145Z\",\"updatedAt\":\"2025-12-02T11:03:49.272Z\",\"description\":\"Smartphone Android dengan kamera 50MP\"}}]}",
+      "ipAddress": "::1",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+      "createdAt": "2025-12-06T02:42:32.470Z"
+    },
+    {
+      "id": "cmitpqmvr000cefsdd7aeiu95",
+      "userId": "cmio9vr3x0003zhk8pu2val5j",
+      "action": "CREATE",
+      "entity": "PRODUCT",
+      "entityId": "cmitpqmql0008efsd7vkvokif",
+      "oldValue": null,
+      "newValue": "{\"id\":\"cmitpqmql0008efsd7vkvokif\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"categoryId\":\"cmiog4xnb0000103419e0axcl\",\"name\":\"adas adaf afa afas fas f afasfawawa\",\"productCode\":\"434343\",\"stock\":20,\"purchasePrice\":25000,\"supplierId\":\"cmiog4yi0000510347v1k4mxw\",\"image\":null,\"createdAt\":\"2025-12-06T03:07:24.190Z\",\"updatedAt\":\"2025-12-06T03:07:24.190Z\",\"description\":\"\",\"category\":{\"id\":\"cmiog4xnb0000103419e0axcl\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"name\":\"Aksesoris\",\"description\":null,\"createdAt\":\"2025-12-02T10:39:44.471Z\",\"updatedAt\":\"2025-12-02T10:39:44.471Z\"},\"supplier\":{\"id\":\"cmiog4yi0000510347v1k4mxw\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"code\":\"PT JA\",\"name\":\"PT Jaya Elektronik\",\"contactPerson\":null,\"address\":null,\"phone\":null,\"email\":null,\"createdAt\":\"2025-12-02T10:39:45.576Z\",\"updatedAt\":\"2025-12-02T10:39:45.576Z\"},\"priceTiers\":[]}",
+      "ipAddress": "::1",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+      "createdAt": "2025-12-06T03:07:24.376Z"
+    },
+    {
+      "id": "cmitpt6sn000jefsdtgkeu13s",
+      "userId": "cmio9vr3x0003zhk8pu2val5j",
+      "action": "CREATE",
+      "entity": "Sale",
+      "entityId": "cmitpt6h6000fefsdexqdprzh",
+      "oldValue": null,
+      "newValue": "{\"id\":\"cmitpt6h6000fefsdexqdprzh\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"invoiceNumber\":\"2025120600003\",\"cashierId\":\"cmio9vr3x0003zhk8pu2val5j\",\"attendantId\":\"cmioadg3a000ezhk8cdf447mn\",\"memberId\":\"cmillqec20005amkj2hczvyct\",\"date\":\"2025-12-06T03:09:23.082Z\",\"total\":112000,\"discount\":8000,\"additionalDiscount\":0,\"tax\":0,\"payment\":112000,\"change\":0,\"status\":\"PAID\",\"createdAt\":\"2025-12-06T03:09:23.082Z\",\"paymentMethod\":\"CASH\",\"referenceNumber\":null,\"saleDetails\":[{\"id\":\"cmitpt6h6000hefsdexdjxlvf\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"saleId\":\"cmitpt6h6000fefsdexqdprzh\",\"productId\":\"cmitpqmql0008efsd7vkvokif\",\"quantity\":4,\"price\":28000,\"discount\":2000,\"subtotal\":112000,\"product\":{\"id\":\"cmitpqmql0008efsd7vkvokif\",\"storeId\":\"cmillqdx00001amkjyi99pief\",\"categoryId\":\"cmiog4xnb0000103419e0axcl\",\"name\":\"adas adaf afa afas fas f afasfawawa\",\"productCode\":\"434343\",\"stock\":20,\"purchasePrice\":25000,\"supplierId\":\"cmiog4yi0000510347v1k4mxw\",\"image\":null,\"createdAt\":\"2025-12-06T03:07:24.190Z\",\"updatedAt\":\"2025-12-06T03:07:24.190Z\",\"description\":\"\"}}]}",
+      "ipAddress": "::1",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+      "createdAt": "2025-12-06T03:09:23.495Z"
+    }
+  ],
+  "tempCarts": [],
+  "users": [
+    {
+      "id": "cmio9fmpa0000zhk8gzzy7azq",
+      "name": "Ari Kurniawan",
+      "username": "arkur",
+      "employeeNumber": "0011",
+      "code": null,
+      "gender": null,
+      "address": "",
+      "phone": "",
+      "status": "AKTIF",
+      "role": "CASHIER",
+      "createdAt": "2025-12-02T07:32:06.191Z",
+      "updatedAt": "2025-12-02T10:31:59.981Z"
+    },
+    {
+      "id": "cmio9vr3x0003zhk8pu2val5j",
+      "name": "arrrr",
+      "username": "arr",
+      "employeeNumber": "12101",
+      "code": null,
+      "gender": null,
+      "address": "CIgalumpit Regency Blok A2 No.6",
+      "phone": "081234567890",
+      "status": "AKTIF",
+      "role": "ADMIN",
+      "createdAt": "2025-12-02T07:44:38.397Z",
+      "updatedAt": "2025-12-02T07:44:38.397Z"
+    },
+    {
+      "id": "cmioadg3a000ezhk8cdf447mn",
+      "name": "huhu",
+      "username": "huhu",
+      "employeeNumber": "212",
+      "code": "212",
+      "gender": null,
+      "address": "dasjdaj",
+      "phone": "9423423",
+      "status": "AKTIF",
+      "role": "USER",
+      "createdAt": "2025-12-02T07:58:23.926Z",
+      "updatedAt": "2025-12-04T16:00:31.512Z"
+    },
+    {
+      "id": "cmioait02000hzhk82av9b0f3",
+      "name": "hahaha",
+      "username": "haha",
+      "employeeNumber": "2121",
+      "code": "2121",
+      "gender": null,
+      "address": "Jl. Utama No. 1, Jakarta",
+      "phone": "9423423",
+      "status": "AKTIF",
+      "role": "ATTENDANT",
+      "createdAt": "2025-12-02T08:02:33.938Z",
+      "updatedAt": "2025-12-02T08:04:55.698Z"
+    }
+  ],
+  "storeUsers": [
+    {
+      "id": "cmio9vr7r0005zhk83ue70ad3",
+      "userId": "cmio9vr3x0003zhk8pu2val5j",
+      "role": "ADMIN",
+      "status": "ACTIVE",
+      "assignedAt": "2025-12-02T07:44:38.535Z",
+      "assignedBy": "cmillqdq90000amkjxojddykr"
+    },
+    {
+      "id": "cmio9zyhr000bzhk80srrtt8i",
+      "userId": "cmio9fmpa0000zhk8gzzy7azq",
+      "role": "CASHIER",
+      "status": "AKTIF",
+      "assignedAt": "2025-12-02T07:47:54.591Z",
+      "assignedBy": "cmillqdq90000amkjxojddykr"
+    },
+    {
+      "id": "cmioadg63000gzhk82c8a78gj",
+      "userId": "cmioadg3a000ezhk8cdf447mn",
+      "role": "ATTENDANT",
+      "status": "ACTIVE",
+      "assignedAt": "2025-12-02T07:58:24.027Z",
+      "assignedBy": "cmio9vr3x0003zhk8pu2val5j"
+    },
+    {
+      "id": "cmioait30000jzhk8gbml6zhx",
+      "userId": "cmioait02000hzhk82av9b0f3",
+      "role": "ATTENDANT",
+      "status": "TIDAK AKTIF",
+      "assignedAt": "2025-12-02T08:02:34.045Z",
+      "assignedBy": "cmio9vr3x0003zhk8pu2val5j"
+    }
+  ],
+  "backupInfo": {
+    "timestamp": "2025-12-09T12:49:03.714Z",
+    "version": "1.0",
+    "storeId": "cmillqdx00001amkjyi99pief"
+  }
+}

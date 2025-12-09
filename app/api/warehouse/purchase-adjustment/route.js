@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
+import { logWarehouseStockAdjustment } from '@/lib/auditLogger';
 
 export async function POST(request) {
   try {
@@ -67,9 +68,31 @@ export async function POST(request) {
         },
       });
 
-      return NextResponse.json({ 
-        message: 'Stok gudang berhasil diperbarui', 
-        warehouseProduct: warehouseProductWithDetails 
+      // Log aktivitas penyesuaian stok gudang
+      const requestHeaders = new Headers(request.headers);
+      const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
+      const userAgent = requestHeaders.get('user-agent') || '';
+
+      await logWarehouseStockAdjustment(
+        session.user.id,
+        {
+          id: updatedWarehouseProduct.id,
+          warehouseId,
+          productId,
+          quantity: quantity,
+          adjustmentType: 'PURCHASE_ADJUSTMENT',
+          reason: 'Pembelian produk ke gudang',
+          adjustedAt: new Date(),
+          adjustedBy: session.user.id,
+        },
+        ipAddress,
+        userAgent,
+        warehouseProductWithDetails.product.storeId
+      );
+
+      return NextResponse.json({
+        message: 'Stok gudang berhasil diperbarui',
+        warehouseProduct: warehouseProductWithDetails
       });
     } else {
       // Buat warehouse product baru
@@ -109,9 +132,31 @@ export async function POST(request) {
         },
       });
 
-      return NextResponse.json({ 
-        message: 'Produk gudang berhasil ditambahkan', 
-        warehouseProduct: warehouseProductWithDetails 
+      // Log aktivitas penyesuaian stok gudang
+      const requestHeaders = new Headers(request.headers);
+      const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
+      const userAgent = requestHeaders.get('user-agent') || '';
+
+      await logWarehouseStockAdjustment(
+        session.user.id,
+        {
+          id: newWarehouseProduct.id,
+          warehouseId,
+          productId,
+          quantity: quantity,
+          adjustmentType: 'PURCHASE_ADJUSTMENT',
+          reason: 'Pembelian produk ke gudang',
+          adjustedAt: new Date(),
+          adjustedBy: session.user.id,
+        },
+        ipAddress,
+        userAgent,
+        warehouseProductWithDetails.product.storeId
+      );
+
+      return NextResponse.json({
+        message: 'Produk gudang berhasil ditambahkan',
+        warehouseProduct: warehouseProductWithDetails
       }, { status: 201 });
     }
   } catch (error) {

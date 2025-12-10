@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
 import { Printer, FileText, ShoppingCart, TrendingUp, Package, X } from 'lucide-react';
 
 const ReportPreview = ({ 
@@ -14,6 +15,7 @@ const ReportPreview = ({
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const componentRef = useRef();
 
   // Fungsi untuk mengambil data laporan berdasarkan tipe
   const fetchReportData = async () => {
@@ -72,6 +74,30 @@ const ReportPreview = ({
     }
   }, [isOpen, storeId, reportType, dateRange]);
 
+  // Dapatkan nama jenis laporan
+  function getReportTypeName(type) {
+    switch(type) {
+      case 'sales': return 'Laporan Penjualan';
+      case 'daily': return 'Laporan Harian';
+      case 'inventory': return 'Laporan Inventaris';
+      case 'summary': return 'Ringkasan Laporan';
+      default: return 'Laporan';
+    }
+  };
+  
+  // Dapatkan nama toko dari ID
+  const getStoreName = (id) => {
+    const store = stores.find(s => s.id === id);
+    return store ? store.name : 'Toko Tidak Dikenal';
+  };
+
+  // Fungsi untuk mencetak laporan
+  const handlePrint = useReactToPrint({
+    content: () => componentRef.current,
+    documentTitle: `Laporan - ${getReportTypeName(reportType)} - ${getStoreName(storeId)}`,
+    onAfterPrint: () => console.log('Print success!'),
+  });
+
   // Format tanggal untuk tampilan
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -81,12 +107,6 @@ const ReportPreview = ({
       month: 'long',
       year: 'numeric'
     });
-  };
-
-  // Dapatkan nama toko dari ID
-  const getStoreName = (id) => {
-    const store = stores.find(s => s.id === id);
-    return store ? store.name : 'Toko Tidak Dikenal';
   };
 
   // Render preview laporan
@@ -121,35 +141,24 @@ const ReportPreview = ({
       );
     }
 
-    // Tampilkan laporan dalam iframe untuk isolasi
+    // Tampilkan laporan dalam div untuk bisa di-print
     return (
-      <div className="w-full h-[70vh] overflow-auto border border-gray-200 dark:border-gray-700 rounded-lg">
-        <iframe
-          srcDoc={reportData}
-          title="Preview Laporan"
-          className="w-full h-full"
-          sandbox="allow-same-origin allow-scripts"
-        />
-      </div>
+      <div 
+        ref={componentRef} 
+        className="w-full h-[70vh] overflow-auto border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white"
+        dangerouslySetInnerHTML={{ __html: reportData }}
+      />
     );
   };
 
   // Dapatkan nama jenis laporan
-  const getReportTypeName = (type) => {
+  function getReportTypeName(type) {
     switch(type) {
       case 'sales': return 'Laporan Penjualan';
       case 'daily': return 'Laporan Harian';
       case 'inventory': return 'Laporan Inventaris';
       case 'summary': return 'Ringkasan Laporan';
       default: return 'Laporan';
-    }
-  };
-
-  // Fungsi untuk mencetak laporan
-  const handlePrint = () => {
-    const iframe = document.querySelector('iframe');
-    if (iframe) {
-      iframe.contentWindow.print();
     }
   };
 
@@ -185,7 +194,7 @@ const ReportPreview = ({
         </div>
 
         {/* Preview Content */}
-        <div className="flex-1 p-4 overflow-auto">
+        <div className="flex-1 p-4 overflow-auto bg-gray-50 dark:bg-gray-900">
           {renderReportPreview()}
         </div>
 
@@ -203,9 +212,9 @@ const ReportPreview = ({
             </button>
             <button
               onClick={handlePrint}
-              disabled={!reportData}
+              disabled={!reportData || loading}
               className={`flex items-center px-4 py-2 rounded-lg text-white transition-colors ${
-                reportData 
+                reportData && !loading
                   ? 'bg-blue-600 hover:bg-blue-700' 
                   : 'bg-gray-400 cursor-not-allowed'
               }`}

@@ -5,9 +5,10 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import { useUserTheme } from '../../../components/UserThemeContext';
-import { Download, Calendar, Search, FileText, TrendingUp, Users, CreditCard } from 'lucide-react';
+import { Download, Calendar, Search, FileText, TrendingUp, Users, CreditCard, Printer } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import Breadcrumb from '../../../components/Breadcrumb';
+import UniversalPrintPreview from '../../../components/export/UniversalPrintPreview';
 
 export default function ReportDashboard() {
   const { data: session } = useSession();
@@ -28,17 +29,20 @@ export default function ReportDashboard() {
   const [chartProductSalesData, setChartProductSalesData] = useState([]);
   const [recentTransactionsData, setRecentTransactionsData] = useState([]);
 
+  // State untuk print preview
+  const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
+
   const COLORS = ['#C084FC', '#A78BFA', '#8B5CF6', '#7C3AED', '#6D28D9']; // Added one more color for consistency
 
   const fetchSales = async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/laporan?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}&type=${reportType}`);
-      
+
       if (!response.ok) {
         throw new Error('Gagal mengambil data laporan');
       }
-      
+
       const data = await response.json();
       setTotalSalesAmount(data.totalSales);
       setTotalTransactionsCount(data.totalTransactions);
@@ -52,6 +56,11 @@ export default function ReportDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Fungsi untuk membuka print preview dengan data laporan saat ini
+  const openPrintPreview = () => {
+    setIsPrintPreviewOpen(true);
   };
 
   // Fetch sales data when dependencies change
@@ -74,6 +83,17 @@ export default function ReportDashboard() {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
           <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Laporan Penjualan</h1>
           <div className="flex flex-wrap gap-2">
+            <button
+              onClick={openPrintPreview}
+              className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
+                darkMode
+                  ? 'bg-blue-600 hover:bg-blue-700'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 min-w-[100px]`}
+            >
+              <Printer className="h-4 w-4 mr-1" />
+              <span>Cetak</span>
+            </button>
             <button
               className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
                 darkMode
@@ -380,6 +400,27 @@ export default function ReportDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Print Preview Modal */}
+      <UniversalPrintPreview
+        isOpen={isPrintPreviewOpen}
+        onClose={() => setIsPrintPreviewOpen(false)}
+        data={{
+          totalSales: totalSalesAmount,
+          totalTransactions: totalTransactionsCount,
+          averageTransactionValue: averageTransactionValue,
+          dailySalesData: chartSalesData,
+          productSalesData: chartProductSalesData,
+          recentTransactions: recentTransactionsData
+        }}
+        title="Laporan Penjualan"
+        reportType="sales"
+        darkMode={darkMode}
+        storeName={{
+          name: session?.user?.storeAccess?.name || 'TOKO SAKINAH',
+          address: session?.user?.storeAccess?.address
+        }}
+      />
     </ProtectedRoute>
   );
 }

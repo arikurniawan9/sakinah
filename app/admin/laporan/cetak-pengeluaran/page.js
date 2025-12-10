@@ -6,6 +6,8 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { useUserTheme } from '../../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
+import UniversalPrintPreview from '../../../../components/export/UniversalPrintPreview';
+import { Printer } from 'lucide-react';
 
 export default function PrintExpenseReportPage() {
   const { data: session } = useSession();
@@ -17,6 +19,9 @@ export default function PrintExpenseReportPage() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // State untuk print preview
+  const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
 
   // Ambil parameter dari URL
   const startDate = searchParams.get('startDate') || '';
@@ -93,6 +98,11 @@ export default function PrintExpenseReportPage() {
     window.print();
   };
 
+  // Fungsi untuk membuka print preview dengan data laporan saat ini
+  const openPrintPreview = () => {
+    setIsPrintPreviewOpen(true);
+  };
+
   // Close function
   const handleClose = () => {
     window.close();
@@ -140,8 +150,15 @@ export default function PrintExpenseReportPage() {
           <h1 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Laporan Pengeluaran</h1>
           <div className="flex space-x-2">
             <button
+              onClick={openPrintPreview}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+            >
+              <Printer className="h-4 w-4 mr-1" />
+              Preview Cetak
+            </button>
+            <button
               onClick={handlePrint}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-800 text-white rounded-md hover:bg-blue-900"
             >
               Cetak
             </button>
@@ -258,6 +275,23 @@ export default function PrintExpenseReportPage() {
             </>
           )}
         </div>
+
+        {/* Print Preview Modal */}
+        <UniversalPrintPreview
+          isOpen={isPrintPreviewOpen}
+          onClose={() => setIsPrintPreviewOpen(false)}
+          data={{
+            expenses: expenses,
+            categories: categories
+          }}
+          title="Laporan Pengeluaran"
+          reportType="expense"
+          darkMode={darkMode}
+          storeName={{
+            name: session?.user?.storeAccess?.name || 'TOKO SAKINAH',
+            address: session?.user?.storeAccess?.address
+          }}
+        />
       </main>
     </ProtectedRoute>
   );

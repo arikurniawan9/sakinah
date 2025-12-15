@@ -306,6 +306,13 @@ function AttendantDashboard() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard Pelayan</h1>
             <div className="flex items-center space-x-2">
               <PelayanNotifications darkMode={darkMode} attendantId={session?.user?.id} />
+              <button
+                onClick={() => window.location.href = '/pelayan/statistik'}
+                className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+                title="Lihat Statistik Saya"
+              >
+                <BarChart3 className="h-5 w-5 text-purple-600" />
+              </button>
               <button onClick={toggleDarkMode} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                 {darkMode ? <Sun className="h-5 w-5 text-yellow-500" /> : <Moon className="h-5 w-5 text-gray-700" />}
               </button>
@@ -388,8 +395,8 @@ function AttendantDashboard() {
                 </div>
               </div>
 
-              {/* Tombol untuk navigasi ke halaman produk cepat dan statistik */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              {/* Tombol untuk navigasi ke halaman produk cepat */}
+              <div className="grid grid-cols-1 gap-4 mb-6">
                 <button
                   onClick={() => window.location.href = '/pelayan/produk-cepat'}
                   className={`p-4 rounded-lg shadow flex items-center justify-center ${
@@ -411,31 +418,6 @@ function AttendantDashboard() {
                       darkMode ? 'text-gray-400' : 'text-gray-500'
                     }`}>
                       {quickProducts.length} produk
-                    </p>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => window.location.href = '/pelayan/statistik'}
-                  className={`p-4 rounded-lg shadow flex items-center justify-center ${
-                    darkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="text-center">
-                    <div className={`p-3 rounded-full ${
-                      darkMode ? 'bg-purple-900/30' : 'bg-purple-100'
-                    } inline-block`}>
-                      <BarChart3 className="h-6 w-6 text-purple-600" />
-                    </div>
-                    <p className={`mt-2 font-medium ${
-                      darkMode ? 'text-white' : 'text-gray-900'
-                    }`}>
-                      Statistik Saya
-                    </p>
-                    <p className={`text-sm ${
-                      darkMode ? 'text-gray-400' : 'text-gray-500'
-                    }`}>
-                      Lihat kinerja
                     </p>
                   </div>
                 </button>

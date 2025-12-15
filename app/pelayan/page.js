@@ -325,6 +325,8 @@ function AttendantDashboard() {
     }
   };
 
+  const toggleDarkMode = () => setDarkMode(!darkMode);
+
   if (isInitialLoading || status === 'loading') {
     return <LoadingSpinner />;
   }

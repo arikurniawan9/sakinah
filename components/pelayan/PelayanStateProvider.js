@@ -267,7 +267,7 @@ export const PelayanStateProvider = ({ children }) => {
     showNotification('Daftar belanja telah dikosongkan.', 'info');
   };
 
-  const sendToCashier = useCallback(async (note = '') => {
+  const sendToCashier = useCallback(async (note = '', customerIdToUse = null) => {
     if (tempCart.length === 0) {
       showNotification('Keranjang masih kosong.', 'warning');
       return false;
@@ -281,7 +281,7 @@ export const PelayanStateProvider = ({ children }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           attendantId: session.user.id,
-          customerId: selectedCustomer?.id || null,
+          customerId: customerIdToUse || selectedCustomer?.id || null, // Gunakan pelanggan dari parameter jika ada
           items: tempCart.map(({ stock, ...item }) => item),
           note: note || 'Daftar belanja dari pelayan', // Gunakan catatan yang diberikan atau default
           storeId: session.user.storeId, // Tambahkan storeId untuk memastikan data tersimpan di toko yang benar
@@ -291,7 +291,7 @@ export const PelayanStateProvider = ({ children }) => {
       if (response.ok) {
         showNotification('Daftar belanja berhasil disimpan ke daftar tangguhkan!', 'success');
         setTempCart([]);
-        setSelectedCustomer(defaultCustomer); // Reset to default customer
+        // Jangan reset selectedCustomer disini karena mungkin masih digunakan di UI
         return true;
       } else {
         const error = await response.json();
@@ -304,7 +304,7 @@ export const PelayanStateProvider = ({ children }) => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [tempCart, session, selectedCustomer, defaultCustomer, showNotification]);
+  }, [tempCart, session, selectedCustomer, showNotification]);
 
   const value = {
     products,

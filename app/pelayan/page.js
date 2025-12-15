@@ -13,7 +13,6 @@ import { useDebounce } from '../../lib/hooks/useDebounce';
 import { usePelayanState, default as PelayanStateProvider } from '../../components/pelayan/PelayanStateProvider';
 import PelayanHistory from '../../components/pelayan/PelayanHistory';
 import PelayanNotifications from '../../components/pelayan/PelayanNotifications';
-import AttendantMemberSelection from '../../components/pelayan/AttendantMemberSelection';
 import QuickAddPanel from '../../components/pelayan/QuickAddPanel';
 import AttendantStats from '../../components/pelayan/AttendantStats';
 import CartItemNoteModal from '../../components/pelayan/CartItemNoteModal';
@@ -268,17 +267,26 @@ function AttendantDashboard() {
     setShowClearCartModal(false);
   };
   
+  const [selectedCustomerForSend, setSelectedCustomerForSend] = useState(defaultCustomer || null);
+  const [showCustomerSelectionModal, setShowCustomerSelectionModal] = useState(false);
+
   const handleConfirmSend = () => {
     setShowSendConfirmModal(false);
-    setShowNoteModal(true); // Buka modal catatan setelah konfirmasi awal
+    setShowCustomerSelectionModal(true); // Buka modal pemilihan pelanggan
+  };
+
+  const handleCustomerSelectionConfirm = () => {
+    setShowCustomerSelectionModal(false);
+    setShowNoteModal(true); // Buka modal catatan setelah konfirmasi pelanggan
   };
 
   const handleSendWithNote = async () => {
-    // Kirim daftar belanja ke suspended sales dengan catatan
-    const success = await sendToCashier(note); // Kirim dengan catatan
+    // Kirim daftar belanja ke suspended sales dengan catatan dan pelanggan terpilih
+    const success = await sendToCashier(note, selectedCustomerForSend?.id || null); // Kirim dengan catatan dan pelanggan
     if (success) {
       setSearchTerm('');
       setNote(''); // Reset catatan
+      setSelectedCustomerForSend(defaultCustomer || null); // Reset pelanggan
     }
     setShowNoteModal(false);
   };
@@ -371,11 +379,11 @@ function AttendantDashboard() {
                 }`}>
                   <p className={`text-xs ${
                     darkMode ? 'text-gray-400' : 'text-gray-600'
-                  }`}>Pelanggan</p>
+                  }`}>Status</p>
                   <p className={`text-lg font-bold truncate ${
                     darkMode ? 'text-white' : 'text-gray-900'
                   }`}>
-                    {selectedCustomer ? selectedCustomer.name.split(' ')[0] : 'UMUM'}
+                    Siap Kirim
                   </p>
                 </div>
               </div>
@@ -478,16 +486,6 @@ function AttendantDashboard() {
             </div>
 
             <div className="space-y-6">
-              <AttendantMemberSelection
-                selectedCustomer={selectedCustomer}
-                defaultCustomer={defaultCustomer}
-                onSelectCustomer={setSelectedCustomer}
-                onRemoveCustomer={() => setSelectedCustomer(defaultCustomer || null)}
-                darkMode={darkMode}
-                isOpen={showCustomerModal}
-                onToggle={setShowCustomerModal}
-              />
-
               {/* Tab untuk Daftar Belanja dan Histori */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
                 <div className="border-b border-gray-200 dark:border-gray-700">
@@ -580,13 +578,131 @@ function AttendantDashboard() {
 
 
         {showBarcodeScanner && <BarcodeScanner onScan={handleBarcodeScan} onClose={handleScannerClose} />}
-        
+
+        {/* Modal Pemilihan Pelanggan */}
+        {showCustomerSelectionModal && (
+          <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[90] p-4 ${showCustomerSelectionModal ? '' : 'hidden'}`}>
+            <div className={`rounded-xl shadow-xl w-full max-w-md ${
+              darkMode ? 'bg-gray-800' : 'bg-white'
+            }`}>
+              <div className={`p-6 border-b ${
+                darkMode ? 'border-gray-700' : 'border-gray-200'
+              }`}>
+                <div className="flex justify-between items-center">
+                  <h3 className={`text-xl font-bold ${
+                    darkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    Pilih Pelanggan
+                  </h3>
+                  <button
+                    onClick={() => setShowCustomerSelectionModal(false)}
+                    className={`p-1 rounded-full ${
+                      darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
+                    }`}
+                  >
+                    <X className={`h-5 w-5 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`} />
+                  </button>
+                </div>
+                <p className={`mt-1 ${
+                  darkMode ? 'text-gray-400' : 'text-gray-500'
+                }`}>
+                  Pilih pelanggan atau gunakan sebagai pelanggan umum
+                </p>
+              </div>
+
+              <div className="p-6">
+                <div className="mb-4">
+                  <label className={`block text-sm font-medium mb-2 ${
+                    darkMode ? 'text-gray-300' : 'text-gray-700'
+                  }`}>
+                    Cari Pelanggan
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Cari nama atau nomor telepon..."
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                      darkMode
+                        ? 'border-gray-600 bg-gray-700 text-white'
+                        : 'border-gray-300 bg-white text-gray-900'
+                    }`}
+                    value=""
+                    onChange={(e) => {}} // Akan ditangani dengan useEffect dan debounce
+                  />
+                </div>
+
+                <div className="mb-6">
+                  <label className={`block text-sm font-medium mb-2 ${
+                    darkMode ? 'text-gray-300' : 'text-gray-700'
+                  }`}>
+                    Pelanggan Terpilih
+                  </label>
+                  <div className={`p-4 rounded-lg border ${
+                    darkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'
+                  }`}>
+                    {selectedCustomerForSend ? (
+                      <div>
+                        <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                          {selectedCustomerForSend.name}
+                          {selectedCustomerForSend.membershipType && ` - ${selectedCustomerForSend.membershipType}`}
+                        </p>
+                        <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                          {selectedCustomerForSend.phone} {selectedCustomerForSend.code && `• Kode: ${selectedCustomerForSend.code}`}
+                        </p>
+                        {selectedCustomerForSend.discount > 0 && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            selectedCustomerForSend.discount >= 5 ? 'bg-purple-100 text-purple-800' :
+                            selectedCustomerForSend.discount >= 4 ? 'bg-blue-100 text-blue-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          } ${darkMode ? 'text-xs' : ''}`}>
+                            {selectedCustomerForSend.discount}% Diskon
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Belum memilih pelanggan</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className={`p-6 border-t flex justify-end space-x-3 ${
+                darkMode ? 'border-gray-700' : 'border-gray-200'
+              }`}>
+                <button
+                  onClick={() => {
+                    setSelectedCustomerForSend(defaultCustomer || null);
+                    setShowCustomerSelectionModal(false);
+                    setShowNoteModal(true);
+                  }}
+                  className={`px-4 py-2 rounded-lg ${
+                    darkMode
+                      ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                      : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                  }`}
+                >
+                  Gunakan Umum
+                </button>
+                <button
+                  onClick={handleCustomerSelectionConfirm}
+                  className={`px-4 py-2 rounded-lg ${
+                    darkMode
+                      ? 'bg-pastel-purple-600 hover:bg-pastel-purple-700 text-white'
+                      : 'bg-pastel-purple-600 hover:bg-pastel-purple-700 text-white'
+                  }`}
+                >
+                  Lanjutkan
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <ConfirmationModal
             isOpen={showSendConfirmModal}
             onClose={() => setShowSendConfirmModal(false)}
             onConfirm={handleConfirmSend}
             title="Konfirmasi Pengiriman"
-            message={`Anda akan mengirim ${tempCart.length} item ke kasir ${selectedCustomer ? `untuk pelanggan ${selectedCustomer.name}` : ''}. Lanjutkan?`}
+            message={`Anda akan mengirim ${tempCart.length} item ke daftar tangguhkan. Pilih pelanggan terlebih dahulu?`}
             confirmText="Lanjutkan"
             cancelText="Batal"
             isLoading={isSubmitting}

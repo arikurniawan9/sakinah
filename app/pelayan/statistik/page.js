@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
-import { Package, TrendingUp, ShoppingCart, User, BarChart3, RotateCcw } from 'lucide-react';
+import { Package, TrendingUp, ShoppingCart, User, BarChart3, RotateCcw, ShoppingBag, Calendar } from 'lucide-react';
 import LoadingSpinner from '../../../components/LoadingSpinner';
 import { useNotification } from '../../../components/notifications/NotificationProvider';
 
@@ -14,6 +14,7 @@ export default function AttendantStatsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { showNotification } = useNotification();
+  const [dailySummary, setDailySummary] = useState(null);
   const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
@@ -23,7 +24,7 @@ export default function AttendantStatsPage() {
         const response = await fetch(`/api/pelayan/stats?attendantId=${session?.user?.id}`);
         if (!response.ok) throw new Error('Gagal mengambil statistik');
         const data = await response.json();
-        
+
         setStats(data.stats);
       } catch (err) {
         setError(err.message);
@@ -33,8 +34,29 @@ export default function AttendantStatsPage() {
       }
     };
 
+    // Fetch daily summary as well
+    const fetchDailySummary = async () => {
+      try {
+        // In a real implementation:
+        // const response = await fetch(`/api/pelayan/daily-summary?attendantId=${session?.user?.id}`);
+        // const data = await response.json();
+        // setDailySummary(data.dailySummary);
+        
+        // For demo, we use dummy data
+        setDailySummary({
+          todaySales: 8,
+          todayItems: 25,
+          todayRevenue: 1500000,
+          todayConversion: 78
+        });
+      } catch (err) {
+        showNotification(`Gagal mengambil ringkasan harian: ${err.message}`, 'error');
+      }
+    };
+
     if (session?.user?.id) {
       fetchStats();
+      fetchDailySummary();
     }
   }, [session, showNotification]);
 
@@ -75,6 +97,26 @@ export default function AttendantStatsPage() {
       showNotification(`Gagal memperbarui statistik: ${err.message}`, 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshDailySummary = async () => {
+    try {
+      // In a real implementation:
+      // const response = await fetch(`/api/pelayan/daily-summary?attendantId=${session?.user?.id}`);
+      // const data = await response.json();
+      // setDailySummary(data.dailySummary);
+      
+      // For demo:
+      setDailySummary({
+        todaySales: Math.floor(Math.random() * 15),
+        todayItems: Math.floor(Math.random() * 50),
+        todayRevenue: Math.floor(Math.random() * 1000000) + 500000,
+        todayConversion: Math.floor(Math.random() * 40) + 60
+      });
+      showNotification('Ringkasan harian diperbarui', 'success');
+    } catch (err) {
+      showNotification(`Gagal memperbarui ringkasan harian: ${err.message}`, 'error');
     }
   };
 
@@ -147,6 +189,37 @@ export default function AttendantStatsPage() {
     }
   ];
 
+  const dailyStatItems = [
+    {
+      title: "Daftar Belanja",
+      value: dailySummary?.todaySales || 0,
+      icon: ShoppingBag,
+      color: "blue",
+      subtitle: "Hari ini"
+    },
+    {
+      title: "Total Item",
+      value: dailySummary?.todayItems || 0,
+      icon: Package,
+      color: "purple",
+      subtitle: "Hari ini"
+    },
+    {
+      title: "Nilai Penjualan",
+      value: `Rp ${(dailySummary?.todayRevenue || 0).toLocaleString('id-ID')}`,
+      icon: TrendingUp,
+      color: "green",
+      subtitle: "Hari ini"
+    },
+    {
+      title: "Konversi",
+      value: `${dailySummary?.todayConversion || 0}%`,
+      icon: BarChart3,
+      color: "yellow",
+      subtitle: "Hari ini"
+    }
+  ];
+
   const getBgColor = (color) => {
     switch(color) {
       case 'purple': return darkMode ? 'bg-purple-900/30' : 'bg-purple-100';
@@ -161,7 +234,7 @@ export default function AttendantStatsPage() {
 
   const getTextColor = (color) => {
     switch(color) {
-      case 'purple': return 'text-pastel-purple-600';
+      case 'purple': return 'text-purple-600';
       case 'blue': return 'text-blue-600';
       case 'green': return 'text-green-600';
       case 'yellow': return 'text-yellow-600';
@@ -179,6 +252,15 @@ export default function AttendantStatsPage() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Statistik Pelayan</h1>
             <div className="flex items-center space-x-4">
               <button 
+                onClick={refreshDailySummary}
+                className={`p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 ${
+                  darkMode ? 'text-gray-300' : 'text-gray-600'
+                }`}
+                title="Perbarui ringkasan harian"
+              >
+                <Calendar className="h-5 w-5" />
+              </button>
+              <button 
                 onClick={refreshStats}
                 disabled={loading}
                 className={`p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 ${
@@ -190,6 +272,59 @@ export default function AttendantStatsPage() {
                   darkMode ? 'text-gray-400' : 'text-gray-600'
                 }`} />
               </button>
+            </div>
+          </div>
+
+          {/* Daily Summary Card */}
+          <div className={`rounded-lg shadow p-6 mb-8 ${
+            darkMode ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className={`text-lg font-semibold ${
+                darkMode ? 'text-white' : 'text-gray-900'
+              }`}>
+                Ringkasan Hari Ini
+              </h2>
+              <span className={`text-sm ${
+                darkMode ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+                {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {dailyStatItems.map((stat, index) => {
+                const Icon = stat.icon;
+                return (
+                  <div 
+                    key={index} 
+                    className={`p-4 rounded-lg ${
+                      darkMode ? 'bg-gray-700' : 'bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <div className={`p-2 rounded-full ${getBgColor(stat.color)}`}>
+                        <Icon className={`h-5 w-5 ${getTextColor(stat.color)}`} />
+                      </div>
+                      <div className="ml-3">
+                        <p className={`text-sm ${
+                          darkMode ? 'text-gray-400' : 'text-gray-600'
+                        }`}>{stat.title}</p>
+                        <p className={`text-xl font-bold ${
+                          darkMode ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          {stat.value}
+                        </p>
+                        <p className={`text-xs ${
+                          darkMode ? 'text-gray-500' : 'text-gray-400'
+                        }`}>
+                          {stat.subtitle}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -205,20 +340,28 @@ export default function AttendantStatsPage() {
               return (
                 <div 
                   key={index} 
-                  className={`p-6 rounded-lg shadow ${darkMode ? 'bg-gray-800' : 'bg-white'}`}
+                  className={`p-6 rounded-lg shadow ${
+                    darkMode ? 'bg-gray-800' : 'bg-white'
+                  }`}
                 >
                   <div className="flex items-center">
                     <div className={`p-3 rounded-full ${getBgColor(stat.color)}`}>
                       <Icon className={`h-6 w-6 ${getTextColor(stat.color)}`} />
                     </div>
                     <div className="ml-4">
-                      <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <p className={`text-sm ${
+                        darkMode ? 'text-gray-400' : 'text-gray-600'
+                      }`}>
                         {stat.title}
                       </p>
-                      <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      <p className={`text-2xl font-bold ${
+                        darkMode ? 'text-white' : 'text-gray-900'
+                      }`}>
                         {stat.value}
                       </p>
-                      <p className={`text-xs mt-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                      <p className={`text-xs ${
+                        darkMode ? 'text-gray-500' : 'text-gray-400'
+                      }`}>
                         {stat.subtitle}
                       </p>
                     </div>

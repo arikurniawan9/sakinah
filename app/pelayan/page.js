@@ -291,8 +291,39 @@ function AttendantDashboard() {
     setShowNoteModal(false);
   };
 
-  const toggleDarkMode = () => setDarkMode(!darkMode);
-  const handleScannerClose = () => setShowBarcodeScanner(false);
+  // Fungsi untuk mendapatkan warna kategori
+  const getCategoryColor = (categoryName) => {
+    if (!categoryName) return 'bg-gray-100 dark:bg-gray-700';
+
+    const lowerCategoryName = categoryName.toLowerCase();
+    if (lowerCategoryName.includes('baju') || lowerCategoryName.includes('kaos') || lowerCategoryName.includes('kemeja')) {
+      return 'bg-blue-100 dark:bg-blue-900/30';
+    } else if (lowerCategoryName.includes('celana') || lowerCategoryName.includes('rok')) {
+      return 'bg-purple-100 dark:bg-purple-900/30';
+    } else if (lowerCategoryName.includes('makanan') || lowerCategoryName.includes('snack')) {
+      return 'bg-green-100 dark:bg-green-900/30';
+    } else if (lowerCategoryName.includes('minuman') || lowerCategoryName.includes('jus')) {
+      return 'bg-teal-100 dark:bg-teal-900/30';
+    } else if (lowerCategoryName.includes('alat') || lowerCategoryName.includes('barang')) {
+      return 'bg-yellow-100 dark:bg-yellow-900/30';
+    } else if (lowerCategoryName.includes('elektronik') || lowerCategoryName.includes('gadget')) {
+      return 'bg-indigo-100 dark:bg-indigo-900/30';
+    } else {
+      return 'bg-gray-100 dark:bg-gray-700';
+    }
+  };
+
+  // Fungsi untuk mendapatkan warna border berdasarkan stok
+  const getBorderColor = (product) => {
+    const stock = product.stock || 0;
+    if (stock === 0) {
+      return 'border-red-500 dark:border-red-500';
+    } else if (stock < 5) {
+      return 'border-orange-500 dark:border-orange-500';
+    } else {
+      return 'border-gray-200 dark:border-gray-700';
+    }
+  };
 
   if (isInitialLoading || status === 'loading') {
     return <LoadingSpinner />;
@@ -386,11 +417,11 @@ function AttendantDashboard() {
                 }`}>
                   <p className={`text-xs ${
                     darkMode ? 'text-gray-400' : 'text-gray-600'
-                  }`}>Status</p>
+                  }`}>Keranjang</p>
                   <p className={`text-lg font-bold truncate ${
                     darkMode ? 'text-white' : 'text-gray-900'
                   }`}>
-                    Siap Kirim
+                    {tempCart.length} Item
                   </p>
                 </div>
               </div>

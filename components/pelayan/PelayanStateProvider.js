@@ -217,17 +217,18 @@ export const PelayanStateProvider = ({ children }) => {
           item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      return [ 
-        ...prevCart, 
-        { 
-          productId: product.id, 
-          name: product.name, 
-          price: product.sellingPrice || 0, 
-          quantity: 1, 
-          image: product.image, 
+      return [
+        ...prevCart,
+        {
+          productId: product.id,
+          name: product.name,
+          price: product.sellingPrice || 0,
+          quantity: 1,
+          image: product.image,
           stock: product.stock,
+          category: product.categoryName || product.category || '', // Tambahkan informasi kategori
           note: note // Tambahkan catatan
-        } 
+        }
       ];
     });
     showNotification(`${product.name} ditambahkan ke keranjang.`, 'info');

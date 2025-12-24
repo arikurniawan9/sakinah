@@ -23,21 +23,18 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit')) || 10;
     const search = searchParams.get('search');
 
-    // Get the central warehouse (assuming there's one central warehouse)
-    const centralWarehouse = await globalPrisma.warehouse.findFirst({
+    // Get or create the central warehouse
+    let centralWarehouse = await globalPrisma.warehouse.findFirst({
       where: { name: 'Gudang Pusat' }
     });
 
     if (!centralWarehouse) {
-      // If no central warehouse exists, return empty results
-      return NextResponse.json({
-        warehouseProducts: [],
-        pagination: {
-          currentPage: 1,
-          totalPages: 0,
-          total: 0,
-          startIndex: 0,
-          endIndex: 0
+      // Create the central warehouse if it doesn't exist
+      centralWarehouse = await globalPrisma.warehouse.create({
+        data: {
+          name: 'Gudang Pusat',
+          description: 'Gudang pusat untuk distribusi ke toko-toko',
+          status: 'ACTIVE'
         }
       });
     }
@@ -50,7 +47,7 @@ export async function GET(request) {
     if (search) {
       whereClause = {
         ...whereClause,
-        product: {
+        Product: {
           OR: [
             { name: { contains: search, mode: 'insensitive' } },
             { productCode: { contains: search, mode: 'insensitive' } }
@@ -68,10 +65,10 @@ export async function GET(request) {
     const warehouseProducts = await globalPrisma.warehouseProduct.findMany({
       where: whereClause,
       include: {
-        product: {
+        Product: {
           include: {
             category: true,
-            supplier: true
+            supplier: true,
           }
         },
         warehouse: true
@@ -121,12 +118,20 @@ export async function DELETE(request, { params }) {
     const { id } = params;
 
     // Get the central warehouse
-    const centralWarehouse = await globalPrisma.warehouse.findFirst({
+    // Get or create the central warehouse
+    let centralWarehouse = await globalPrisma.warehouse.findFirst({
       where: { name: 'Gudang Pusat' }
     });
 
     if (!centralWarehouse) {
-      return NextResponse.json({ error: 'Gudang pusat tidak ditemukan' }, { status: 404 });
+      // Create the central warehouse if it doesn't exist
+      centralWarehouse = await globalPrisma.warehouse.create({
+        data: {
+          name: 'Gudang Pusat',
+          description: 'Gudang pusat untuk distribusi ke toko-toko',
+          status: 'ACTIVE'
+        }
+      });
     }
 
     // Delete the warehouse product

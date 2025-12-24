@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { getFromCache, setToCache, generateCacheKey } from '@/lib/cache';
+import { invalidateStoresCache, invalidateManagerDashboardCache } from '@/lib/cacheInvalidation';
 
 export async function GET(request) {
   try {
@@ -51,6 +53,28 @@ export async function GET(request) {
 
     console.log('Query params:', { page, limit, search, sortKey, sortDirection, statusFilter });
 
+    // Generate cache key berdasarkan parameter
+    const cacheKey = generateCacheKey('stores', {
+      page,
+      limit,
+      search,
+      sortKey,
+      sortDirection,
+      statusFilter
+    });
+
+    // Coba ambil data dari cache terlebih dahulu
+    let responseData = await getFromCache(cacheKey);
+    if (responseData) {
+      console.log('Serving from cache:', cacheKey);
+      return new Response(JSON.stringify(responseData), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('Cache miss, fetching from database:', cacheKey);
+
     const skip = (page - 1) * limit;
 
     const whereClause = {
@@ -85,7 +109,7 @@ export async function GET(request) {
 
     console.log('Total items:', totalItems);
 
-    const responseData = {
+    responseData = {
       stores,
       totalItems,
       currentPage: page,
@@ -93,6 +117,9 @@ export async function GET(request) {
     };
 
     console.log('Response data:', responseData);
+
+    // Simpan ke cache sebelum mengembalikan response
+    await setToCache(cacheKey, responseData, 300); // Cache selama 5 menit
 
     return new Response(JSON.stringify(responseData), {
       status: 200,
@@ -183,6 +210,12 @@ export async function POST(request) {
 
       return { store: newStore, admin: newAdmin };
     });
+
+    // Hapus cache terkait setelah membuat toko baru
+    // Kita import fungsi ini secara lokal untuk menghindari konflik import
+    const { invalidateStoresCache, invalidateManagerDashboardCache } = await import('@/lib/cacheInvalidation');
+    await invalidateStoresCache();
+    await invalidateManagerDashboardCache(session.user.id);
 
     return new Response(JSON.stringify(result), {
       status: 201,

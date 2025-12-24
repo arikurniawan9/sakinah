@@ -23,8 +23,9 @@ import {
   TrendingUp,
   CalendarIcon,
   Package,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react';
+import NotificationDropdown from '../../components/notifications/NotificationDropdown'; // Import NotificationDropdown
 
 // Helper to format currency
 const formatCurrency = (value) => {
@@ -153,6 +154,7 @@ export default function AdminDashboard() {
             Dasbor Analitik
           </h2>
           <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2 mt-4 sm:mt-0">
+            <NotificationDropdown /> {/* Integrated NotificationDropdown component */}
             <div className="flex items-center">
               <CalendarIcon className={`h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
               <DatePicker

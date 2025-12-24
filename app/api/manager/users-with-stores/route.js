@@ -68,10 +68,13 @@ export async function GET(request) {
           updatedAt: true,
           role: true,
           storeUsers: {
-            where: { status: 'AKTIF' }, // Only include active store associations
+            where: {
+              status: { in: ['ACTIVE', 'AKTIF'] } // Include both status formats for compatibility
+            },
             select: {
               id: true,
               role: true, // Role in store
+              status: true, // StoreUser status
               store: {
                 select: {
                   id: true,
@@ -91,17 +94,27 @@ export async function GET(request) {
     ]);
 
     // Format the response to include store information with each user
-    const usersWithStores = users.map(user => ({
-      ...user,
-      stores: user.storeUsers.map(storeUser => ({
-        id: storeUser.store.id,
-        name: storeUser.store.name,
-        code: storeUser.store.code,
-        status: storeUser.store.status,
-        roleInStore: storeUser.role,
-      })),
-      storeUsers: undefined // Remove the original storeUsers field for cleaner response
-    }));
+    const usersWithStores = users.map(user => {
+      // Urutkan stores agar toko aktif muncul pertama
+      const sortedStoreUsers = [...user.storeUsers].sort((a, b) => {
+        // Urutkan berdasarkan status: ACTIVE/AKTIF dulu
+        const statusOrder = { 'ACTIVE': 1, 'AKTIF': 1, 'INACTIVE': 2, 'TIDAK_AKTIF': 2 };
+        return (statusOrder[a.status] || 3) - (statusOrder[b.status] || 3);
+      });
+
+      return {
+        ...user,
+        stores: sortedStoreUsers.map(storeUser => ({
+          id: storeUser.store.id,
+          name: storeUser.store.name,
+          code: storeUser.store.code,
+          status: storeUser.store.status,
+          roleInStore: storeUser.role,
+          userStoreStatus: storeUser.status // Tambahkan status dari storeUser
+        })),
+        storeUsers: undefined // Remove the original storeUsers field for cleaner response
+      };
+    });
 
     return NextResponse.json({
       users: usersWithStores,

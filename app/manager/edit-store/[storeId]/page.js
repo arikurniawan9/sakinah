@@ -5,7 +5,8 @@ import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ROLES } from '@/lib/constants';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, UserPlus } from 'lucide-react';
+import Link from 'next/link';
 
 export default function EditStorePage() {
   const { data: session, status } = useSession();
@@ -310,7 +311,15 @@ export default function EditStorePage() {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-600 dark:text-gray-400">Tidak ada akun admin toko yang ditemukan untuk toko ini.</p>
+            <div className="text-center py-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Tidak ada akun admin toko yang ditemukan untuk toko ini.</p>
+              <Link href={`/manager/create-admin/${storeId}`}>
+                <span className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                  <UserPlus size={18} className="mr-2" />
+                  Buat Akun Admin
+                </span>
+              </Link>
+            </div>
           )}
 
           <div className="flex justify-end space-x-4 pt-6">

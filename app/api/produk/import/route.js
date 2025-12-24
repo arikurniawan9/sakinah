@@ -71,22 +71,12 @@ export async function POST(request) {
           createdAt: currentDate,
           updatedAt: currentDate,
           purchaseData: currentDate, // Store original creation date
-          purchasePrice: !isNaN(parseInt(record['Harga Beli'] || record['purchase_price'])) ? parseInt(record['Harga Beli'] || record['purchase_price']) : 0,
-          priceTiers: []
+          purchasePrice: !isNaN(parseInt(record['Harga Beli'] || record['purchase_price'] || record['purchasePrice'])) ? parseInt(record['Harga Beli'] || record['purchase_price'] || record['purchasePrice']) : 0,
+          retailPrice: !isNaN(parseInt(record['Harga Eceran'] || record['retailPrice'] || record['hargaEceran'])) ? parseInt(record['Harga Eceran'] || record['retailPrice'] || record['hargaEceran']) : 0,
+          silverPrice: !isNaN(parseInt(record['Harga Silver'] || record['silverPrice'] || record['hargaSilver'])) ? parseInt(record['Harga Silver'] || record['silverPrice'] || record['hargaSilver']) : 0,
+          goldPrice: !isNaN(parseInt(record['Harga Gold'] || record['goldPrice'] || record['hargaGold'])) ? parseInt(record['Harga Gold'] || record['goldPrice'] || record['hargaGold']) : 0,
+          platinumPrice: !isNaN(parseInt(record['Harga Platinum'] || record['platinumPrice'] || record['hargaPlatinum'])) ? parseInt(record['Harga Platinum'] || record['platinumPrice'] || record['hargaPlatinum']) : 0,
         };
-      }
-
-      // Add price tier if present in the record - now only for Harga Jual
-      const priceValue = record['Harga Jual'] || record['hargaJual'] || record['harga_jual'];
-
-      if (priceValue !== undefined) {
-        const price = !isNaN(parseInt(priceValue)) ? parseInt(priceValue) : 0;
-        // For the simplified template, we'll create a single tier for the whole price
-        groupedRecords[productKey].priceTiers.push({
-          minQty: 1,      // Default minimum quantity
-          maxQty: null,   // No maximum limit, meaning this price applies to all quantities
-          price: price
-        });
       }
     }
 
@@ -129,10 +119,6 @@ export async function POST(request) {
     // Process each unique product
     for (const [productCode, productData] of Object.entries(groupedRecords)) {
       try {
-        // If no price tiers were provided, add a default tier
-        if (!productData.priceTiers || productData.priceTiers.length === 0) {
-          productData.priceTiers = [{ minQty: 1, maxQty: null, price: 0 }];
-        }
 
         // Find or create category
         let categoryId = null;
@@ -227,7 +213,7 @@ export async function POST(request) {
         if (existingProduct) {
           // Update existing product
           const updatedProduct = await prisma.$transaction(async (tx) => {
-            const product = await tx.product.update({
+            await tx.product.update({
               where: {
                 id: existingProduct.id,
                 storeId: session.user.storeId // Tambahkan storeId ke kondisi update
@@ -239,23 +225,12 @@ export async function POST(request) {
                 supplier: { connect: { id: supplierId } },
                 description: productData.description,
                 purchasePrice: productData.purchasePrice,
+                retailPrice: productData.retailPrice || 0,
+                silverPrice: productData.silverPrice || 0,
+                goldPrice: productData.goldPrice || 0,
+                platinumPrice: productData.platinumPrice || 0,
                 updatedAt: new Date()
               }
-            });
-
-            // Delete existing price tiers
-            await tx.priceTier.deleteMany({
-              where: { productId: product.id }
-            });
-
-            // Add new price tiers
-            await tx.priceTier.createMany({
-              data: productData.priceTiers.map(tier => ({
-                productId: product.id,
-                minQty: tier.minQty,
-                maxQty: tier.maxQty,
-                price: tier.price
-              }))
             });
 
             return product;
@@ -273,19 +248,13 @@ export async function POST(request) {
                 supplier: { connect: { id: supplierId } },
                 description: productData.description,
                 purchasePrice: productData.purchasePrice,
+                retailPrice: productData.retailPrice || 0,
+                silverPrice: productData.silverPrice || 0,
+                goldPrice: productData.goldPrice || 0,
+                platinumPrice: productData.platinumPrice || 0,
                 createdAt: new Date(productData.createdAt),
                 updatedAt: new Date(productData.updatedAt),
               }
-            });
-
-            // Add price tiers
-            await tx.priceTier.createMany({
-              data: productData.priceTiers.map(tier => ({
-                productId: product.id,
-                minQty: tier.minQty,
-                maxQty: tier.maxQty,
-                price: tier.price
-              }))
             });
 
             return product;

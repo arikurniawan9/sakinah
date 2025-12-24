@@ -8,7 +8,7 @@ import {
   getFromCache,
   setToCache,
   invalidateProductCache
-} from '@/lib/redis'; // Tambahkan import fungsi cache
+} from '@/lib/cache'; // Tambahkan import fungsi cache
 import { logProductCreation, logProductUpdate, logProductDeletion } from '@/lib/auditLogger';
 import {
   validateSQLInjection,
@@ -18,21 +18,18 @@ import {
 } from '@/utils/inputValidation';
 
 // Zod Schemas for Product
-const priceTierSchema = z.object({
-  minQty: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().positive({ message: 'Kuantitas minimum harus lebih dari 0' })),
-  price: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().positive({ message: 'Harga harus lebih dari 0' })),
-  maxQty: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().positive().optional().nullable()).optional().nullable(),
-});
-
 const productSchema = z.object({
   name: z.string().trim().min(1, { message: 'Nama produk wajib diisi' }),
   productCode: z.string().trim().min(1, { message: 'Kode produk wajib diisi' }),
   stock: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().min(0, { message: 'Stok tidak boleh negatif' }).default(0)),
   purchasePrice: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().min(0, { message: 'Harga beli tidak boleh negatif' }).default(0)),
+  retailPrice: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().min(0, { message: 'Harga eceran tidak boleh negatif' }).default(0)),
+  silverPrice: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().min(0, { message: 'Harga silver tidak boleh negatif' }).default(0)),
+  goldPrice: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().min(0, { message: 'Harga gold tidak boleh negatif' }).default(0)),
+  platinumPrice: z.preprocess((val) => typeof val === 'string' ? parseInt(val) : val, z.number().int().min(0, { message: 'Harga platinum tidak boleh negatif' }).default(0)),
   categoryId: z.string().min(1, { message: 'Kategori wajib dipilih' }),
   supplierId: z.string().optional().nullable(),
   description: z.string().trim().optional().nullable(),
-  priceTiers: z.array(priceTierSchema).min(1, { message: 'Minimal harus ada satu tingkatan harga' }).default([{ minQty: '1', maxQty: '', price: '0' }]),
 });
 
 const productUpdateSchema = productSchema.extend({
@@ -126,18 +123,10 @@ export async function GET(request) {
       ...(minStock !== '' && { stock: { gte: parseInt(minStock) } }),
       ...(maxStock !== '' && { stock: { lte: parseInt(maxStock) } }),
       ...(minPrice !== '' && {
-        priceTiers: {
-          some: {
-            price: { gte: parseInt(minPrice) }
-          }
-        }
+        retailPrice: { gte: parseInt(minPrice) }
       }),
       ...(maxPrice !== '' && {
-        priceTiers: {
-          some: {
-            price: { lte: parseInt(maxPrice) }
-          }
-        }
+        retailPrice: { lte: parseInt(maxPrice) }
       }),
       ...(search && !productCode && {
         AND: [
@@ -165,6 +154,10 @@ export async function GET(request) {
           stock: true,
           description: true,
           purchasePrice: true,
+          retailPrice: true,
+          silverPrice: true,
+          goldPrice: true,
+          platinumPrice: true,
           createdAt: true,
           updatedAt: true,
           categoryId: true,
@@ -179,16 +172,6 @@ export async function GET(request) {
             select: {
               id: true,
               name: true
-            }
-          },
-          priceTiers: {
-            orderBy: { minQty: 'asc' },
-            select: {
-              id: true,
-              productId: true,
-              minQty: true,
-              maxQty: true,
-              price: true
             }
           },
         },
@@ -240,7 +223,7 @@ export async function POST(request) {
     }
 
     const validatedData = productSchema.parse(body);
-    const { priceTiers, ...productData } = validatedData;
+    const { ...productData } = validatedData;
 
     // Ambil storeId dari session
     let storeId = session.user.storeId;
@@ -325,12 +308,7 @@ export async function POST(request) {
         include: {
           category: true,
           supplier: true,
-          priceTiers: true,
         },
-      });
-
-      await tx.priceTier.createMany({
-        data: priceTiers.map(tier => ({ ...tier, productId: product.id })),
       });
 
       return product;
@@ -376,7 +354,7 @@ export async function PUT(request) {
     }
 
     const validatedData = productUpdateSchema.parse(body);
-    const { id, priceTiers, ...productData } = validatedData;
+    const { id, ...productData } = validatedData;
 
     // Validasi ID produk
     if (!validateSQLInjection(id)) {
@@ -485,13 +463,7 @@ export async function PUT(request) {
         include: {
           category: true,
           supplier: true,
-          priceTiers: true,
         },
-      });
-
-      await tx.priceTier.deleteMany({ where: { productId: id } });
-      await tx.priceTier.createMany({
-        data: priceTiers.map(tier => ({ ...tier, productId: id })),
       });
 
       return product;

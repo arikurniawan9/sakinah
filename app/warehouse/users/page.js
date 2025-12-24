@@ -5,10 +5,10 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { useUserTheme } from '@/components/UserThemeContext';
 import { useSession } from 'next-auth/react';
 import { useUserForm } from '@/lib/hooks/useUserForm';
-import { useUserTable } from '@/lib/hooks/useUserTable';
+import { useWarehouseUserTable } from '@/lib/hooks/useWarehouseUserTable';
 import UserModal from '@/components/admin/UserModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
-import { AlertTriangle, CheckCircle, Plus, Edit, Trash2, Search } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Plus, Edit, Trash2, Search, Eye } from 'lucide-react';
 import DataTable from '@/components/DataTable';
 import Breadcrumb from '@/components/Breadcrumb';
 
@@ -32,26 +32,84 @@ export default function WarehouseUserManagement() {
     totalUsers,
     fetchUsers,
     setError: setTableError,
-  } = useUserTable('WAREHOUSE'); // Filter for WAREHOUSE role
+  } = useWarehouseUserTable(); // Get all warehouse users
 
   const {
     showModal,
     editingUser,
     formData,
+    setFormData,
     handleInputChange,
-    openModalForEdit,
+    openModalForEdit: originalOpenModalForEdit,
     openModalForCreate,
     closeModal,
     handleSave: originalHandleSave,
     error: formError,
     setError: setFormError,
-  } = useUserForm(fetchUsers, 'WAREHOUSE'); // Default role to WAREHOUSE
+  } = useUserForm(fetchUsers, { isWarehouseContext: true }); // Warehouse context without default role
+
+  // Override openModalForEdit to handle warehouse context
+  const openModalForEdit = (user, isAttendantForm = false) => {
+    // Use warehouse store ID for editing
+    const storeIdToUse = warehouseStore && warehouseStore[0] ? warehouseStore[0].id : user.storeId || '';
+
+    // Prepare updated user data with warehouse store ID
+    const updatedUser = {
+      ...user,
+      storeId: storeIdToUse
+    };
+
+    // Call the original function with updated user data
+    originalOpenModalForEdit(updatedUser, isAttendantForm);
+  };
+
+  // Override handleSave to ensure it uses warehouse store ID
+  const handleSave = async () => {
+    // Update formData with warehouse store ID before saving
+    const updatedFormData = {
+      ...formData,
+      storeId: warehouseStore && warehouseStore[0] ? warehouseStore[0].id : formData.storeId
+    };
+
+    // Update the formData state with the new storeId
+    setFormData(updatedFormData);
+
+    // Call original save function
+    await originalHandleSave();
+    setSuccessMessage(editingUser ? 'User berhasil diperbarui.' : 'User berhasil dibuat.');
+  };
+
+  // Get warehouse store for the modal
+  const [warehouseStore, setWarehouseStore] = useState(null);
+  useEffect(() => {
+    const fetchWarehouseStore = async () => {
+      try {
+        const response = await fetch('/api/warehouse/store');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.store) {
+            setWarehouseStore([data.store]); // Pass as array since UserModal expects an array
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching warehouse store:', error);
+      }
+    };
+    fetchWarehouseStore();
+  }, []);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemsToDelete, setItemsToDelete] = useState([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
   const [successMessage, setSuccessMessage] = useState('');
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+
+  const handleViewDetail = (user) => {
+    setSelectedUser(user);
+    setShowDetailModal(true);
+  };
 
   const handleSelectRow = (id) => {
     setSelectedRows(prev =>
@@ -68,11 +126,6 @@ export default function WarehouseUserManagement() {
     }
   };
 
-  const handleSave = async () => {
-    await originalHandleSave();
-    setSuccessMessage(editingUser ? 'User berhasil diperbarui.' : 'User berhasil dibuat.');
-  };
-
   const handleDelete = (ids) => {
     if (!canManageUsers) return;
     setItemsToDelete(ids);
@@ -85,10 +138,7 @@ export default function WarehouseUserManagement() {
     setTableError('');
 
     try {
-      // NOTE: This assumes warehouse users are not tied to a specific store,
-      // so we use a general user deletion/deactivation endpoint if available,
-      // or the store-user one with a global/null store context.
-      const response = await fetch(`/api/manager/users`, {
+      const response = await fetch(`/api/warehouse/users`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: itemsToDelete }),
@@ -147,15 +197,31 @@ export default function WarehouseUserManagement() {
       )
     },
     {
-      key: 'createdAt',
-      title: 'Tanggal Dibuat',
-      render: (value) => new Date(value).toLocaleDateString('id-ID'),
+      key: 'role',
+      title: 'Role',
+      render: (value) => {
+        switch(value) {
+          case 'CASHIER':
+            return 'Kasir';
+          case 'ATTENDANT':
+            return 'Pelayan';
+          default:
+            return value;
+        }
+      },
       sortable: true
     },
   ];
 
   const renderRowActions = (row) => (
     <>
+      <button
+        onClick={() => handleViewDetail(row)}
+        className="p-1 text-green-500 hover:text-green-700 mr-2"
+        title="Lihat Detail"
+      >
+        <Eye size={18} />
+      </button>
       <button
         onClick={() => openModalForEdit(row)}
         className="p-1 text-blue-500 hover:text-blue-700 mr-2"
@@ -205,14 +271,37 @@ export default function WarehouseUserManagement() {
           selectedRows={selectedRows}
           onSelectAll={handleSelectAll}
           onSelectRow={handleSelectRow}
-          onAdd={canManageUsers ? openModalForCreate : undefined}
+          onAdd={canManageUsers ?
+            () => {
+              if (warehouseStore && warehouseStore[0]) {
+                openModalForCreate({ storeId: warehouseStore[0].id });
+              } else {
+                // If warehouse store is not loaded yet, fetch it first
+                const fetchAndOpen = async () => {
+                  try {
+                    const response = await fetch('/api/warehouse/store');
+                    if (response.ok) {
+                      const data = await response.json();
+                      if (data.store) {
+                        openModalForCreate({ storeId: data.store.id });
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Error fetching warehouse store:', error);
+                    openModalForCreate(); // Open without store ID as fallback
+                  }
+                };
+                fetchAndOpen();
+              }
+            }
+          : undefined}
           onSearch={setSearchTerm}
           onItemsPerPageChange={setItemsPerPage}
           darkMode={darkMode}
           actions={canManageUsers}
           showAdd={canManageUsers}
           pagination={paginationData}
-          mobileColumns={['employeeNumber', 'name', 'status']}
+          mobileColumns={['employeeNumber', 'name', 'role']}
           rowActions={renderRowActions}
           onDeleteMultiple={() => handleDelete(selectedRows)}
           selectedRowsCount={selectedRows.length}
@@ -245,7 +334,8 @@ export default function WarehouseUserManagement() {
             error={formError}
             setFormError={setFormError}
             darkMode={darkMode}
-            allowedRoles={['WAREHOUSE']} // Only allow creating WAREHOUSE users
+            allowedRoles={['CASHIER', 'ATTENDANT']} // Allow creating CASHIER and ATTENDANT users only
+            stores={warehouseStore || []} // Pass warehouse store to the modal
           />
           <ConfirmationModal
             isOpen={showDeleteModal}
@@ -256,6 +346,98 @@ export default function WarehouseUserManagement() {
             isLoading={isDeleting}
           />
         </>
+      )}
+
+      {/* Detail Modal */}
+      {showDetailModal && selectedUser && (
+        <div className="fixed z-50 inset-0 overflow-y-auto">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className={`${darkMode ? 'bg-gray-800 bg-opacity-75' : 'bg-gray-500 bg-opacity-75'}`}></div>
+            </div>
+
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div className={`inline-block align-bottom ${
+              darkMode ? 'bg-gray-800' : 'bg-white'
+            } rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${
+              darkMode ? 'border-gray-700' : 'border-pastel-purple-200'
+            } border`}>
+              <div className={`px-4 pt-5 pb-4 sm:p-6 sm:pb-4 ${
+                darkMode ? 'bg-gray-800' : 'bg-white'
+              }`}>
+                <div className="sm:flex sm:items-start">
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                    <h3 className={`text-lg leading-6 font-medium ${
+                      darkMode ? 'text-cyan-400' : 'text-cyan-800'
+                    }`} id="modal-title">
+                      Detail User
+                    </h3>
+                    <div className="mt-4 w-full">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Nama Lengkap</p>
+                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedUser.name}</p>
+                        </div>
+                        <div>
+                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Username</p>
+                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedUser.username}</p>
+                        </div>
+                        <div>
+                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Kode Karyawan</p>
+                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedUser.employeeNumber || '-'}</p>
+                        </div>
+                        <div>
+                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Kode Pengguna</p>
+                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedUser.code || '-'}</p>
+                        </div>
+                        <div>
+                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Role</p>
+                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                            {selectedUser.role === 'CASHIER' ? 'Kasir' :
+                             selectedUser.role === 'ATTENDANT' ? 'Pelayan' :
+                             selectedUser.role}
+                          </p>
+                        </div>
+                        <div>
+                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Status</p>
+                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedUser.status}</p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Alamat</p>
+                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedUser.address || '-'}</p>
+                        </div>
+                        <div>
+                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No. Telepon</p>
+                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedUser.phone || '-'}</p>
+                        </div>
+                        <div>
+                          <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Tanggal Dibuat</p>
+                          <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{new Date(selectedUser.createdAt).toLocaleDateString('id-ID')}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className={`px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse ${
+                darkMode ? 'bg-gray-700' : 'bg-pastel-purple-50'
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => setShowDetailModal(false)}
+                  className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm ${
+                    darkMode
+                      ? 'bg-cyan-600 hover:bg-cyan-700'
+                      : 'bg-cyan-600 hover:bg-cyan-700'
+                  }`}
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

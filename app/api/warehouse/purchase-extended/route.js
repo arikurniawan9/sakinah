@@ -46,13 +46,13 @@ export async function POST(request) {
     }
 
     // Get the warehouse for this store (assuming there's a warehouse associated with each store)
-    // For now, we'll create or get a general warehouse or use a default one
+    // Get or create the central warehouse
     let warehouse = await globalPrisma.warehouse.findFirst({
       where: { name: 'Gudang Pusat' } // Default warehouse
     });
 
     if (!warehouse) {
-      // Create a default warehouse if it doesn't exist
+      // Create the central warehouse if it doesn't exist
       warehouse = await globalPrisma.warehouse.create({
         data: {
           name: 'Gudang Pusat',
@@ -193,9 +193,13 @@ export async function POST(request) {
               name: item.productName,
               productCode: item.productCode,
               categoryId: category.id,
-              supplierId: supplier.id,
+              supplierId: supplierId,
               stock: item.quantity,
               purchasePrice: item.purchasePrice,
+              retailPrice: item.retailPrice || 0,
+              silverPrice: item.silverPrice || 0,
+              goldPrice: item.goldPrice || 0,
+              platinumPrice: item.platinumPrice || 0,
               storeId: effectiveStoreId,
               description: item.description || null,
               image: item.image || null
@@ -268,6 +272,10 @@ export async function POST(request) {
               supplierId: masterSupplier.id,
               stock: 0, // Akan ditambahkan ke warehouse stock
               purchasePrice: item.purchasePrice,
+              retailPrice: item.retailPrice || 0,
+              silverPrice: item.silverPrice || 0,
+              goldPrice: item.goldPrice || 0,
+              platinumPrice: item.platinumPrice || 0,
               storeId: 'WAREHOUSE_MASTER_STORE',
               description: item.description || null,
               image: item.image || null
@@ -279,6 +287,10 @@ export async function POST(request) {
             where: { id: masterProduct.id },
             data: {
               purchasePrice: item.purchasePrice,
+              retailPrice: item.retailPrice || masterProduct.retailPrice || 0,
+              silverPrice: item.silverPrice || masterProduct.silverPrice || 0,
+              goldPrice: item.goldPrice || masterProduct.goldPrice || 0,
+              platinumPrice: item.platinumPrice || masterProduct.platinumPrice || 0,
               name: item.productName,
               description: item.description || masterProduct.description
             }

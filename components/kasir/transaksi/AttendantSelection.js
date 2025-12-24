@@ -190,35 +190,31 @@ const AttendantSelection = ({ selectedAttendant, onSelectAttendant, onRemoveAtte
                 Scan kode pelayan atau ketik untuk mencari
               </div>
             </div>
-            <div className="flex-1 p-4 overflow-y-auto">
-              {attendantSearchTerm ? ( // Hanya tampilkan daftar jika ada pencarian
-                filteredAttendants.length === 0 ? (
-                  <div className={`p-4 text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    <p>Tidak ada pelayan yang ditemukan</p>
-                  </div>
-                ) : (
-                  filteredAttendants
+            <div className="flex-1 p-4 overflow-y-auto styled-scrollbar">
+              {filteredAttendants.length === 0 ? (
+                <div className={`p-4 text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <p>Tidak ada pelayan yang cocok.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {filteredAttendants
                     .filter(attendant => attendant && attendant.id) // Hanya proses attendant yang valid
                     .map(attendant => (
-                    <div
+                    <button
                       key={attendant.id}
                       onClick={() => handleSelect(attendant)}
-                      className={`p-3 rounded-lg cursor-pointer ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+                      className={`p-3 rounded-lg text-center transition-all duration-150 transform focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                        darkMode 
+                          ? 'bg-gray-700 text-white hover:bg-gray-600 focus:ring-offset-gray-800 focus:ring-purple-500' 
+                          : 'bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-offset-white focus:ring-purple-500'
+                      }`}
                     >
-                      <p className="font-medium">{attendant.name || 'Nama tidak tersedia'}</p>
-                      {attendant.code ? (
-                        <p className={`text-sm ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>Kode: {attendant.code}</p>
-                      ) : attendant.employeeNumber ? (
-                        <p className={`text-sm ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>Kode: {attendant.employeeNumber}</p>
-                      ) : (
-                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{attendant.username || 'Username tidak tersedia'}</p>
-                      )}
-                    </div>
-                  ))
-                )
-              ) : (
-                <div className={`p-4 text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  <p className="text-sm">Silakan ketik untuk mencari pelayan atau scan kode pelayan</p>
+                      <p className="font-semibold truncate">{attendant.name || 'Nama tidak tersedia'}</p>
+                      <p className={`text-xs truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        {attendant.code || attendant.employeeNumber || attendant.username || '...'}
+                      </p>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>

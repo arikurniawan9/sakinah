@@ -1,114 +1,77 @@
 // prisma/seed.js
-const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcryptjs');
+const { PrismaClient } = require("@prisma/client");
+const bcrypt = require("bcryptjs");
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Memulai seeding database...');
+  console.log("Memulai seeding database...");
 
-  // Buat user manager (jika belum ada)
-  const existingManager = await prisma.user.findUnique({
-    where: { username: 'manager' }
+  // 1. Buat User Manager (jika belum ada)
+  const manager = await prisma.user.upsert({
+    where: { username: "manager" },
+    update: {},
+    create: {
+      name: "Admin Manager",
+      username: "manager",
+      employeeNumber: "MGR001",
+      gender: "Laki-laki",
+      phone: "081234567890",
+      password: await bcrypt.hash("password123", 10),
+      role: "MANAGER",
+      status: "AKTIF",
+    },
   });
+  console.log("Akun manager dipastikan ada.");
 
-  if (!existingManager) {
-    await prisma.user.create({
-      data: {
-        name: 'Admin Manager',
-        username: 'manager',
-        employeeNumber: 'MGR001',
-        gender: 'Laki-laki',
-        phone: '081234567890',
-        password: await bcrypt.hash('password123', 10),
-        role: 'MANAGER',
-        status: 'AKTIF',
-      },
-    });
-    console.log('Akun manager berhasil dibuat');
-  } else {
-    console.log('Akun manager sudah ada');
-  }
+  // 2. Buat User Gudang (jika belum ada)
+  const warehouseUser = await prisma.user.upsert({
+    where: { username: "gudang" },
+    update: {},
+    create: {
+      name: "Petugas Gudang",
+      username: "gudang",
+      employeeNumber: "WH001",
+      gender: "Laki-laki",
+      phone: "081234567891",
+      password: await bcrypt.hash("gudang123", 10),
+      role: "WAREHOUSE",
+      status: "AKTIF",
+    },
+  });
+  console.log("Akun gudang dipastikan ada.");
 
-  // Buat beberapa toko (jika belum ada)
-  const existingStore = await prisma.store.findFirst();
+  // 3. Buat Gudang Pusat (jika belum ada)
+  const warehouse = await prisma.warehouse.upsert({
+    where: { name: "Gudang Pusat" },
+    update: {},
+    create: {
+      name: "Gudang Pusat",
+      description: "Gudang pusat untuk distribusi ke toko-toko",
+      status: "ACTIVE",
+    },
+  });
+  console.log("Gudang Pusat dipastikan ada.");
 
-  if (!existingStore) {
-    const storesToCreate = [
-      {
-        name: 'Toko Pusat',
-        code: 'TK001', // Tambahkan kode unik
-        description: 'Toko utama perusahaan',
-        address: 'Jl. Utama No. 1, Jakarta',
-        phone: '021-12345678',
-        email: 'tokopusat@toko.com',
-        status: 'ACTIVE',
-      },
-      {
-        name: 'Toko Cabang Barat',
-        code: 'TK002', // Tambahkan kode unik
-        description: 'Toko cabang di wilayah barat',
-        address: 'Jl. Barat Raya No. 10, Jakarta',
-        phone: '021-87654321',
-        email: 'toko.barat@toko.com',
-        status: 'ACTIVE',
-      },
-      {
-        name: 'Toko Cabang Timur',
-        code: 'TK003', // Tambahkan kode unik
-        description: 'Toko cabang di wilayah timur',
-        address: 'Jl. Timur Indah No. 5, Jakarta',
-        phone: '021-11223344',
-        email: 'toko.timur@toko.com',
-        status: 'ACTIVE',
-      }
-    ];
+  // 4. Buat Store Master untuk Gudang (jika belum ada)
+  const masterStore = await prisma.store.upsert({
+    where: { code: "WAREHOUSE_MASTER_STORE" },
+    update: {},
+    create: {
+      code: "WAREHOUSE_MASTER_STORE",
+      name: "Gudang Master",
+      description: "Toko virtual untuk menyimpan data master produk gudang.",
+      status: "ACTIVE",
+    },
+  });
+  console.log("Store Master Gudang dipastikan ada.");
 
-    for (const storeData of storesToCreate) {
-      await prisma.store.create({
-        data: storeData,
-      });
-      console.log(`Toko "${storeData.name}" berhasil dibuat`);
-    }
-    console.log('Tokok-toko berhasil dibuat');
-  } else {
-    console.log('Toko sudah ada');
-  }
-
-  // Buat member "Pelanggan Umum" untuk setiap toko
-  const allStores = await prisma.store.findMany();
-  for (const store of allStores) {
-    const existingGeneralMember = await prisma.member.findFirst({
-      where: {
-        storeId: store.id,
-        name: 'Pelanggan Umum',
-      },
-    });
-
-    if (!existingGeneralMember) {
-      await prisma.member.create({
-        data: {
-          storeId: store.id,
-          name: 'Pelanggan Umum',
-          code: `UMUM-${store.code}`, // Unique code for the general member
-          phone: '0000', // Default phone
-          address: 'N/A',
-          membershipType: 'GENERAL', // Special type for general customer
-          discount: 0,
-        },
-      });
-      console.log(`Member 'Pelanggan Umum' dibuat untuk toko ${store.name}`);
-    } else {
-      console.log(`Member 'Pelanggan Umum' sudah ada untuk toko ${store.name}`);
-    }
-  }
-
-  console.log('Database seeding selesai!');
+  console.log("Database seeding selesai!");
 }
 
 main()
   .catch((e) => {
-    console.error('Error during seeding:', e);
+    console.error("Error during seeding:", e);
     process.exit(1);
   })
   .finally(async () => {

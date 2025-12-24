@@ -108,7 +108,7 @@ const CategoryProductsModal = ({ category, onClose, darkMode }) => {
                   </div>
                   <div className="text-right">
                     <p className={`font-bold text-lg ${darkMode ? 'text-purple-300' : 'text-purple-700'}`}>
-                      {formatCurrency(product.priceTiers?.sort((a, b) => a.minQty - b.minQty)[0]?.price || 0)}
+                      {formatCurrency(product.retailPrice || 0)}
                     </p>
                     <p className={`text-sm ${product.stock > 0 ? (darkMode ? 'text-green-400' : 'text-green-600') : (darkMode ? 'text-red-400' : 'text-red-600')}`}>
                       Stok: {product.stock}

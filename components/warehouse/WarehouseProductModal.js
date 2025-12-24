@@ -1,301 +1,243 @@
+// components/warehouse/WarehouseProductModal.js
 'use client';
 
+import { Save, X, Plus, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useNotification } from '@/components/notifications/NotificationProvider';
+import Tooltip from '../../components/Tooltip';
+import ButtonSelector from '../../components/ButtonSelector';
 
-const WarehouseProductModal = ({
-  isOpen,
-  onClose,
-  onSave,
-  product = null,
-  action = 'create',
-  products = [],
-  categories = []
-}) => {
-  const [formData, setFormData] = useState({
-    productId: '',
-    quantity: 0,
-    reserved: 0
-  });
-  const [availableProducts, setAvailableProducts] = useState([]);
-  const [warehouses, setWarehouses] = useState([]);
-  const [selectedWarehouse, setSelectedWarehouse] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { showNotification } = useNotification();
+export default function WarehouseProductModal({
+  showModal,
+  closeModal,
+  editingProduct,
+  formData,
+  handleInputChange,
+  handleTierChange,
+  addTier,
+  removeTier,
+  handleSave,
+  darkMode,
+  categories,
+  suppliers,
+  onSuccess
+}) {
+  if (!showModal) return null;
 
-  // Ambil warehouses
-  useEffect(() => {
-    const fetchWarehouses = async () => {
-      try {
-        const res = await fetch('/api/warehouse');
-        const data = await res.json();
-        if (res.ok) {
-          setWarehouses(data.warehouses || []);
-          if (data.warehouses && data.warehouses.length > 0) {
-            setSelectedWarehouse(data.warehouses[0].id);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching warehouses:', error);
-      }
-    };
+  // --- Selection Handlers ---
 
-    if (isOpen) {
-      fetchWarehouses();
-    }
-  }, [isOpen]);
-
-  // Filter products yang belum ada di warehouse atau yang sedang diedit
-  useEffect(() => {
-    if (action === 'create') {
-      // Hanya tampilkan produk yang belum ada di warehouse
-      const productIdsInWarehouse = products.map(wp => wp.productId);
-      const filteredProducts = products.filter(p => !productIdsInWarehouse.includes(p.id));
-      setAvailableProducts(filteredProducts);
-    } else {
-      // Untuk edit, tampilkan semua produk termasuk yang sedang diedit
-      setAvailableProducts(products);
-    }
-  }, [action, products]);
-
-  useEffect(() => {
-    if (product && action === 'edit') {
-      setFormData({
-        productId: product.productId,
-        quantity: product.quantity,
-        reserved: product.reserved
-      });
-      setSelectedWarehouse(product.warehouseId);
-    } else if (action === 'create') {
-      setFormData({
-        productId: '',
-        quantity: 0,
-        reserved: 0
-      });
-    }
-  }, [product, action]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const method = action === 'create' ? 'POST' : 'PUT';
-      const url = action === 'create' ? `/api/warehouse/stock` : `/api/warehouse/stock/${product.id}`;
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          quantity: parseInt(formData.quantity),
-          reserved: parseInt(formData.reserved),
-          warehouseId: selectedWarehouse
-        }),
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        showNotification(
-          action === 'create'
-            ? 'Produk berhasil ditambahkan ke gudang'
-            : 'Produk berhasil diperbarui di gudang',
-          'success'
-        );
-        onSave();
-        onClose();
-      } else {
-        showNotification(result.message || `Gagal ${action === 'create' ? 'menambahkan' : 'memperbarui'} produk`, 'error');
-      }
-    } catch (error) {
-      showNotification(`Error: ${error.message}`, 'error');
-    } finally {
-      setLoading(false);
-    }
+  const handleCategorySelect = (category) => {
+    handleInputChange({ target: { name: 'categoryId', value: category ? category.id : null } });
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus produk ini dari gudang?')) {
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const response = await fetch(`/api/warehouse/stock/${product.id}`, {
-        method: 'DELETE',
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        showNotification('Produk berhasil dihapus dari gudang', 'success');
-        onSave();
-        onClose();
-      } else {
-        showNotification(result.message || 'Gagal menghapus produk', 'error');
-      }
-    } catch (error) {
-      showNotification(`Error: ${error.message}`, 'error');
-    } finally {
-      setLoading(false);
-    }
+  const handleSupplierSelect = (supplier) => {
+    handleInputChange({ target: { name: 'supplierId', value: supplier ? supplier.id : null } });
   };
 
-  if (!isOpen) return null;
+  // --- Determine Selected Items for Edit Mode ---
+
+  const selectedCategory = formData.categoryId
+    ? categories.find(c => c.id === formData.categoryId)
+    : null;
+
+  const selectedSupplier = formData.supplierId
+    ? suppliers.find(s => s.id === formData.supplierId)
+    : null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-900">
-            {action === 'create' ? 'Tambah Produk ke Gudang' :
-             action === 'edit' ? 'Edit Produk di Gudang' :
-             'Detail Produk di Gudang'}
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+    <div className="fixed z-[100] inset-0 overflow-y-auto">
+      <div className="flex items-end justify-center min-h-screen sm:p-0 p-0">
+        <div className="fixed inset-0 transition-opacity" aria-hidden="true" onClick={closeModal}>
+          <div className={`${darkMode ? 'bg-gray-800 bg-opacity-75' : 'bg-gray-500 bg-opacity-75'}`}></div>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="warehouseId" className="block text-sm font-medium text-gray-700 mb-1">
-                  Gudang *
-                </label>
-                <select
-                  id="warehouseId"
-                  value={selectedWarehouse}
-                  onChange={(e) => setSelectedWarehouse(e.target.value)}
-                  required
-                  disabled={action !== 'create'}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
-                    focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${action !== 'create' ? 'bg-gray-100' : ''}`}
-                >
-                  <option value="">Pilih Gudang</option>
-                  {warehouses.map((wh) => (
-                    <option key={wh.id} value={wh.id}>
-                      {wh.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-              <div>
-                <label htmlFor="productId" className="block text-sm font-medium text-gray-700 mb-1">
-                  Produk *
-                </label>
-                <select
-                  id="productId"
-                  value={formData.productId}
-                  onChange={(e) => setFormData({...formData, productId: e.target.value})}
-                  required
-                  disabled={action !== 'create'}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
-                    focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${action !== 'create' ? 'bg-gray-100' : ''}`}
-                >
-                  <option value="">Pilih Produk</option>
-                  {availableProducts.map((prod) => (
-                    <option key={prod.id} value={prod.id}>
-                      {prod.name} ({prod.productCode})
-                    </option>
-                  ))}
-                </select>
-              </div>
+        <div className={`relative inline-block align-bottom ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg sm:rounded-none text-left overflow-hidden shadow-xl transform transition-all sm:my-0 sm:h-full sm:align-middle sm:max-w-lg md:max-w-4xl sm:w-full ${darkMode ? 'border-gray-700' : 'border-gray-200'} border`}>
+          <button onClick={closeModal} className={`absolute top-0 right-0 mt-4 mr-4 p-1 rounded-full ${darkMode ? 'text-gray-400 hover:bg-gray-600' : 'text-gray-400 hover:bg-gray-200'} transition-colors z-10`}>
+            <X className="h-6 w-6" />
+          </button>
+          <div className={`px-4 pt-5 pb-4 sm:p-6 sm:pb-4 ${darkMode ? 'bg-gray-800' : ''}`}>
+            <div className="w-full">
+              <h3 className={`text-lg leading-6 font-medium ${darkMode ? 'text-purple-400' : 'text-purple-800'}`} id="modal-title">
+                {editingProduct ? 'Edit Produk Gudang' : 'Tambah Produk Gudang Baru'}
+              </h3>
+              <div className="mt-4 w-full space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Left Column */}
+                  <div className="space-y-6">
+                    {/* Product Details Fieldset */}
+                    <fieldset className={`p-4 border rounded-lg ${darkMode ? 'border-gray-600' : 'border-gray-300'}`}>
+                      <legend className={`px-2 text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Detail Produk</legend>
+                      <div className="space-y-4 pt-2">
+                        <div>
+                          <label htmlFor="productCode" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Kode Produk *</label>
+                          <input type="text" name="productCode" id="productCode" value={formData.productCode} onChange={handleInputChange} className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200 bg-white text-gray-900'}`} placeholder="Cth: KLP-001" />
+                        </div>
+                        <div>
+                          <label htmlFor="name" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Nama Produk *</label>
+                          <input type="text" name="name" id="name" value={formData.name} onChange={handleInputChange} className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200 bg-white text-gray-900'}`} placeholder="Cth: Kemeja Lengan Panjang" />
+                        </div>
+                        <div>
+                          <label htmlFor="stock" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Stok</label>
+                          <input type="number" name="stock" id="stock" value={formData.stock} onChange={handleInputChange} className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200 bg-white text-gray-900'}`} placeholder="0" />
+                        </div>
+                      </div>
+                    </fieldset>
 
-              <div>
-                <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">
-                  Jumlah Stok
-                </label>
-                <input
-                  type="number"
-                  id="quantity"
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({...formData, quantity: parseInt(e.target.value) || 0})}
-                  min="0"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
-                    focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+                    {/* Categorization Fieldset */}
+                    <fieldset className={`p-4 border rounded-lg ${darkMode ? 'border-gray-600' : 'border-gray-300'}`}>
+                      <legend className={`px-2 text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Kategorisasi</legend>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                        <div>
+                          <label htmlFor="categoryId" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Kategori</label>
+                          <ButtonSelector
+                            items={categories}
+                            selectedItem={selectedCategory}
+                            onSelect={handleCategorySelect}
+                            placeholder="Pilih kategori..."
+                            searchPlaceholder="Cari kategori..."
+                            darkMode={darkMode}
+                            itemLabelKey="name"
+                            itemValueKey="id"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="supplierId" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Supplier</label>
+                          <ButtonSelector
+                            items={suppliers}
+                            selectedItem={selectedSupplier}
+                            onSelect={handleSupplierSelect}
+                            placeholder="Pilih supplier..."
+                            searchPlaceholder="Cari supplier..."
+                            darkMode={darkMode}
+                            itemLabelKey="name"
+                            itemValueKey="id"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label htmlFor="description" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Deskripsi</label>
+                          <textarea 
+                            name="description" 
+                            id="description" 
+                            rows={3} 
+                            value={formData.description || ''} 
+                            onChange={handleInputChange} 
+                            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200 bg-white text-gray-900'}`} 
+                            placeholder="Deskripsi singkat produk..."
+                          ></textarea>
+                        </div>
+                      </div>
+                    </fieldset>
+                  </div>
 
-              <div>
-                <label htmlFor="reserved" className="block text-sm font-medium text-gray-700 mb-1">
-                  Jumlah Terpesan
-                </label>
-                <input
-                  type="number"
-                  id="reserved"
-                  value={formData.reserved}
-                  onChange={(e) => setFormData({...formData, reserved: parseInt(e.target.value) || 0})}
-                  min="0"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
-                    focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-
-            {action === 'view' && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-md">
-                <h4 className="font-medium text-gray-900 mb-2">Informasi Tambahan:</h4>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div><span className="font-medium">Gudang:</span> {warehouses.find(wh => wh.id === product.warehouseId)?.name || 'N/A'}</div>
-                  <div><span className="font-medium">Kategori:</span> {product.product.category?.name || '-'}</div>
-                  <div><span className="font-medium">Stok Tersedia:</span> {product.quantity - product.reserved}</div>
-                  <div><span className="font-medium">Dibuat:</span> {new Date(product.createdAt).toLocaleString()}</div>
-                  <div><span className="font-medium">Diubah:</span> {new Date(product.updatedAt).toLocaleString()}</div>
+                  {/* Right Column */}
+                  <div className="space-y-6">
+                    {/* Pricing Fieldset */}
+                    <fieldset className={`p-4 border rounded-lg ${darkMode ? 'border-gray-600' : 'border-gray-300'}`}>
+                      <legend className={`px-2 text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Harga Jual Bertingkat</legend>
+                      <div className="space-y-4 pt-2">
+                        <div>
+                          <label htmlFor="purchasePrice" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Harga Beli</label>
+                          <input 
+                            type="number" 
+                            name="purchasePrice" 
+                            id="purchasePrice" 
+                            value={formData.purchasePrice || ''} 
+                            onChange={handleInputChange} 
+                            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200 bg-white text-gray-900'}`} 
+                            placeholder="Rp 0" 
+                          />
+                        </div>
+                        <hr className={darkMode ? 'border-gray-600' : 'border-gray-300'} />
+                        <div className="grid grid-cols-1 gap-3">
+                          <div className="grid grid-cols-12 gap-2">
+                            <div className="col-span-6">
+                              <label htmlFor="retailPrice" className={`block text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Harga Eceran</label>
+                              <input
+                                type="number"
+                                name="retailPrice"
+                                id="retailPrice"
+                                value={formData.retailPrice || ''}
+                                onChange={handleInputChange}
+                                className={`w-full px-2 py-1 border rounded-md sm:text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+                                placeholder="Harga eceran"
+                              />
+                            </div>
+                            <div className="col-span-6">
+                              <label htmlFor="silverPrice" className={`block text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Harga Silver</label>
+                              <input
+                                type="number"
+                                name="silverPrice"
+                                id="silverPrice"
+                                value={formData.silverPrice || ''}
+                                onChange={handleInputChange}
+                                className={`w-full px-2 py-1 border rounded-md sm:text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+                                placeholder="Harga member silver"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-12 gap-2">
+                            <div className="col-span-6">
+                              <label htmlFor="goldPrice" className={`block text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Harga Gold</label>
+                              <input
+                                type="number"
+                                name="goldPrice"
+                                id="goldPrice"
+                                value={formData.goldPrice || ''}
+                                onChange={handleInputChange}
+                                className={`w-full px-2 py-1 border rounded-md sm:text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+                                placeholder="Harga member gold"
+                              />
+                            </div>
+                            <div className="col-span-6">
+                              <label htmlFor="platinumPrice" className={`block text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Harga Platinum</label>
+                              <input
+                                type="number"
+                                name="platinumPrice"
+                                id="platinumPrice"
+                                value={formData.platinumPrice || ''}
+                                onChange={handleInputChange}
+                                className={`w-full px-2 py-1 border rounded-md sm:text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+                                placeholder="Harga member platinum/partai"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </fieldset>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
-
-          <div className="px-6 py-4 border-t border-gray-200 flex justify-between">
-            <div>
-              {action !== 'create' && action !== 'view' && (
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={loading}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-                >
-                  Hapus
-                </button>
-              )}
             </div>
-
-            <div className="flex space-x-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          </div>
+          <div className={`px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+            <Tooltip content={editingProduct ? 'Perbarui produk gudang' : 'Simpan produk gudang baru'}>
+              <button 
+                type="button" 
+                onClick={() => handleSave(onSuccess || null)} 
+                className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm flex items-center ${
+                  darkMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-600 hover:bg-purple-700'
+                }`}
               >
+                <Save className="h-4 w-4 mr-1" />
+                {editingProduct ? 'Perbarui' : 'Simpan'}
+              </button>
+            </Tooltip>
+            <Tooltip content="Batal">
+              <button 
+                type="button" 
+                onClick={closeModal} 
+                className={`mt-3 w-full inline-flex justify-center rounded-md border shadow-sm px-4 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm flex items-center ${
+                  darkMode ? 'bg-gray-600 text-white hover:bg-gray-500 border-gray-500' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'
+                }`}
+              >
+                <X className="h-4 w-4 mr-1" />
                 Batal
               </button>
-              {action !== 'view' && (
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                >
-                  {loading ? 'Menyimpan...' : (action === 'create' ? 'Simpan' : 'Perbarui')}
-                </button>
-              )}
-            </div>
+            </Tooltip>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
-};
-
-export default WarehouseProductModal;
+}

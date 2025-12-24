@@ -3,17 +3,12 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
-import {
-  getFromCache,
-  setToCache,
-  invalidateSupplierCache
-} from '@/lib/redis'; // Tambahkan import fungsi cache
 
 // GET: Fetch all suppliers
 export async function GET(request) {
   const session = await getServerSession(authOptions);
 
-  if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'CASHIER')) {
+  if (!session || (session.user.role !== 'ADMIN' && session.user.role !== 'CASHIER' && session.user.role !== 'WAREHOUSE')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -27,29 +22,26 @@ export async function GET(request) {
     if (page < 1 || limit < 1 || limit > 100) {
       return NextResponse.json({ error: 'Parameter pagination tidak valid' }, { status: 400 });
     }
+    
+    const isWarehouseUser = session.user.role === 'WAREHOUSE';
+    let storeId = null;
 
-    // Get storeId based on user's assigned store
-    const storeUser = await prisma.storeUser.findFirst({
-      where: {
-        userId: session.user.id,
-        role: { in: ['ADMIN', 'CASHIER'] } // Include cashier role for fetch
-      },
-      select: {
-        storeId: true
-      }
-    });
+    if (!isWarehouseUser) {
+        // Get storeId based on user's assigned store
+        const storeUser = await prisma.storeUser.findFirst({
+          where: {
+            userId: session.user.id,
+            role: { in: ['ADMIN', 'CASHIER'] } // Include cashier role for fetch
+          },
+          select: {
+            storeId: true
+          }
+        });
 
-    if (!storeUser) {
-      return NextResponse.json({ error: 'User does not have access to any store' }, { status: 400 });
-    }
-
-    // Buat cache key berdasarkan parameter
-    const cacheKey = `suppliers:${storeUser.storeId}:${page}:${limit}:${search}`;
-
-    // Coba ambil dari cache dulu
-    const cachedData = await getFromCache(cacheKey);
-    if (cachedData) {
-      return NextResponse.json(JSON.parse(cachedData));
+        if (!storeUser) {
+          return NextResponse.json({ error: 'User does not have access to any store' }, { status: 400 });
+        }
+        storeId = storeUser.storeId;
     }
 
     // Calculate offset for pagination
@@ -57,19 +49,18 @@ export async function GET(request) {
 
     // Build query conditions
     const whereCondition = {
-      storeId: storeUser.storeId, // Only suppliers for this store
-      AND: search ? [
-        {
-          OR: [
-            { name: { contains: search } },
-            { phone: { contains: search } },
-            { email: { contains: search } },
-            { address: { contains: search } }
-          ]
-        }
-      ] : []
+      ...(storeId && { storeId: storeId }), // Only suppliers for this store
     };
-
+    
+    if (search) {
+        whereCondition.OR = [
+            { name: { contains: search, mode: 'insensitive' } },
+            { phone: { contains: search, mode: 'insensitive' } },
+            { email: { contains: search, mode: 'insensitive' } },
+            { address: { contains: search, mode: 'insensitive' } }
+        ];
+    }
+    
     // Ambil data dan hitung total dalam satu operasi
     const [suppliers, total] = await Promise.all([
       prisma.supplier.findMany({
@@ -119,9 +110,6 @@ export async function GET(request) {
         hasMore: page < totalPages
       }
     };
-
-    // Simpan ke cache
-    await setToCache(cacheKey, JSON.stringify(result), 600); // Cache selama 10 menit
 
     return NextResponse.json(result);
   } catch (error) {
@@ -173,9 +161,6 @@ export async function POST(request) {
         storeId: storeUser.storeId
       }
     });
-
-    // Hapus cache supplier untuk toko ini karena ada perubahan data
-    await invalidateSupplierCache(storeUser.storeId);
 
     return NextResponse.json({
       success: true,
@@ -246,9 +231,6 @@ export async function DELETE(request) {
         storeId: storeUser.storeId // Only delete suppliers from this store
       }
     });
-
-    // Hapus cache supplier untuk toko ini karena ada perubahan data
-    await invalidateSupplierCache(storeUser.storeId);
 
     return NextResponse.json({
       success: true,

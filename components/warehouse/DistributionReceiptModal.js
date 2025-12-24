@@ -56,7 +56,7 @@ const DistributionReceiptModal = ({ distributionData, isOpen, onClose }) => {
           {/* Header */}
           <div className="flex justify-between items-center mb-4 print:hidden">
             <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              Struk Distribusi Gudang
+              Struk Distribusi Produk
             </h2>
             <button
               onClick={onClose}

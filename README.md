@@ -56,22 +56,34 @@ Aplikasi akan berjalan di http://localhost:3000
 
 ## 🔐 Roles & Akses
 
-Aplikasi memiliki 3 role pengguna:
+Aplikasi memiliki 5 role pengguna:
 
-1. **Admin**: 
-   - Full akses CRUD (kategori, produk, supplier, member, kasir, pelayan)
-   - Melihat laporan
+1. **Manager**:
+   - Full akses global ke semua toko
+   - Dapat membuat toko baru
+   - Dapat mengelola pengguna di semua toko
+   - Dapat mengakses semua fitur di semua toko
+
+2. **Gudang**:
+   - Mengelola stok gudang pusat
+   - Mendistribusikan barang ke toko-toko
+   - Melihat laporan stok gudang
+
+3. **Admin**:
+   - Full akses CRUD di toko masing-masing
+   - Mengelola produk, kategori, supplier, member
+   - Melihat laporan toko
    - Mengatur potongan harga
    - Ekspor CSV/PDF
 
-2. **Kasir**:
+4. **Kasir**:
    - Membuat transaksi
    - Memilih produk
    - Memilih member
    - Mencetak struk
    - Stok berkurang otomatis
 
-3. **Pelayan**:
+5. **Pelayan**:
    - Melihat produk/stok/kategori
    - Membuat daftar belanja sementara
    - Tidak bisa mengubah data atau melakukan transaksi
@@ -170,9 +182,8 @@ toko-sakinah/
 
 Setelah seeding, akun default tersedia:
 
-- **Admin**: username: `admin`, password: `admin123`
-- **Kasir**: username: `kasir`, password: `kasir123`
-- **Pelayan**: username: `pelayan`, password: `pelayan123`
+- **Manager**: username: `manager`, password: `password123`
+- **Gudang**: username: `gudang`, password: `gudang123`
 
 ## 📈 Fitur Lanjutan (Tersedia)
 

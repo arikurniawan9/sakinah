@@ -248,41 +248,25 @@ export default function ProductManagement() {
       if (!response.ok) throw new Error('Gagal mengambil data untuk export');
       const data = await response.json();
 
-      const exportData = data.products.flatMap(product => {
+      const exportData = data.products.map(product => {
         const category = categories.find(cat => cat.id === product.categoryId);
         const supplier = suppliers.find(supp => supp.id === product.supplierId);
 
-        if (!product.priceTiers || product.priceTiers.length === 0) {
-          return [{
-            'Nama': product.name,
-            'Kode': product.productCode,
-            'Stok': product.stock,
-            'Kategori': category?.name || '',
-            'Supplier': supplier?.name || '',
-            'Deskripsi': product.description || '',
-            'Tanggal Dibuat': new Date(product.createdAt).toLocaleDateString('id-ID'),
-            'Tanggal Diubah': new Date(product.updatedAt).toLocaleDateString('id-ID'),
-            'Harga Beli': product.purchasePrice || 0,
-            'Harga Jual Min': '',
-            'Harga Jual Max': '',
-            'Harga Jual': ''
-          }];
-        } else {
-          return product.priceTiers.map(tier => ({
-            'Nama': product.name,
-            'Kode': product.productCode,
-            'Stok': product.stock,
-            'Kategori': category?.name || '',
-            'Supplier': supplier?.name || '',
-            'Deskripsi': product.description || '',
-            'Tanggal Dibuat': new Date(product.createdAt).toLocaleDateString('id-ID'),
-            'Tanggal Diubah': new Date(product.updatedAt).toLocaleDateString('id-ID'),
-            'Harga Beli': product.purchasePrice || 0,
-            'Harga Jual Min': tier.minQty,
-            'Harga Jual Max': tier.maxQty || '',
-            'Harga Jual': tier.price
-          }));
-        }
+        return {
+          'Nama': product.name,
+          'Kode': product.productCode,
+          'Stok': product.stock,
+          'Kategori': category?.name || '',
+          'Supplier': supplier?.name || '',
+          'Deskripsi': product.description || '',
+          'Tanggal Dibuat': new Date(product.createdAt).toLocaleDateString('id-ID'),
+          'Tanggal Diubah': new Date(product.updatedAt).toLocaleDateString('id-ID'),
+          'Harga Beli': product.purchasePrice || 0,
+          'Harga Jual/Eceran': product.retailPrice || 0,
+          'Harga Member Silver': product.silverPrice || 0,
+          'Harga Member Gold': product.goldPrice || 0,
+          'Harga Member Platinum (Partai)': product.platinumPrice || 0
+        };
       });
 
       if (format === 'excel') {
@@ -316,14 +300,14 @@ export default function ProductManagement() {
         });
         setShowPDFPreviewModal(true);
       } else {
-        let csvContent = 'Nama,Kode,Stok,Kategori,Supplier,Deskripsi,Tanggal Dibuat,Tanggal Diubah,Harga Beli,Harga Jual Min,Harga Jual Max,Harga Jual\n';
+        let csvContent = 'Nama,Kode,Stok,Kategori,Supplier,Deskripsi,Tanggal Dibuat,Tanggal Diubah,Harga Beli,Harga Jual/Eceran,Harga Member Silver,Harga Member Gold,Harga Member Platinum (Partai)\n';
         exportData.forEach(row => {
           const csvRow = [
             `"${row['Nama'].replace(/"/g, '""')}"`, `"${row['Kode'].replace(/"/g, '""')}"`,
             row['Stok'], `"${row['Kategori']}"`, `"${row['Supplier']}"`,
             `"${row['Deskripsi'].replace(/"/g, '""')}"`, `"${row['Tanggal Dibuat']}"`,
-            `"${row['Tanggal Diubah']}"`, row['Harga Beli'], row['Harga Jual Min'],
-            row['Harga Jual Max'], row['Harga Jual']
+            `"${row['Tanggal Diubah']}"`, row['Harga Beli'], row['Harga Jual/Eceran'],
+            row['Harga Member Silver'], row['Harga Member Gold'], row['Harga Member Platinum (Partai)']
           ].join(',');
           csvContent += csvRow + '\n';
         });
@@ -440,8 +424,28 @@ export default function ProductManagement() {
     { key: 'productCode', title: 'Kode', sortable: true },
     { key: 'name', title: 'Nama', sortable: true },
     {
-      key: 'price', title: 'Harga',
-      render: (value, row) => `Rp ${(row.priceTiers?.sort((a, b) => a.minQty - b.minQty)[0]?.price || 0).toLocaleString('id-ID')}`,
+      key: 'purchasePrice', title: 'Harga Beli',
+      render: (value, row) => `Rp ${row.purchasePrice?.toLocaleString('id-ID') || 0}`,
+      sortable: true
+    },
+    {
+      key: 'retailPrice', title: 'Harga Jual/Eceran',
+      render: (value, row) => `Rp ${row.retailPrice?.toLocaleString('id-ID') || 0}`,
+      sortable: true
+    },
+    {
+      key: 'silverPrice', title: 'Harga Member Silver',
+      render: (value, row) => `Rp ${row.silverPrice?.toLocaleString('id-ID') || 0}`,
+      sortable: true
+    },
+    {
+      key: 'goldPrice', title: 'Harga Member Gold',
+      render: (value, row) => `Rp ${row.goldPrice?.toLocaleString('id-ID') || 0}`,
+      sortable: true
+    },
+    {
+      key: 'platinumPrice', title: 'Harga Member Platinum (Partai)',
+      render: (value, row) => `Rp ${row.platinumPrice?.toLocaleString('id-ID') || 0}`,
       sortable: true
     },
     { key: 'stock', title: 'Stok', sortable: true },

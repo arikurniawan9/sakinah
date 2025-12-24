@@ -45,7 +45,10 @@ export default function ManagerWarehouseUserManagement() {
     handleSave: originalHandleSave,
     error: formError,
     setError: setFormError,
-  } = useUserForm(fetchUsers, 'WAREHOUSE', '/api/manager/users'); // API endpoint for global users
+  } = useUserForm(fetchUsers, {
+    defaultRole: 'WAREHOUSE',
+    apiEndpoint: '/api/manager/users'
+  }); // API endpoint for global users
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemsToDelete, setItemsToDelete] = useState([]);

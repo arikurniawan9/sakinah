@@ -20,66 +20,86 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page')) || 1;
     const limit = parseInt(searchParams.get('limit')) || 10;
+    const search = searchParams.get('search') || ''; // Get search term
 
-    // Calculate offset for pagination
-    const offset = (page - 1) * limit;
+    // Define base where clause for pending distributions
+    const baseWhereClause = {
+      storeId: session.user.storeId,
+      status: 'PENDING_ACCEPTANCE',
+    };
 
-    // Get pending warehouse distributions for this store
-    const [distributions, totalCount] = await Promise.all([
-      prisma.warehouseDistribution.findMany({
-        where: {
-          storeId: session.user.storeId,
-          status: 'PENDING_ACCEPTANCE',
-        },
-        include: {
-          product: {
-            include: {
-              category: true,
-              supplier: true,
-            }
-          },
-          distributedByUser: {
-            select: {
-              name: true,
-              username: true,
-            }
-          },
-          warehouse: {
-            select: {
-              name: true,
-            }
-          },
-          store: {
-            select: {
-              name: true,
-            }
+    // First, get all pending distributions to then group them
+    const allPendingDistributions = await prisma.warehouseDistribution.findMany({
+      where: baseWhereClause,
+      include: {
+        distributedByUser: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
           },
         },
-        orderBy: {
-          distributedAt: 'desc',
-        },
-        skip: offset,
-        take: limit,
-      }),
-      prisma.warehouseDistribution.count({
-        where: {
-          storeId: session.user.storeId,
-          status: 'PENDING_ACCEPTANCE',
-        }
-      })
-    ]);
+      },
+      orderBy: {
+        distributedAt: 'desc',
+      },
+    });
 
-    const totalPages = Math.ceil(totalCount / limit);
+    // Grouping in-memory for now to avoid complex Prisma groupBy with relations and date manipulation
+    // This will group by date (YYYY-MM-DD) and distributedByUserId
+    const groupedDistributions = allPendingDistributions.reduce((acc, dist) => {
+      const dateKey = dist.distributedAt.toISOString().split('T')[0];
+      const batchKey = `${dateKey}-${dist.distributedBy}`;
+
+      if (!acc[batchKey]) {
+        acc[batchKey] = {
+          id: batchKey,
+          distributedAt: dist.distributedAt, // Use the actual distributedAt of the first item
+          distributedByUserId: dist.distributedBy,
+          distributedByUserName: dist.distributedByUser?.name || 'N/A',
+          storeId: dist.storeId, // Add storeId to the batch object
+          totalQuantity: 0,
+          totalAmount: 0,
+          itemCount: 0,
+          originalDistributions: [], // Keep original for potential later use if needed
+        };
+      }
+
+      acc[batchKey].totalQuantity += dist.quantity;
+      acc[batchKey].totalAmount += dist.totalAmount;
+      acc[batchKey].itemCount += 1;
+      acc[batchKey].originalDistributions.push(dist); // Store original distributions for batch
+      return acc;
+    }, {});
+
+    let batches = Object.values(groupedDistributions);
+
+    // Apply search filter to the grouped batches
+    if (search) {
+      const lowerCaseSearch = search.toLowerCase();
+      batches = batches.filter(batch => 
+        batch.distributedByUserName.toLowerCase().includes(lowerCaseSearch) ||
+        new Date(batch.distributedAt).toLocaleDateString('id-ID').toLowerCase().includes(lowerCaseSearch)
+      );
+    }
+
+    // Sort the final grouped batches by distributedAt (descending)
+    batches.sort((a, b) => new Date(b.distributedAt).getTime() - new Date(a.distributedAt).getTime());
+
+    const totalBatches = batches.length;
+    const offset = (page - 1) * limit; // Reintroduce offset calculation
+    const paginatedBatches = batches.slice(offset, offset + limit);
+    const totalPages = Math.ceil(totalBatches / limit);
 
     return NextResponse.json({
-      distributions,
+      distributions: paginatedBatches, // Renamed key to match frontend expectation
       pagination: {
         currentPage: page,
         totalPages: totalPages,
-        total: totalCount,
+        total: totalBatches,
         itemsPerPage: limit,
         startIndex: offset + 1,
-        endIndex: Math.min(offset + limit, totalCount)
+        endIndex: Math.min(offset + limit, totalBatches)
       }
     });
   } catch (error) {

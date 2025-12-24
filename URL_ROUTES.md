@@ -25,7 +25,7 @@
 
 ### Warehouse Routes (hanya untuk role WAREHOUSE)
 - `GET /warehouse/purchase` - Pembuatan pembelian produk (belum dibuat)
-- `GET /warehouse/distribution` - Distribusi produk ke toko (belum dibuat)
+- `GET /warehouse/distribution` - Distribusi produk ke toko (sudah dibuat, dengan pilihan pelayan berdasarkan nama atau kode)
 - `GET /warehouse/stock` - Melihat stok gudang (belum dibuat)
 - `GET /warehouse/history` - Riwayat distribusi (belum dibuat)
 
@@ -55,6 +55,17 @@
 ### Products API (dengan RBAC)
 - `GET /api/products` - Dapatkan produk (tergantung role dan akses toko)
 - `POST /api/products` - Buat produk baru (tergantung role dan akses toko)
+
+### Warehouse API (hanya untuk role WAREHOUSE dan MANAGER)
+- `GET /api/warehouse/users` - Dapatkan user untuk warehouse (default: CASHIER dan ATTENDANT; query: role=untuk filter role spesifik)
+- `POST /api/warehouse/users` - Buat user baru untuk warehouse
+- `PUT /api/warehouse/users/[id]` - Update user warehouse
+- `DELETE /api/warehouse/users` - Nonaktifkan user dari warehouse
+- `GET /api/warehouse/stores` - Dapatkan toko untuk warehouse
+- `POST /api/warehouse/distribution` - Buat distribusi produk ke toko
+- `GET /api/warehouse/distribution` - Dapatkan data distribusi
+- `PUT /api/warehouse/distribution/[id]` - Update status distribusi
+- `DELETE /api/warehouse/distribution/[id]` - Hapus distribusi
 
 ## Role Access Levels
 

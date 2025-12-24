@@ -1,0 +1,4 @@
+Kode Produk,Nama Produk,Stok,Harga Beli,Harga Jual,Kategori,Supplier,Deskripsi
+PRD001,Produk Contoh 1,100,50000,60000,Electronics,Distributor A,Deskripsi Produk 1
+PRD002,Produk Contoh 2,50,30000,35000,Clothing,Distributor B,Deskripsi Produk 2
+PRD003,Produk Contoh 3,200,15000,20000,Furniture,Tidak Ada,Deskripsi Produk 3

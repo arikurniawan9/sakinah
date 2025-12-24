@@ -109,25 +109,33 @@ export default function ProductDetailModal({
 
                 {/* Pricing Section */}
                 <div className={`border-t pt-2.5 ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <h4 className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-800'} mb-2`}>Tingkatan Harga Jual</h4>
+                  <h4 className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-800'} mb-2`}>Harga Produk</h4>
 
-                  <div>
-                    {product.priceTiers && product.priceTiers.length > 0 ? (
-                      <div className="space-y-1">
-                        {product.priceTiers.sort((a, b) => a.minQty - b.minQty).map((tier, index) => (
-                          <div key={index} className={`flex justify-between items-center py-1 px-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                            <span className={`text-xs ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                              {tier.minQty} {tier.maxQty ? `- ${tier.maxQty}` : '+'} pcs
-                            </span>
-                            <span className={`text-xs font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                              Rp {tier.price.toLocaleString('id-ID')}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className={`mt-1.5 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Tidak ada tingkatan harga jual.</p>
-                    )}
+                  <div className="space-y-1">
+                    <div className={`flex justify-between items-center py-1 px-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <span className={`text-xs ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Eceran</span>
+                      <span className={`text-xs font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        Rp {(product.retailPrice || 0).toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                    <div className={`flex justify-between items-center py-1 px-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <span className={`text-xs ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Silver</span>
+                      <span className={`text-xs font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        Rp {(product.silverPrice || 0).toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                    <div className={`flex justify-between items-center py-1 px-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <span className={`text-xs ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Gold</span>
+                      <span className={`text-xs font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        Rp {(product.goldPrice || 0).toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                    <div className={`flex justify-between items-center py-1 px-2 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <span className={`text-xs ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Platinum</span>
+                      <span className={`text-xs font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        Rp {(product.platinumPrice || 0).toLocaleString('id-ID')}
+                      </span>
+                    </div>
                   </div>
                 </div>
 

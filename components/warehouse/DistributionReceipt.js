@@ -42,7 +42,7 @@ const DistributionReceipt = forwardRef(({ distributionData }, ref) => {
     >
       {/* Header */}
       <div className="text-center mb-4 print:mb-4">
-        <h1 className="text-lg font-bold print:text-lg">STRUK DISTRIBUSI GUDANG</h1>
+        <h1 className="text-lg font-bold print:text-lg">STRUK DISTRIBUSI PRODUK</h1>
         <p className="text-xs print:text-xs">Toko SAKINAH</p>
         <p className="text-xs print:text-xs">Jl. Raya No. 123, Kota Anda</p>
         <p className="text-xs print:text-xs">Telp: 0812-3456-7890</p>
@@ -67,8 +67,11 @@ const DistributionReceipt = forwardRef(({ distributionData }, ref) => {
           <div className="text-right">{distributionData.store?.name || distributionData.storeName}</div>
         </div>
         <div className="grid grid-cols-2 gap-1 text-sm print:text-sm">
-          <div>Distributor</div>
-          <div className="text-right">{distributionData.distributedByUser?.name || distributionData.distributedByName || 'N/A'}</div>
+          <div>Pelayan Gudang</div>
+          <div className="text-right">
+            {distributionData.distributedByUser?.name || distributionData.distributedByName || 'N/A'}
+            {distributionData.distributedByUser?.code && ` (${distributionData.distributedByUser.code})`}
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-1 text-sm print:text-sm">
           <div>Status</div>

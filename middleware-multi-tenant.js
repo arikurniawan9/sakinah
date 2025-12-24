@@ -9,7 +9,7 @@ const GLOBAL_ROLES = [ROLES.MANAGER, ROLES.WAREHOUSE];
 // Definisikan permission untuk masing-masing path
 const rolePermissions = {
   '/manager': [ROLES.MANAGER],
-  '/warehouse': [ROLES.WAREHOUSE],
+  '/warehouse': [ROLES.WAREHOUSE], // WAREHOUSE adalah role utama untuk warehouse, tapi MANAGER juga bisa akses (ditangani di bawah)
   '/admin': [ROLES.ADMIN], // Ini harus bisa diakses baik oleh global admin maupun store admin
   '/kasir': [ROLES.CASHIER],
   '/pelayan': [ROLES.ATTENDANT],
@@ -69,14 +69,18 @@ function authMiddleware(req) {
           if (pathname.startsWith('/admin') || pathname.startsWith('/kasir') || pathname.startsWith('/pelayan')) {
             // Manager bisa mengakses halaman toko, tapi akan ditangani di halaman masing-masing
             // jika mereka tidak memiliki storeId
+          } else if (pathname.startsWith('/warehouse')) {
+            // Manager bisa mengakses halaman warehouse
           } else {
             // Untuk halaman non-toko, biarkan manager akses
           }
         } else if (token?.role === ROLES.WAREHOUSE) {
           // Warehouse role tidak boleh mengakses halaman toko biasa
-          const url = req.nextUrl.clone();
-          url.pathname = '/unauthorized';
-          return NextResponse.redirect(url);
+          if (!pathname.startsWith('/warehouse')) {
+            const url = req.nextUrl.clone();
+            url.pathname = '/unauthorized';
+            return NextResponse.redirect(url);
+          }
         } else {
           // User biasa dengan role yang salah
           const url = req.nextUrl.clone();

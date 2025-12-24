@@ -48,7 +48,7 @@ export default function AddUserPage() {
           setStores(data.stores || []);
         } else {
           console.error('Error fetching stores:', data.error);
-          toast.error('Gagal mengambil data toko');
+          toast.error(data.error || 'Gagal mengambil data toko');
         }
       } catch (error) {
         console.error('Error fetching stores:', error);
@@ -64,10 +64,20 @@ export default function AddUserPage() {
   // Handle input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setUserData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setUserData(prev => {
+      // Jika role diubah, reset storeId jika role adalah MANAGER
+      if (name === 'role') {
+        return {
+          ...prev,
+          [name]: value,
+          storeId: value === 'MANAGER' ? '' : prev.storeId
+        };
+      }
+      return {
+        ...prev,
+        [name]: value
+      };
+    });
   };
 
   // Handle form submission
@@ -100,8 +110,8 @@ export default function AddUserPage() {
       return;
     }
 
-    if (!userData.storeId) {
-      toast.error('Toko tujuan wajib dipilih');
+    if (!userData.storeId && userData.role !== 'MANAGER') {
+      toast.error('Toko tujuan wajib dipilih untuk role selain Manager');
       return;
     }
 
@@ -296,13 +306,34 @@ export default function AddUserPage() {
                   value={userData.storeId}
                   onChange={handleInputChange}
                   className="w-full p-2 border rounded dark:bg-gray-700 dark:text-white"
-                  required
+                  required={userData.role !== 'MANAGER'}
+                  disabled={stores.length === 0 || userData.role === 'MANAGER'}
                 >
-                  <option value="">Pilih Toko</option>
-                  {stores.map(store => (
-                    <option key={store.id} value={store.id}>{store.name}</option>
-                  ))}
+                  {!loading && stores.length === 0 && (
+                    <option value="">Tidak ada toko tersedia</option>
+                  )}
+                  {loading && (
+                    <option value="">Memuat toko...</option>
+                  )}
+                  {!loading && stores.length > 0 && (
+                    <>
+                      <option value="">Pilih Toko</option>
+                      {stores.map(store => (
+                        <option key={store.id} value={store.id}>{store.name}</option>
+                      ))}
+                    </>
+                  )}
                 </select>
+                {!loading && stores.length === 0 && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                    Tidak ada toko yang tersedia. Silakan buat toko terlebih dahulu.
+                  </p>
+                )}
+                {userData.role === 'MANAGER' && (
+                  <p className="mt-1 text-sm text-blue-600 dark:text-blue-400">
+                    Role Manager tidak memerlukan pilihan toko karena memiliki akses global.
+                  </p>
+                )}
               </div>
 
               <div>

@@ -72,7 +72,7 @@ export default function ProductTable({
             </tr>
           ) : (
             products.map((product) => {
-              const basePrice = product.priceTiers?.sort((a, b) => a.minQty - b.minQty)[0]?.price || 0;
+              const basePrice = product.retailPrice || 0;
               return (
               <tr key={product.id} className={`${darkMode ? 'hover:bg-gray-800' : 'hover:bg-pastel-purple-50'}`}>
                 {showActions && ( // Conditionally render individual checkbox

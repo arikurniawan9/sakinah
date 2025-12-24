@@ -2,11 +2,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
-import {
-  getFromCache,
-  setToCache,
-  invalidateCategoryCache
-} from '@/lib/redis'; // Tambahkan import fungsi cache
 import { z } from 'zod';
 
 // Zod Schemas
@@ -22,7 +17,7 @@ const categoryUpdateSchema = categorySchema.extend({
 // GET /api/kategori - Get all categories with pagination, search, and filtering
 export async function GET(request) {
   const session = await getSession();
-  if (!session || !['CASHIER', 'ADMIN'].includes(session.user.role)) {
+  if (!session || !['CASHIER', 'ADMIN', 'WAREHOUSE'].includes(session.user.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -33,7 +28,10 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit')) || 10;
     const storeId = session.user.storeId; // Assume session contains storeId
 
-    if (!storeId) {
+    // For WAREHOUSE role, we might not want to filter by store, or use a specific master store logic
+    const isWarehouseUser = session.user.role === 'WAREHOUSE';
+
+    if (!storeId && !isWarehouseUser) {
       return NextResponse.json(
         { error: 'User tidak terkait dengan toko manapun' },
         { status: 400 }
@@ -46,35 +44,25 @@ export async function GET(request) {
     }
 
     const search = searchParams.get('search') || '';
+    
+    // Base where clause
+    let whereClause = {};
 
-    // Buat cache key berdasarkan parameter
-    const cacheKey = exportData
-      ? `categories:export:${storeId}:${search}`
-      : `categories:${storeId}:${page}:${limit}:${search}`;
-
-    if (!exportData) { // Hanya cache untuk permintaan non-export
-      // Coba ambil dari cache dulu
-      const cachedData = await getFromCache(cacheKey);
-      if (cachedData) {
-        return NextResponse.json(JSON.parse(cachedData));
-      }
+    if (!isWarehouseUser) {
+        whereClause.storeId = storeId;
     }
-
-    // Gunakan opsi yang didukung oleh versi Prisma
-    const searchWhere = search
-      ? {
-          storeId,
-          OR: [
-            { name: { contains: search } },
-            { description: { contains: search } },
-          ],
-        }
-      : { storeId };
+    
+    if (search) {
+        whereClause.OR = [
+            { name: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+        ];
+    }
 
     if (exportData) {
       // Jika export, ambil semua data tanpa pagination
       const categoriesForExport = await prisma.category.findMany({
-        where: searchWhere,
+        where: whereClause,
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
@@ -115,7 +103,7 @@ export async function GET(request) {
       // Ambil data dan hitung total dalam satu operasi
       const [categoriesToFetch, total] = await Promise.all([
         prisma.category.findMany({
-          where: searchWhere,
+          where: whereClause,
           skip: offset,
           take: limit,
           orderBy: { createdAt: 'desc' },
@@ -130,7 +118,7 @@ export async function GET(request) {
             }
           }
         }),
-        prisma.category.count({ where: searchWhere })
+        prisma.category.count({ where: whereClause })
       ]);
 
       const totalPages = Math.ceil(total / limit);
@@ -145,9 +133,6 @@ export async function GET(request) {
           hasMore: page < totalPages,
         },
       };
-
-      // Simpan ke cache
-      await setToCache(cacheKey, JSON.stringify(result), 600); // Cache selama 10 menit
 
       return NextResponse.json(result);
     }
@@ -200,9 +185,6 @@ export async function POST(request) {
         storeId,
       },
     });
-
-    // Hapus cache kategori untuk toko ini karena ada perubahan data
-    await invalidateCategoryCache(storeId);
 
     return NextResponse.json(category, { status: 201 }); // 201 Created
   } catch (error) {
@@ -274,9 +256,6 @@ export async function PUT(request) {
       );
     }
 
-    // Hapus cache kategori untuk toko ini karena ada perubahan data
-    await invalidateCategoryCache(storeId);
-
     // Fetch the updated category to return it
     const updatedCategory = await prisma.category.findUnique({ where: { id } });
 
@@ -290,9 +269,6 @@ export async function PUT(request) {
         { status: 400 }
       );
     }
-
-    // P2025 is for `update` not `updateMany`. A count of 0 is the equivalent check.
-    // So we can remove the specific P2025 check.
 
     return NextResponse.json(
       { error: 'Gagal memperbarui kategori' },
@@ -373,9 +349,6 @@ export async function DELETE(request) {
         { status: 404 }
       );
     }
-
-    // Hapus cache kategori untuk toko ini karena ada perubahan data
-    await invalidateCategoryCache(storeId);
 
     return NextResponse.json({
       message: `Berhasil menghapus ${count} kategori.`,

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { ROLES } from '@/lib/constants';
 import { logWarehouseDistribution } from '@/lib/auditLogger';
+import { notificationManager, NOTIFICATION_TYPES, SEVERITY_LEVELS } from '@/lib/notificationManager';
 
 export async function POST(request) {
   try {
@@ -34,14 +35,20 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Toko tujuan tidak ditemukan' }, { status: 404 });
     }
 
-    // Get the central warehouse (assuming there's one central warehouse)
+    // Get or create the central warehouse
     let centralWarehouse = await prisma.warehouse.findFirst({
       where: { name: 'Gudang Pusat' }
     });
 
     if (!centralWarehouse) {
-      // If no central warehouse exists, return error
-      return NextResponse.json({ error: 'Gudang pusat tidak ditemukan' }, { status: 404 });
+      // Create the central warehouse if it doesn't exist
+      centralWarehouse = await prisma.warehouse.create({
+        data: {
+          name: 'Gudang Pusat',
+          description: 'Gudang pusat untuk distribusi ke toko-toko',
+          status: 'ACTIVE'
+        }
+      });
     }
 
     // Use a transaction to ensure atomicity
@@ -58,16 +65,20 @@ export async function POST(request) {
             },
           },
           include: {
-            product: true // Include the actual product to get purchase price
+            Product: true // Include the actual product to get purchase price
           }
         });
 
-        if (!warehouseProduct || warehouseProduct.quantity < item.quantity) {
-          throw new Error(`Stok produk ${item.productId} tidak mencukupi di gudang`);
+        if (!warehouseProduct) {
+          throw new Error(`Produk dengan ID ${item.productId} tidak ditemukan di gudang`);
+        }
+
+        if (warehouseProduct.quantity < item.quantity) {
+          throw new Error(`Stok produk ${warehouseProduct.Product.name} tidak mencukupi di gudang. Tersedia: ${warehouseProduct.quantity}, Diminta: ${item.quantity}`);
         }
 
         // Use the product's purchase price for calculation
-        totalAmount += item.quantity * warehouseProduct.product.purchasePrice;
+        totalAmount += item.quantity * warehouseProduct.Product.purchasePrice;
       }
 
       // Create individual warehouse distribution records for each product
@@ -82,9 +93,17 @@ export async function POST(request) {
             },
           },
           include: {
-            product: true
+            Product: true
           }
         });
+
+        if (!warehouseProduct) {
+          throw new Error(`Produk dengan ID ${item.productId} tidak ditemukan di gudang`);
+        }
+
+        if (warehouseProduct.quantity < item.quantity) {
+          throw new Error(`Stok produk ${warehouseProduct.Product.name} tidak mencukupi di gudang. Tersedia: ${warehouseProduct.quantity}, Diminta: ${item.quantity}`);
+        }
 
         // Decrement warehouse stock
         await tx.warehouseProduct.update({
@@ -108,8 +127,8 @@ export async function POST(request) {
             storeId,
             productId: item.productId,
             quantity: item.quantity,
-            unitPrice: item.purchasePrice || warehouseProduct.product.purchasePrice, // Use provided price or product's purchase price
-            totalAmount: item.quantity * (item.purchasePrice || warehouseProduct.product.purchasePrice),
+            unitPrice: item.purchasePrice || warehouseProduct.Product.purchasePrice, // Use provided price or product's purchase price
+            totalAmount: item.quantity * (item.purchasePrice || warehouseProduct.Product.purchasePrice),
             status: distributionStatus || 'PENDING_ACCEPTANCE',
             notes: body.notes || null,
             distributedAt: new Date(distributionDate),
@@ -138,6 +157,25 @@ export async function POST(request) {
           userAgent,
           storeId // log ke store tujuan
         );
+
+        // Jika status distribusi adalah PENDING_ACCEPTANCE, buat notifikasi
+        if (item.status === 'PENDING_ACCEPTANCE') {
+          await notificationManager.createNotification({
+            type: NOTIFICATION_TYPES.WAREHOUSE_DISTRIBUTION_PENDING,
+            title: `Distribusi Gudang Tertunda ke ${targetStore.name}`,
+            message: `Produk '${item.product?.name || 'N/A'}' sejumlah ${item.quantity} unit siap didistribusikan ke toko '${targetStore.name}'. Menunggu konfirmasi.`,
+            storeId: storeId, // Notifikasi untuk toko tujuan
+            userId: null, // Notifikasi bersifat umum untuk admin toko
+            severity: SEVERITY_LEVELS.MEDIUM,
+            data: {
+              distributionId: item.id,
+              productId: item.productId,
+              productName: item.product?.name || 'N/A',
+              storeName: targetStore.name,
+              quantity: item.quantity,
+            },
+          });
+        }
       }
 
       return distribution;
@@ -178,13 +216,20 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Get the central warehouse for the query
-    const centralWarehouse = await prisma.warehouse.findFirst({
+    // Get or create the central warehouse for the query
+    let centralWarehouse = await prisma.warehouse.findFirst({
       where: { name: 'Gudang Pusat' }
     });
 
     if (!centralWarehouse) {
-      return NextResponse.json({ error: 'Gudang pusat tidak ditemukan' }, { status: 404 });
+      // Create the central warehouse if it doesn't exist
+      centralWarehouse = await prisma.warehouse.create({
+        data: {
+          name: 'Gudang Pusat',
+          description: 'Gudang pusat untuk distribusi ke toko-toko',
+          status: 'ACTIVE'
+        }
+      });
     }
 
     // If ID is provided, return specific distribution for receipt printing
@@ -290,22 +335,55 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Parameter pagination tidak valid' }, { status: 400 });
     }
 
+    // Get query parameters for additional filtering
+    const search = searchParams.get('search') || '';
+    const status = searchParams.get('status') || '';
+
     const offset = (page - 1) * limit;
+
+    // Build the date filter separately
+    const dateFilter = {};
+    if (startDate) {
+      dateFilter.gte = new Date(startDate);
+    }
+    if (endDate) {
+      dateFilter.lte = new Date(endDate);
+    }
 
     // Membangun klausa where untuk filtering
     const whereClause = {
       warehouseId: centralWarehouse.id, // Hanya distribusi dari gudang pusat
       ...(storeId && { storeId }), // Filter berdasarkan toko jika disediakan
-      ...(startDate && {
-        distributedAt: {
-          gte: new Date(startDate),
-        }
+      ...(status && { status }), // Filter berdasarkan status jika disediakan
+      ...(search && {
+        OR: [
+          {
+            product: {
+              name: {
+                contains: search,
+                mode: 'insensitive',
+              },
+            },
+          },
+          {
+            store: {
+              name: {
+                contains: search,
+                mode: 'insensitive',
+              },
+            },
+          },
+          {
+            store: {
+              code: {
+                contains: search,
+                mode: 'insensitive',
+              },
+            },
+          },
+        ],
       }),
-      ...(endDate && {
-        distributedAt: {
-          lte: new Date(`${endDate}T23:59:59Z`), // Include full end date
-        }
-      }),
+      ...(Object.keys(dateFilter).length > 0 && { distributedAt: dateFilter }),
     };
 
     const [distributions, totalCount] = await Promise.all([

@@ -9,6 +9,7 @@ import { Search, Plus, Edit, Eye, Trash2, Filter, Download, Upload } from 'lucid
 import { useUserTheme } from '@/components/UserThemeContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import DataTable from '@/components/DataTable';
+import LazyDataTable from '@/components/LazyDataTable';
 import CreateStoreModal from '@/components/CreateStoreModal';
 import StoreDetailModal from '@/components/StoreDetailModal';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
@@ -82,7 +83,59 @@ export default function StoreManagementPage() {
 
   const baseStatusClasses = 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full';
 
-  // Fetch function using useRef to prevent unnecessary re-creation
+  // Fetch function for lazy loading - returns data and whether there's more
+  const fetchStoresLazy = useCallback(async (page, limit, search, sort, filters) => {
+    try {
+      const params = new URLSearchParams({
+        page: page,
+        limit: limit,
+        search: search,
+        sortKey: sort?.key || 'createdAt',
+        sortDirection: sort?.direction || 'desc',
+        status: filters?.status || ''
+      });
+
+      const response = await fetch(`/api/manager/stores?${params.toString()}`);
+
+      if (!response.ok) {
+        // Handle different status codes appropriately
+        if (response.status === 401) {
+          // Unauthorized - redirect to login
+          router.push('/login');
+          return { data: [], hasMore: false };
+        } else if (response.status === 403) {
+          // Forbidden - redirect to unauthorized page
+          router.push('/unauthorized');
+          return { data: [], hasMore: false };
+        } else {
+          // Other errors - display error message
+          const errorData = await response.text();
+          console.error('Error response from API:', errorData);
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+      }
+
+      const data = await response.json();
+
+      // Calculate if there are more items to load
+      const hasMore = data.stores.length === limit && (page * limit) < data.pagination.total;
+
+      return {
+        data: data.stores || [],
+        hasMore: hasMore
+      };
+    } catch (error) {
+      console.error('Error fetching stores:', error);
+      if (error.message.includes('401') || error.message.includes('403')) {
+        router.push('/login');
+      } else {
+        toast.error(`Error mengambil data toko: ${error.message}`);
+      }
+      return { data: [], hasMore: false };
+    }
+  }, [router]);
+
+  // Fetch function using useRef to prevent unnecessary re-creation (for traditional pagination)
   const fetchStores = useCallback(async () => {
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
@@ -518,13 +571,12 @@ export default function StoreManagementPage() {
         </p>
       </div>
 
-      {/* DataTable */}
-      <DataTable
-        data={state.stores}
+      {/* Lazy DataTable with infinite scrolling */}
+      <LazyDataTable
+        fetchData={fetchStoresLazy}
         columns={columns}
         mobileColumns={mobileColumns}
         loading={state.loading}
-        searchTerm={state.searchTerm}
         onSearch={handleSearch}
         sortConfig={state.sortConfig}
         onSort={handleSort}
@@ -540,16 +592,6 @@ export default function StoreManagementPage() {
         selectedRows={selectedRows}
         onSelectAll={handleSelectAll}
         onSelectRow={handleSelectRow}
-        // Pagination configuration
-        pagination={{
-          currentPage: state.currentPage,
-          totalPages: Math.ceil(state.totalItems / state.itemsPerPage),
-          totalItems: state.totalItems,
-          startIndex: state.totalItems > 0 ? (state.currentPage - 1) * state.itemsPerPage + 1 : 0,
-          endIndex: Math.min(state.currentPage * state.itemsPerPage, state.totalItems),
-          onPageChange: handlePageChange
-        }}
-        itemsPerPage={state.itemsPerPage}
         onItemsPerPageChange={handleItemsPerPageChange}
         // Delete multiple
         onDeleteMultiple={handleDeleteMultiple}

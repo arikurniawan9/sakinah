@@ -8,7 +8,8 @@ import { useUserForm } from '@/lib/hooks/useUserForm';
 import { useUserTable } from '@/lib/hooks/useUserTable';
 import UserModal from '@/components/admin/UserModal';
 import ConfirmationModal from '@/components/ConfirmationModal';
-import { AlertTriangle, CheckCircle, Edit, Trash2 } from 'lucide-react';
+import TransferUserModal from '@/components/TransferUserModal';
+import { AlertTriangle, CheckCircle, Edit, Trash2, MoveRight } from 'lucide-react';
 import DataTable from '@/components/DataTable';
 import Breadcrumb from '@/components/Breadcrumb';
 
@@ -53,13 +54,36 @@ export default function ManagerAllUsersManagement() {
     handleSave: originalHandleSave,
     error: formError,
     setError: setFormError,
-  } = useUserForm(fetchUsers, '', '/api/manager/users');
+  } = useUserForm(fetchUsers, { isManagerContext: true });
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemsToDelete, setItemsToDelete] = useState([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
   const [successMessage, setSuccessMessage] = useState('');
+  const [stores, setStores] = useState([]);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [userToTransfer, setUserToTransfer] = useState(null);
+  const [isTransferring, setIsTransferring] = useState(false);
+
+  useEffect(() => {
+    const fetchStores = async () => {
+      try {
+        const response = await fetch('/api/stores');
+        if (!response.ok) {
+          throw new Error('Gagal mengambil data toko');
+        }
+        const data = await response.json();
+        setStores(data);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    if (canManageUsers) {
+      fetchStores();
+    }
+  }, [canManageUsers]);
 
   const handleSelectRow = (id) => {
     setSelectedRows(prev =>
@@ -110,6 +134,35 @@ export default function ManagerAllUsersManagement() {
       setIsDeleting(false);
       setShowDeleteModal(false);
       setItemsToDelete([]);
+    }
+  };
+
+  // Fungsi untuk memindahkan pengguna ke toko lain
+  const handleTransferUser = async (transferData) => {
+    setIsTransferring(true);
+    setTableError('');
+
+    try {
+      const response = await fetch('/api/manager/transfer-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(transferData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Gagal memindahkan pengguna');
+      }
+
+      setSuccessMessage(result.message || 'Pengguna berhasil ditambahkan ke toko baru.');
+      setShowTransferModal(false);
+      setUserToTransfer(null);
+      fetchUsers(); // Refresh data
+    } catch (err) {
+      setTableError(err.message);
+    } finally {
+      setIsTransferring(false);
     }
   };
   
@@ -191,6 +244,11 @@ export default function ManagerAllUsersManagement() {
     },
   ];
 
+  const openTransferModal = (user) => {
+    setUserToTransfer(user);
+    setShowTransferModal(true);
+  };
+
   const renderRowActions = (row) => (
     <div className="flex items-center space-x-2">
       <button
@@ -200,6 +258,15 @@ export default function ManagerAllUsersManagement() {
       >
         <Edit size={18} />
       </button>
+      {row.role !== 'MANAGER' && (
+        <button
+          onClick={() => openTransferModal(row)}
+          className="p-1 text-green-500 hover:text-green-700"
+          title="Pindahkan ke Toko Lain"
+        >
+          <MoveRight size={18} />
+        </button>
+      )}
       <button
         onClick={() => handleDelete([row.id])}
         className="p-1 text-red-500 hover:text-red-700"
@@ -262,6 +329,7 @@ export default function ManagerAllUsersManagement() {
             error={formError}
             setFormError={setFormError}
             darkMode={darkMode}
+            stores={stores}
           />
           <ConfirmationModal
             isOpen={showDeleteModal}
@@ -270,6 +338,17 @@ export default function ManagerAllUsersManagement() {
             title={`Konfirmasi Hapus ${itemsToDelete.length} User`}
             message="Apakah Anda yakin ingin menghapus user yang dipilih? Tindakan ini akan menghapus pengguna secara permanen dan tidak dapat dibatalkan."
             isLoading={isDeleting}
+          />
+          <TransferUserModal
+            isOpen={showTransferModal}
+            onClose={() => {
+              setShowTransferModal(false);
+              setUserToTransfer(null);
+            }}
+            user={userToTransfer}
+            stores={stores}
+            onTransfer={handleTransferUser}
+            loading={isTransferring}
           />
         </>
       )}

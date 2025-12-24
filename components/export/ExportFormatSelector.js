@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Download, X, FileSpreadsheet, FileText, FileDown } from 'lucide-react';
 
-const ExportFormatSelector = ({ isOpen, onClose, onExport, title, darkMode }) => {
+const ExportFormatSelector = ({ isOpen, onClose, onConfirm, title, darkMode }) => {
   const [selectedFormat, setSelectedFormat] = useState('excel');
 
   if (!isOpen) return null;
 
   const handleExportClick = () => {
-    onExport(selectedFormat);
+    onConfirm(selectedFormat);
     onClose();
   };
 

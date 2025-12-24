@@ -13,7 +13,7 @@ const ProductCard = ({ product, onAddToCart, darkMode }) => (
     <h3 className={`font-bold text-md ${darkMode ? 'text-white' : 'text-gray-800'}`}>{product.name}</h3>
     <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{product.productCode}</p>
     <p className={`text-lg font-semibold mt-2 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
-      {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(product.priceTiers?.[0]?.price || 0)}
+      {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(product.retailPrice || 0)}
     </p>
      <p className={`text-xs mt-1 ${product.stock > 10 ? 'text-green-500' : 'text-red-500'}`}>
       Stok: {product.stock}

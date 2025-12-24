@@ -100,19 +100,19 @@ export default function KasirTransaksiPage() {
 
   // --- HELPER & LOGIC FUNCTIONS (Defined before useEffects that use them) ---
 
-  const getTierPrice = useCallback((product, quantity) => {
-    if (!product.priceTiers || product.priceTiers.length === 0) return 0;
-    const sortedTiers = [...product.priceTiers].sort(
-      (a, b) => a.minQty - b.minQty
-    );
-    let applicablePrice = sortedTiers[0]?.price || 0;
-    for (let i = sortedTiers.length - 1; i >= 0; i--) {
-      if (quantity >= sortedTiers[i].minQty) {
-        applicablePrice = sortedTiers[i].price;
-        break;
-      }
+  const getTierPrice = useCallback((product, quantity, membershipType = 'RETAIL') => {
+    // Use fixed price based on membership type instead of quantity-based tiers
+    switch (membershipType) {
+      case 'SILVER':
+        return product.silverPrice || product.retailPrice || 0;
+      case 'GOLD':
+        return product.goldPrice || product.retailPrice || 0;
+      case 'PLATINUM':
+        return product.platinumPrice || product.retailPrice || 0;
+      case 'RETAIL':
+      default:
+        return product.retailPrice || 0;
     }
-    return applicablePrice;
   }, []);
 
   const initiatePaidPayment = () => {
@@ -196,8 +196,8 @@ export default function KasirTransaksiPage() {
           items: cart.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
-            price: getTierPrice(item, item.quantity),
-            discount: getTierPrice(item, 1) - getTierPrice(item, item.quantity),
+            price: getTierPrice(item, item.quantity, selectedMember?.membershipType || 'RETAIL'),
+            discount: getTierPrice(item, 1, selectedMember?.membershipType || 'RETAIL') - getTierPrice(item, item.quantity, selectedMember?.membershipType || 'RETAIL'),
           })),
           total: calculation.grandTotal,
           payment: payment, // Kirim jumlah pembayaran sebagai DP (uang muka)
@@ -358,8 +358,8 @@ export default function KasirTransaksiPage() {
           items: cart.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
-            price: getTierPrice(item, item.quantity),
-            discount: getTierPrice(item, 1) - getTierPrice(item, item.quantity),
+            price: getTierPrice(item, item.quantity, selectedMember?.membershipType || 'RETAIL'),
+            discount: getTierPrice(item, 1, selectedMember?.membershipType || 'RETAIL') - getTierPrice(item, item.quantity, selectedMember?.membershipType || 'RETAIL'),
           })),
           total: calculation.grandTotal,
           payment: payment,

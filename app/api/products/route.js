@@ -94,7 +94,6 @@ export async function GET(request) {
       include: {
         category: true,
         supplier: true,
-        priceTiers: true,
       },
       orderBy: { name: 'asc' },
     });
@@ -199,7 +198,6 @@ export async function POST(request) {
       include: {
         category: true,
         supplier: true,
-        priceTiers: true,
       },
     });
 

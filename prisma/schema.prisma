@@ -29,6 +29,7 @@ model User {
   storeUsers             StoreUser[]
   tempCarts              TempCart[]              @relation("AttendantTempCarts")
   warehouseDistributions WarehouseDistribution[] @relation("DistributionUser")
+  notifications          Notification[]
 }
 
 model Category {
@@ -53,12 +54,15 @@ model Product {
   productCode            String
   stock                  Int                     @default(0)
   purchasePrice          Int
+  retailPrice            Int                     // Harga eceran/pelanggan umum
+  silverPrice            Int                     // Harga member silver
+  goldPrice              Int                     // Harga member gold
+  platinumPrice          Int                     // Harga member platinum/partai
   supplierId             String
   image                  String?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
   description            String?
-  priceTiers             PriceTier[]
   category               Category                @relation(fields: [categoryId], references: [id])
   store                  Store                   @relation(fields: [storeId], references: [id])
   supplier               Supplier                @relation(fields: [supplierId], references: [id])
@@ -74,17 +78,6 @@ model Product {
   @@index([supplierId])
 }
 
-model PriceTier {
-  id        String  @id @default(cuid())
-  productId String
-  minQty    Int
-  maxQty    Int?
-  price     Int
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  @@unique([productId, minQty])
-  @@index([productId])
-}
 
 model Supplier {
   id            String     @id @default(cuid())
@@ -113,8 +106,7 @@ model Member {
   name           String
   phone          String
   address        String?
-  membershipType String
-  discount       Int
+  membershipType String       // SILVER, GOLD, PLATINUM (PLATINUM also means partai)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   store          Store        @relation(fields: [storeId], references: [id])
@@ -186,9 +178,9 @@ model SaleDetail {
   saleId    String
   productId String
   quantity  Int
-  price     Int
-  discount  Int
-  subtotal  Int
+  price     Int     // Harga satuan yang digunakan saat transaksi
+  discount  Int     // Jumlah diskon (jika ada)
+  subtotal  Int     // Jumlah subtotal (harga * jumlah - diskon)
   product   Product @relation(fields: [productId], references: [id])
   sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
   store     Store   @relation(fields: [storeId], references: [id])
@@ -338,7 +330,7 @@ model Expense {
 
 model Store {
   id                     String                  @id @default(cuid())
-  code                   String?                 @default("")
+  code                   String                  @unique
   name                   String
   description            String?
   address                String?
@@ -364,6 +356,7 @@ model Store {
   suspendedSales         SuspendedSale[]
   tempCarts              TempCart[]
   warehouseDistributions WarehouseDistribution[]
+  notifications          Notification[]
 }
 
 model StoreUser {
@@ -385,7 +378,7 @@ model StoreUser {
 
 model Warehouse {
   id                     String                  @id @default(cuid())
-  name                   String                  @default("Gudang Pusat")
+  name                   String                  @unique @default("Gudang Pusat")
   description            String?
   address                String?
   phone                  String?
@@ -434,4 +427,30 @@ model WarehouseDistribution {
   @@index([storeId])
   @@index([distributedBy])
   @@index([distributedAt])
+}
+
+// Model for Notifications
+model Notification {
+  id              String    @id @default(cuid())
+  type            String
+  title           String
+  message         String
+  userId          String?
+  storeId         String?
+  severity        String
+  data            Json?
+  acknowledged    Boolean   @default(false)
+  acknowledgedAt  DateTime?
+  createdAt       DateTime  @default(now())
+  expiresAt       DateTime?
+
+  // Relations
+  user            User?     @relation(fields: [userId], references: [id])
+  store           Store?    @relation(fields: [storeId], references: [id])
+
+  @@index([userId])
+  @@index([storeId])
+  @@index([acknowledged])
+  @@index([createdAt])
+  @@index([expiresAt])
 }

@@ -1,170 +1,451 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Search, Plus, Download, Upload, Trash2, Folder, Edit, Eye } from 'lucide-react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import { useUserTheme } from '../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react';
+import { toast } from 'react-toastify';
+import Tooltip from '../../../components/Tooltip';
+
+import { useWarehouseProductTable } from '../../../lib/hooks/useWarehouseProductTable';
+import { useWarehouseProductForm } from '../../../lib/hooks/useWarehouseProductForm'; // Import new hook
+import { useTableSelection } from '../../../lib/hooks/useTableSelection';
+import { useCachedCategories, useCachedSuppliers } from '../../../lib/hooks/useCachedData'; // Import data hooks
+
 import DataTable from '../../../components/DataTable';
-import Breadcrumb from '../../../components/Breadcrumb';
-import { Package, Search, Plus, Edit, Trash2, AlertTriangle, PlusCircle, User, Calendar } from 'lucide-react';
+import ProductModal from '../../../components/produk/ProductModal'; // Import modal
 import ConfirmationModal from '../../../components/ConfirmationModal';
+import Breadcrumb from '../../../components/Breadcrumb';
+import ExportFormatSelector from '../../../components/export/ExportFormatSelector';
+import ProductDetailModal from '../../../components/produk/ProductDetailModal'; // Import ProductDetailModal
 
-export default function WarehouseProductsPage() {
-  const { data: session } = useSession();
-  const { userTheme } = useUserTheme();
-  const darkMode = userTheme.darkMode;
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [pagination, setPagination] = useState({});
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState(null);
+// Basic Add Stock Modal (Can be moved to its own file if it grows in complexity)
+function AddStockModal({ isOpen, onClose, product, darkMode, onSave }) {
+  const [quantityToAdd, setQuantityToAdd] = useState(1);
+  const [loading, setLoading] = useState(false);
 
-  // Fetch warehouse products
-  useEffect(() => {
-    fetchWarehouseProducts();
-  }, [currentPage, itemsPerPage, searchTerm]);
+  if (!isOpen || !product) return null;
 
-  const fetchWarehouseProducts = async () => {
+  const handleSave = async () => {
+    if (quantityToAdd <= 0) {
+      toast.error("Jumlah stok harus lebih dari 0.");
+      return;
+    }
+
+    setLoading(true);
     try {
-      setLoading(true);
-      const params = new URLSearchParams({
-        page: currentPage,
-        limit: itemsPerPage,
+      const response = await fetch(`/api/warehouse/products/${product.id}/add-stock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity: quantityToAdd }),
       });
 
-      if (searchTerm) {
-        params.append('search', searchTerm);
-      }
-
-      // Fetch warehouse products - these are products created specifically in warehouse
-      const response = await fetch(`/api/warehouse/products?${params.toString()}`);
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch warehouse products');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Gagal menambahkan stok.');
       }
 
-      setProducts(data.products || []);
-      setPagination(data.pagination || {});
-    } catch (err) {
-      setError(err.message);
+      toast.success(`Berhasil menambahkan ${quantityToAdd} stok untuk ${product.name}`);
+      onSave(); // Callback to refresh table
+      onClose();
+    } catch (error) {
+      toast.error('Error: ' + error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (productId) => {
-    setItemToDelete(productId);
+  return (
+    <div className="fixed inset-0 z-[101] overflow-y-auto">
+      <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div className="fixed inset-0 transition-opacity" aria-hidden="true" onClick={onClose}>
+          <div className={`${darkMode ? 'bg-gray-800 bg-opacity-75' : 'bg-gray-500 bg-opacity-75'}`}></div>
+        </div>
+        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div className={`relative inline-block align-bottom ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${darkMode ? 'border-gray-700' : 'border-gray-200'} border`}>
+          <div className={`px-4 pt-5 pb-4 sm:p-6 sm:pb-4 ${darkMode ? 'bg-gray-800' : ''}`}>
+            <h3 className={`text-lg leading-6 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Tambah Stok: {product.name}
+            </h3>
+            <div className="mt-2">
+              <label htmlFor="quantityToAdd" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Jumlah yang Ditambahkan</label>
+              <input
+                type="number"
+                id="quantityToAdd"
+                value={quantityToAdd}
+                onChange={(e) => setQuantityToAdd(parseInt(e.target.value) || 0)}
+                min="1"
+                className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-200 bg-white text-gray-900'}`}
+                disabled={loading}
+              />
+            </div>
+          </div>
+          <div className={`px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={loading}
+              className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm"
+            >
+              {loading ? 'Menyimpan...' : 'Simpan'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className={`mt-3 w-full inline-flex justify-center rounded-md border shadow-sm px-4 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm ${darkMode ? 'bg-gray-600 text-white hover:bg-gray-500 border-gray-500' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+export default function WarehouseProductsPage() {
+  const { userTheme } = useUserTheme();
+  const darkMode = userTheme.darkMode;
+  const { data: session } = useSession();
+  const isWarehouse = session?.user?.role === 'WAREHOUSE';
+
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedProductForDetail, setSelectedProductForDetail] = useState(null);
+  const [showAddStockModal, setShowAddStockModal] = useState(false);
+  const [selectedProductForStockUpdate, setSelectedProductForStockUpdate] = useState(null);
+
+
+  const {
+    products,
+    loading,
+    searchTerm,
+    setSearchTerm,
+    itemsPerPage,
+    setItemsPerPage,
+    currentPage,
+    setCurrentPage,
+    pagination,
+    fetchProducts,
+  } = useWarehouseProductTable();
+  
+  // Form and Modal hook
+  const {
+    showModal,
+    editingProduct,
+    formData,
+    openModalForCreate,
+    openModalForEdit,
+    closeModal,
+    handleSave,
+    handleInputChange
+  } = useWarehouseProductForm(fetchProducts);
+
+  // Cached data for forms
+  const { categories, loading: categoriesLoading, error: categoriesError } = useCachedCategories();
+  const { suppliers, loading: suppliersLoading, error: suppliersError } = useCachedSuppliers();
+  
+  const isInitialDataLoading = categoriesLoading || suppliersLoading;
+
+  const { selectedRows, handleSelectAll, handleSelectRow, clearSelection, setSelectedRows } = useTableSelection(products);
+
+  const [importLoading, setImportLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showExportFormatModal, setShowExportFormatModal] = useState(false);
+  const [showImportConfirmModal, setShowImportConfirmModal] = useState(false);
+  const [duplicateProducts, setDuplicateProducts] = useState([]);
+  const [fileToImport, setFileToImport] = useState(null);
+
+  const handleDelete = (id) => {
+    if (!isWarehouse) return;
+    setItemToDelete(id);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteMultiple = () => {
+    if (!isWarehouse || selectedRows.length === 0) return;
+    setItemToDelete(selectedRows);
     setShowDeleteModal(true);
   };
 
   const handleConfirmDelete = async () => {
-    if (!itemToDelete) return;
+    if (!itemToDelete || !isWarehouse) return;
+    setIsDeleting(true);
+
+    const isMultiple = Array.isArray(itemToDelete);
+    let url = '/api/warehouse/products';
+    let options = {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    };
+
+    if (isMultiple) {
+      options.body = JSON.stringify({ ids: itemToDelete });
+    } else {
+      url += `/${itemToDelete}`;
+    }
 
     try {
-      const response = await fetch(`/api/warehouse/products/${itemToDelete}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Gagal menghapus produk gudang');
+      }
 
-      const result = await response.json();
-
-      if (response.ok) {
-        setShowDeleteModal(false);
-        setItemToDelete(null);
-        fetchWarehouseProducts(); // Refresh the list
+      fetchProducts();
+      if (isMultiple) {
+        clearSelection();
+        toast.success(`Berhasil menghapus ${itemToDelete.length} produk gudang`);
       } else {
-        throw new Error(result.error || 'Failed to delete product');
+        setSelectedRows(prev => prev.filter(rowId => rowId !== itemToDelete));
+        toast.success('Produk gudang berhasil dihapus');
       }
     } catch (err) {
-      setError(err.message);
+      toast.error('Terjadi kesalahan saat menghapus: ' + err.message);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      setItemToDelete(null);
     }
   };
 
+  const handleImport = async (e) => {
+    if (!isWarehouse) return;
+
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls') && !file.name.toLowerCase().endsWith('.csv')) {
+      toast.error('Silakan pilih file Excel (.xlsx, .xls) atau CSV (.csv)');
+      e.target.value = '';
+      return;
+    }
+    
+    setFileToImport(file); // Store the file in state
+
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    await processImport(formData, e);
+  };
+
+  const handleImportWithConfirmation = async (force) => {
+    if (!fileToImport) {
+        toast.error("File import tidak ditemukan. Silakan coba lagi.");
+        return;
+    }
+
+    setShowImportConfirmModal(false);
+    const formData = new FormData();
+    formData.append('file', fileToImport);
+    formData.append('force', String(force));
+
+    await processImport(formData);
+  };
+
+  const processImport = async (formData, event = null) => {
+    setImportLoading(true);
+    toast.info('Mengirim file untuk diimpor...');
+    
+    try {
+      const response = await fetch('/api/warehouse/products/import', { method: 'POST', body: formData });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Gagal memproses file import');
+      }
+
+      if (result.needConfirmation && result.duplicateProducts) {
+        setDuplicateProducts(result.duplicateProducts);
+        setShowImportConfirmModal(true); // Show duplicate confirmation
+      } else {
+        fetchProducts();
+        toast.success(result.message || `Berhasil mengimpor ${result.importedCount || 0} produk gudang`);
+        if (result.errors && result.errors.length > 0) {
+          console.warn('Import errors:', result.errors);
+          toast.warn(`Beberapa produk gudang gagal diimpor: ${result.errors.length} error(s)`);
+        }
+        // Clear all import related states on success
+        resetImportState();
+        if (event && event.target) {
+            event.target.value = '';
+        }
+      }
+    } catch (err) {
+      toast.error('Terjadi kesalahan saat import: ' + err.message);
+      resetImportState();
+    } finally {
+      setImportLoading(false);
+      // Don't reset file input here if confirmation is needed
+      if (!showImportConfirmModal && event && event.target) {
+        event.target.value = '';
+      }
+    }
+  };
+
+  const resetImportState = () => {
+    setFileToImport(null);
+    setDuplicateProducts([]);
+    setShowImportConfirmModal(false);
+  };
+
+  const openExportFormatSelector = () => {
+    setShowExportFormatModal(true);
+  };
+
+  const handleExportWithFormat = async (format) => {
+    setExportLoading(true);
+    try {
+      const response = await fetch('/api/warehouse/products/export');
+      if (!response.ok) throw new Error('Gagal mengambil data untuk export');
+      const data = await response.json();
+
+      const exportData = data.data;
+
+      if (format === 'excel') {
+        try {
+          const { utils, writeFile } = await import('xlsx');
+          const worksheet = utils.json_to_sheet(exportData);
+
+          const colWidths = [
+            { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 12 }, { wch: 12 },
+            { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+            { wch: 15 }, { wch: 15 }
+          ];
+          worksheet['!cols'] = colWidths;
+
+          const workbook = utils.book_new();
+          utils.book_append_sheet(workbook, worksheet, 'Produk Gudang');
+
+          const fileName = `produk-gudang-${new Date().toISOString().slice(0, 10)}.xlsx`;
+          writeFile(workbook, fileName);
+        } catch (error) {
+          console.error('Error saat ekspor ke Excel:', error);
+          toast.error('Gagal ekspor ke Excel, silakan coba format lain');
+          return;
+        }
+      } else {
+        let csvContent = 'Nama Produk,Kode Produk,Stok,Harga Beli,Kategori,Supplier,Deskripsi,Tanggal Dibuat,Tanggal Diubah\n';
+        exportData.forEach(row => {
+          const csvRow = [
+            `"${row['Nama Produk'].replace(/"/g, '""')}"`, `"${row['Kode Produk'].replace(/"/g, '""')}"`,
+            row['Stok'], row['Harga Beli'], `"${row['Kategori']}"`, `"${row['Supplier']}"`,
+            `"${row['Deskripsi'].replace(/"/g, '""')}"`, `"${row['Tanggal Dibuat']}"`,
+            `"${row['Tanggal Diubah']}"`
+          ].join(',');
+          csvContent += csvRow + '\n';
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `produk-gudang-${new Date().toISOString().slice(0, 10)}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+      toast.success(`Data produk gudang berhasil diekspor dalam format ${format.toUpperCase()}`);
+    } catch (err) {
+      toast.error('Terjadi kesalahan saat export: ' + err.message);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const handleExport = () => {
+    openExportFormatSelector();
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
+
   const columns = [
-    {
-      key: 'no',
-      title: 'No.',
-      render: (_, __, index) => (currentPage - 1) * itemsPerPage + index + 1,
-    },
-    {
-      key: 'name',
-      title: 'Nama Produk',
-      sortable: true,
-      render: (value, row) => (
-        <div>
-          <div className="font-medium">{value}</div>
-          <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-            {row.productCode}
-          </div>
-        </div>
-      )
-    },
-    {
-      key: 'categoryId',
-      title: 'Kategori',
-      render: (value, row) => row.category?.name || 'N/A',
-      sortable: true
-    },
-    {
-      key: 'supplierId',
-      title: 'Supplier',
-      render: (value, row) => row.supplier?.name || 'N/A',
-      sortable: true
-    },
+    { key: 'productCode', title: 'Kode Produk', sortable: true },
+    { key: 'name', title: 'Nama Produk', sortable: true },
     {
       key: 'stock',
       title: 'Stok',
-      render: (value) => value?.toLocaleString('id-ID'),
+      render: (value) => value?.toLocaleString('id-ID') || 0,
       sortable: true
     },
     {
       key: 'purchasePrice',
       title: 'Harga Beli',
-      render: (value) => `Rp ${value?.toLocaleString('id-ID') || '0'}`,
+      render: (value) => `Rp ${(value || 0).toLocaleString('id-ID')}`,
       sortable: true
     },
     {
-      key: 'createdBy',
-      title: 'Dibuat Oleh',
-      render: (value, row) => (
-        <div className="flex items-center">
-          <User className="h-4 w-4 mr-1" />
-          <span>{row.user?.name || row.createdBy || 'N/A'}</span>
-        </div>
-      ),
+      key: 'retailPrice',
+      title: 'Harga Umum',
+      render: (value) => `Rp ${(value || 0).toLocaleString('id-ID')}`,
       sortable: true
     },
     {
-      key: 'storeId',
-      title: 'Sumber',
-      render: (value, row) => (
-        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-          {row.storeId === 'WAREHOUSE_MASTER_STORE' ? 'Gudang' : 'Toko Lain'}
-        </span>
-      )
-    },
-    {
-      key: 'createdAt',
-      title: 'Tanggal Dibuat',
-      render: (value) => new Date(value).toLocaleDateString('id-ID'),
+      key: 'silverPrice',
+      title: 'Harga Silver',
+      render: (value) => `Rp ${(value || 0).toLocaleString('id-ID')}`,
       sortable: true
     },
+    {
+      key: 'goldPrice',
+      title: 'Harga Gold',
+      render: (value) => `Rp ${(value || 0).toLocaleString('id-ID')}`,
+      sortable: true
+    },
+    {
+      key: 'platinumPrice',
+      title: 'Harga Platinum',
+      render: (value) => `Rp ${(value || 0).toLocaleString('id-ID')}`,
+      sortable: true
+    },
+    // Kategori and Supplier columns removed as per user request
+    // { key: 'category.name', title: 'Kategori', render: (value, row) => row.category?.name || '-', sortable: true },
+    // { key: 'supplier.name', title: 'Supplier', render: (value, row) => row.supplier?.name || '-', sortable: true }
   ];
 
-  const renderRowActions = (row) => (
+  // Connect the Edit button to the modal
+  const handleEdit = (product) => {
+    if (!isWarehouse) return;
+    openModalForEdit(product);
+  };
+
+  const handleViewDetails = (product) => {
+    // Placeholder for opening product detail modal
+    console.log('View details for:', product);
+    setSelectedProductForDetail(product);
+    setShowDetailModal(true);
+  };
+
+  const handleOpenAddStockModal = (product) => {
+    // Placeholder for opening add stock modal
+    console.log('Add stock for:', product);
+    setSelectedProductForStockUpdate(product);
+    setShowAddStockModal(true);
+  };
+
+  const enhancedProducts = products.map(product => ({
+    ...product,
+    onEdit: isWarehouse ? () => handleEdit(product) : undefined,
+    onDelete: isWarehouse ? () => handleDelete(product.id) : undefined,
+    onViewDetails: () => handleViewDetails(product), // Add view details action
+    onAddStock: () => handleOpenAddStockModal(product) // Add add stock action
+  }));
+
+  const rowActions = (row) => (
     <div className="flex space-x-2">
-      <button
-        onClick={() => handleDelete(row.id)}
-        className="p-2 text-red-500 hover:text-red-700 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30"
-        title="Hapus Produk"
-      >
-        <Trash2 size={20} />
-      </button>
+      <button onClick={() => handleViewDetails(row)} className={`p-1.5 rounded-md ${darkMode ? 'text-blue-400 hover:bg-gray-700' : 'text-blue-600 hover:bg-gray-200'}`} title="Detail Produk"><Eye className="h-4 w-4" /></button>
+      <button onClick={() => handleOpenAddStockModal(row)} className={`p-1.5 rounded-md ${darkMode ? 'text-green-400 hover:bg-gray-700' : 'text-green-600 hover:bg-gray-200'}`} title="Tambah Stok"><Plus className="h-4 w-4" /></button>
+      <button onClick={() => handleEdit(row)} className={`p-1.5 rounded-md ${darkMode ? 'text-yellow-400 hover:bg-gray-700' : 'text-yellow-600 hover:bg-gray-200'}`} title="Edit"><Edit className="h-4 w-4" /></button>
+      <button onClick={() => handleDelete(row.id)} className={`p-1.5 rounded-md ${darkMode ? 'text-red-400 hover:bg-gray-700' : 'text-red-600 hover:bg-gray-200'}`} title="Hapus"><Trash2 className="h-4 w-4" /></button>
     </div>
   );
 
@@ -178,93 +459,126 @@ export default function WarehouseProductsPage() {
     itemsPerPage: itemsPerPage
   };
 
-  const statusCardData = [
-    {
-      title: "Total Produk",
-      value: pagination.total || products.length || 0,
-      icon: Package,
-      color: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
-    },
-    {
-      title: "Total Stok",
-      value: products.reduce((sum, item) => sum + (item.stock || 0), 0).toLocaleString('id-ID'),
-      icon: Package,
-      color: "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400",
-    },
-    {
-      title: "Dibuat oleh Gudang",
-      value: products.filter(p => p.storeId === 'WAREHOUSE_MASTER_STORE').length,
-      icon: User,
-      color: "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
-    },
-  ];
-
   return (
     <ProtectedRoute requiredRole="WAREHOUSE">
-      <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
-        <Breadcrumb
-          items={[
-            { title: 'Dashboard Gudang', href: '/warehouse' },
-            { title: 'Produk Gudang', href: '/warehouse/products' }
-          ]}
-          darkMode={darkMode}
-        />
+      <main className={`w-full px-4 sm:px-6 lg:px-8 py-8 ${darkMode ? 'bg-gray-900 text-gray-100' : ''}`}>
+        <Breadcrumb items={[{ title: 'Produk Gudang', href: '/warehouse/products' }]} darkMode={darkMode} />
+        <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Manajemen Produk Gudang</h1>
 
-        <div className="mb-6">
-          <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            Produk Ditambahkan oleh Gudang
-          </h1>
-          <p className={`mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-            Daftar produk yang ditambahkan secara langsung oleh admin gudang
-          </p>
-        </div>
-
-        {/* Status Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {statusCardData.map((card, index) => (
-            <div
-              key={index}
-              className={`rounded-xl shadow-lg p-6 flex items-center ${darkMode ? 'bg-gray-800' : 'bg-white'}`}
-            >
-              <div className={`p-3 rounded-full ${card.color}`}>
-                <card.icon className="h-6 w-6" />
+        <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-theme-purple-700' : 'bg-white border-gray-200'} border`}>
+          <div className={`p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              {/* Left side: Search and Items per page */}
+              <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+                <div className="relative w-full sm:flex-1 md:w-64 lg:w-80">
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Cari produk..."
+                    className={`w-full pl-10 pr-4 py-2 border rounded-md shadow-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}
+                  />
+                  <svg
+                    className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    ></path>
+                  </svg>
+                </div>
+                <div className="w-full sm:w-auto">
+                  <select
+                    id="itemsPerPage"
+                    value={itemsPerPage}
+                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                    className={`w-full px-3 py-2 border rounded-md shadow-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
               </div>
-              <div className="ml-4">
-                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {card.title}
-                </p>
-                <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  {card.value}
-                </p>
+
+              {/* Right side: Action buttons */}
+              <div className="flex items-center justify-start flex-wrap gap-2">
+                {selectedRows.length > 0 && (
+                  <Tooltip content={`Hapus ${selectedRows.length} produk terpilih`}>
+                    <button onClick={handleDeleteMultiple} className="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"><Trash2 className="h-4 w-4" /><span className="ml-2">{selectedRows.length}</span></button>
+                  </Tooltip>
+                )}
+                <Tooltip content="Import produk dari file">
+                  <label className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}>
+                    <Upload className="h-4 w-4" /><input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImport} disabled={importLoading} />
+                  </label>
+                </Tooltip>
+                <Tooltip content="Template Produk">
+                  <a href="/templates/contoh-import-produk-gudang.csv" download="contoh-import-produk-gudang.csv" className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}><Folder className="h-4 w-4" /></a>
+                </Tooltip>
+                <Tooltip content="Export data ke file">
+                  <button onClick={handleExport} disabled={exportLoading} className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}>
+                    {exportLoading ? <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : <Download className="h-4 w-4" />}
+                  </button>
+                </Tooltip>
+                {isWarehouse && 
+                  <Tooltip content={isInitialDataLoading ? "Memuat data..." : "Tambah produk baru"}>
+                    <button 
+                      onClick={openModalForCreate} 
+                      disabled={isInitialDataLoading}
+                      className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      <span>{isInitialDataLoading ? "Memuat..." : "Baru"}</span>
+                    </button>
+                  </Tooltip>
+                }
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Data Table */}
-        <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
-          <DataTable
-            data={products}
-            columns={columns}
-            loading={loading}
-            onSearch={setSearchTerm}
-            onItemsPerPageChange={setItemsPerPage}
-            darkMode={darkMode}
-            pagination={paginationData}
-            mobileColumns={['name', 'stock', 'purchasePrice']}
-            rowActions={renderRowActions}
-            emptyMessage="Tidak ada produk yang ditambahkan oleh gudang"
-          />
-        </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="mt-4 p-4 rounded-lg bg-red-100 border border-red-400 text-red-700 dark:bg-red-900/30 dark:border-red-700 dark:text-red-300">
-            <div className="flex items-center">
-              <AlertTriangle className="h-5 w-5 mr-2" />
-              <span>{error}</span>
             </div>
           </div>
+
+          {/* Data Table */}
+          <div className="overflow-x-auto">
+            <DataTable
+              data={enhancedProducts}
+              columns={columns}
+              loading={loading || categoriesLoading || suppliersLoading}
+              darkMode={darkMode}
+              pagination={paginationData}
+              mobileColumns={['name', 'stock', 'purchasePrice']}
+              rowActions={rowActions}
+              emptyMessage="Tidak ada produk gudang ditemukan"
+              selectable={true}
+              onSelectAll={handleSelectAll}
+              onSelectRow={handleSelectRow}
+              selectedRows={selectedRows}
+              showSearch={false}
+            />
+          </div>
+        </div>
+
+        {/* Add/Edit Product Modal */}
+        {isWarehouse && (
+          <ProductModal
+            showModal={showModal}
+            closeModal={closeModal}
+            editingProduct={editingProduct}
+            formData={formData}
+            handleInputChange={handleInputChange}
+            handleTierChange={() => {}} 
+            addTier={() => {}}
+            removeTier={() => {}}
+            handleSave={handleSave}
+            darkMode={darkMode}
+            categories={categories}
+            suppliers={suppliers}
+          />
         )}
 
         {/* Delete Confirmation Modal */}
@@ -276,8 +590,63 @@ export default function WarehouseProductsPage() {
           }}
           onConfirm={handleConfirmDelete}
           title="Konfirmasi Hapus Produk"
-          message="Apakah Anda yakin ingin menghapus produk ini? Tindakan ini akan menghapus produk dan semua data terkait termasuk stok. Tindakan ini tidak dapat dibatalkan."
+          message={isDeleting
+            ? "Menghapus produk..."
+            : "Apakah Anda yakin ingin menghapus produk ini? Tindakan ini akan menghapus produk dan semua data terkait termasuk stok. Tindakan ini tidak dapat dibatalkan."
+          }
+          isLoading={isDeleting}
         />
+
+        {/* Import Confirmation Modal */}
+        {showImportConfirmModal && (
+          <ConfirmationModal
+            isOpen={showImportConfirmModal}
+            onClose={() => {
+              setShowImportConfirmModal(false);
+              setDuplicateProducts([]);
+              setFileToImport(null);
+            }}
+            onConfirm={() => handleImportWithConfirmation(true)}
+            onConfirmSecondary={() => handleImportWithConfirmation(false)}
+            title="Konfirmasi Import Produk"
+            message={`Terdapat ${duplicateProducts.length} produk yang sudah ada. Apakah Anda ingin menimpa produk yang sudah ada?`}
+            hasSecondaryAction={true}
+            secondaryActionText="Lewati yang sudah ada"
+            primaryActionText="Timpa semua"
+          />
+        )}
+
+        {/* Export Format Selector Modal */}
+        {showExportFormatModal && (
+          <ExportFormatSelector
+            isOpen={showExportFormatModal}
+            onClose={() => setShowExportFormatModal(false)}
+            onConfirm={handleExportWithFormat}
+            title="Pilih Format Ekspor"
+            description="Pilih format file yang ingin Anda gunakan untuk mengekspor data produk gudang"
+          />
+        )}
+
+        {/* Product Detail Modal */}
+        {selectedProductForDetail && (
+            <ProductDetailModal
+                isOpen={showDetailModal}
+                onClose={() => setShowDetailModal(false)}
+                product={selectedProductForDetail}
+                darkMode={darkMode}
+            />
+        )}
+
+        {/* Add Stock Modal */}
+        {selectedProductForStockUpdate && (
+            <AddStockModal
+                isOpen={showAddStockModal}
+                onClose={() => setShowAddStockModal(false)}
+                product={selectedProductForStockUpdate}
+                darkMode={darkMode}
+                onSave={fetchProducts} // Refresh the product list after stock update
+            />
+        )}
       </main>
     </ProtectedRoute>
   );

@@ -92,7 +92,7 @@ export default function ManagerLayout({ children }) {
   useEffect(() => {
     if (status === 'loading') return;
 
-    if (status !== 'authenticated' || session.user.role !== ROLES.MANAGER) {
+    if (status !== 'authenticated' || (session.user.role !== ROLES.MANAGER && session.user.role !== ROLES.ADMIN)) {
       router.push('/unauthorized');
       return;
     }
@@ -109,7 +109,7 @@ export default function ManagerLayout({ children }) {
   }
 
   return (
-    <ProtectedRoute requiredRole="MANAGER">
+    <ProtectedRoute requiredRole={['MANAGER', 'ADMIN']}>
       <UserThemeProvider>
         <SidebarProvider>
           <Sidebar menuItems={menuItems}>

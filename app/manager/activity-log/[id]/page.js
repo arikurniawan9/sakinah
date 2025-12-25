@@ -18,7 +18,7 @@ export default function ActivityDetailPage() {
 
   useEffect(() => {
     if (status === 'loading') return;
-    if (status !== 'authenticated' || session.user.role !== ROLES.MANAGER) {
+    if (status !== 'authenticated' || (session.user.role !== ROLES.MANAGER && session.user.role !== ROLES.ADMIN)) {
       router.push('/unauthorized');
       return;
     }
@@ -60,7 +60,7 @@ export default function ActivityDetailPage() {
     );
   }
 
-  if (status !== 'authenticated' || session.user.role !== ROLES.MANAGER) {
+  if (status !== 'authenticated' || (session.user.role !== ROLES.MANAGER && session.user.role !== ROLES.ADMIN)) {
     router.push('/unauthorized');
     return null;
   }

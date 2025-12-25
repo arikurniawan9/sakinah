@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useReactToPrint } from 'react-to-print';
 import DistributionReceipt from '../warehouse/DistributionReceipt';
 import DistributionInvoice from '../warehouse/DistributionInvoice';
 import { Printer, X } from 'lucide-react';
@@ -12,65 +11,105 @@ const DistributionReceiptModal = ({ distributionData, isOpen, onClose }) => {
   const darkMode = userTheme.darkMode;
   const receiptRef = useRef();
   const invoiceRef = useRef();
-  const [readyToPrint, setReadyToPrint] = useState(false);
   const [printType, setPrintType] = useState('receipt'); // 'receipt' or 'invoice'
 
-  const handleReceiptPrint = useReactToPrint({
-    content: () => receiptRef.current,
-    documentTitle: `Struk Distribusi - ${distributionData?.id || 'N/A'}`,
-    onAfterPrint: () => {
-      setReadyToPrint(false);
-      onClose();
-    },
-    pageStyle: `
-      @page {
-        size: 80mm auto;
-        margin: 0.25in 0.25in 0.25in 0.25in;
-      }
-      @media print {
-        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      }
-    `
-  });
-
-  const handleInvoicePrint = useReactToPrint({
-    content: () => invoiceRef.current,
-    documentTitle: `Faktur Distribusi - ${distributionData?.invoiceNumber || distributionData?.id || 'N/A'}`,
-    onAfterPrint: () => {
-      setReadyToPrint(false);
-      onClose();
-    },
-    pageStyle: `
-      @page {
-        size: A4;
-        margin: 0.4in 0.4in 0.4in 0.4in;
-      }
-      @media print {
-        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      }
-    `
-  });
-
-  useEffect(() => {
-    if (isOpen && readyToPrint) {
-      if (printType === 'receipt') {
-        handleReceiptPrint();
-      } else {
-        handleInvoicePrint();
-      }
+  // Fungsi cetak yang lebih aman
+  const handlePrint = () => {
+    if (!distributionData) {
+      console.error('Distribution data is not available');
+      return;
     }
-  }, [isOpen, readyToPrint, printType, handleReceiptPrint, handleInvoicePrint]);
 
-  // Auto-print when modal opens and component is ready
-  useEffect(() => {
-    if (isOpen && distributionData) {
-      // Wait a bit for the component to fully render
-      const timer = setTimeout(() => {
-        setReadyToPrint(true);
-      }, 500);
-      return () => clearTimeout(timer);
+    let printComponentRef = null;
+    let documentTitle = '';
+
+    if (printType === 'receipt') {
+      printComponentRef = receiptRef.current;
+      documentTitle = `Struk Distribusi - ${distributionData.id || 'N/A'}`;
+    } else {
+      printComponentRef = invoiceRef.current;
+      documentTitle = `Faktur Distribusi - ${distributionData.invoiceNumber || distributionData.id || 'N/A'}`;
     }
-  }, [isOpen, distributionData]);
+
+    if (!printComponentRef) {
+      console.error('Print component reference is not available');
+      return;
+    }
+
+    // Membuat jendela cetak baru
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Mohon izinkan popup untuk mencetak dokumen');
+      return;
+    }
+
+    // Style untuk cetakan
+    let pageStyle = '';
+    if (printType === 'receipt') {
+      pageStyle = `
+        @page {
+          size: 80mm auto;
+          margin: 0.25in 0.25in 0.25in 0.25in;
+        }
+        @media print {
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+      `;
+    } else {
+      pageStyle = `
+        @page {
+          size: A4;
+          margin: 0.4in 0.4in 0.4in 0.4in;
+        }
+        @media print {
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+      `;
+    }
+
+    // Isi dokumen cetak
+    const printContent = printComponentRef.innerHTML;
+
+    // Styling dasar untuk cetakan
+    const basicStyles = `
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          margin: 0;
+          padding: 20px;
+          color: #000;
+          background: #fff;
+        }
+        ${pageStyle}
+        /* Styling tambahan untuk memastikan tampilan tetap bagus di mode cetak */
+        .print\\:hidden { display: none !important; }
+        .print\\:block { display: block !important; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 8px; }
+        .border, .border-t, .border-b, .border-l, .border-r {
+          border: 1px solid #000 !important;
+        }
+      </style>
+    `;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${documentTitle}</title>
+          ${basicStyles}
+        </head>
+        <body>${printContent}</body>
+      </html>
+    `);
+    printWindow.document.close();
+
+    // Tunggu sedikit agar konten dimuat, lalu cetak
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+      onClose(); // Tutup modal setelah cetak
+    }, 500);
+  };
 
   // Handle ESC key press to close modal
   useEffect(() => {
@@ -153,9 +192,7 @@ const DistributionReceiptModal = ({ distributionData, isOpen, onClose }) => {
             {/* Print Buttons - Hidden during actual print */}
             <div className="flex space-x-3 mt-6 print:hidden">
               <button
-                onClick={() => {
-                  setReadyToPrint(true);
-                }}
+                onClick={handlePrint}
                 className={`flex-1 flex items-center justify-center px-4 py-2 rounded-lg font-medium ${
                   darkMode ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white'
                 }`}

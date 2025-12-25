@@ -8,7 +8,7 @@ export async function GET(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== ROLES.MANAGER) {
+    if (!session || (session.user.role !== ROLES.MANAGER && session.user.role !== ROLES.ADMIN)) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
@@ -33,6 +33,7 @@ export async function GET(request, { params }) {
           select: {
             name: true,
             username: true,
+            role: true,
           }
         },
         store: true

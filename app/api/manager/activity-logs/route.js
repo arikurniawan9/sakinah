@@ -10,7 +10,7 @@ export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== ROLES.MANAGER) {
+    if (!session || (session.user.role !== ROLES.MANAGER && session.user.role !== ROLES.ADMIN)) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
@@ -28,6 +28,7 @@ export async function GET(request) {
     const dateFrom = searchParams.get('dateFrom') || '';
     const dateTo = searchParams.get('dateTo') || '';
     const userId = searchParams.get('userId') || '';
+    const userRole = searchParams.get('userRole') || '';
     const exportParam = searchParams.get('export') || '';
 
     const skip = (page - 1) * limit;
@@ -49,6 +50,7 @@ export async function GET(request) {
         dateFrom ? { createdAt: { gte: new Date(dateFrom) } } : {},
         dateTo ? { createdAt: { lte: new Date(dateTo + 'T23:59:59.999Z') } } : {},
         userId ? { userId } : {},
+        userRole ? { user: { role: userRole } } : {},
       ],
     };
 
@@ -61,6 +63,7 @@ export async function GET(request) {
             select: {
               name: true,
               username: true,
+              role: true,
             }
           }
         },
@@ -83,6 +86,7 @@ export async function GET(request) {
           select: {
             name: true,
             username: true,
+            role: true,
           }
         }
       },

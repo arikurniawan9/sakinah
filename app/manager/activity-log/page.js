@@ -25,7 +25,8 @@ const initialState = {
     entity: '',
     dateFrom: '',
     dateTo: '',
-    userId: ''
+    userId: '',
+    userRole: ''
   }
 };
 
@@ -76,7 +77,8 @@ export default function ActivityLogPage() {
         entity: state.filters.entity,
         dateFrom: state.filters.dateFrom,
         dateTo: state.filters.dateTo,
-        userId: state.filters.userId
+        userId: state.filters.userId,
+        userRole: state.filters.userRole
       });
 
       const response = await fetch(`/api/manager/activity-logs?${params.toString()}`);
@@ -131,7 +133,7 @@ export default function ActivityLogPage() {
   // Effect to fetch data
   useEffect(() => {
     if (status === 'loading') return;
-    if (status !== 'authenticated' || session.user.role !== ROLES.MANAGER) {
+    if (status !== 'authenticated' || (session.user.role !== ROLES.MANAGER && session.user.role !== ROLES.ADMIN)) {
       router.push('/unauthorized');
       return;
     }
@@ -148,7 +150,7 @@ export default function ActivityLogPage() {
     );
   }
 
-  if (status !== 'authenticated' || session.user.role !== ROLES.MANAGER) {
+  if (status !== 'authenticated' || (session.user.role !== ROLES.MANAGER && session.user.role !== ROLES.ADMIN)) {
     router.push('/unauthorized');
     return null;
   }
@@ -212,6 +214,27 @@ export default function ActivityLogPage() {
       key: 'user',
       title: 'Pengguna',
       render: renderUser
+    },
+    {
+      key: 'userRole',
+      title: 'Peran',
+      render: (_, log) => {
+        const role = log.user?.role || 'Tidak dikenal';
+        const roleColors = {
+          'ADMIN': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100',
+          'MANAGER': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
+          'CASHIER': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
+          'ATTENDANT': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100',
+          'WAREHOUSE': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100'
+        };
+        const baseBadgeClasses = 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full';
+
+        return (
+          <span className={`${baseBadgeClasses} ${roleColors[role] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100'}`}>
+            {role}
+          </span>
+        );
+      }
     },
     {
       key: 'action',
@@ -344,6 +367,18 @@ export default function ActivityLogPage() {
             <span className="inline-block">{renderEntity(log.entity)}</span>
           </div>
           <div className="text-xs mt-1">{format(parseISO(log.createdAt), 'dd MMM yyyy, HH:mm', { locale: id })}</div>
+          {/* Menampilkan peran pengguna */}
+          <div className="text-xs mt-1">
+            <span className="font-medium">Peran: </span>
+            <span className={`px-2 py-0.5 rounded-full text-xs ${log.user?.role === 'ADMIN' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100' :
+              log.user?.role === 'MANAGER' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100' :
+              log.user?.role === 'CASHIER' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' :
+              log.user?.role === 'ATTENDANT' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100' :
+              log.user?.role === 'WAREHOUSE' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100' :
+              'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100'}`}>
+              {log.user?.role || 'Tidak dikenal'}
+            </span>
+          </div>
           {/* Menampilkan informasi item dengan format yang lebih ramah */}
           <div>
             {/* Fungsi untuk mendapatkan nama item dari newValue atau oldValue */}
@@ -512,6 +547,19 @@ export default function ActivityLogPage() {
         { value: 'PRODUCT', label: 'Produk' },
         { value: 'SALE', label: 'Penjualan' },
         { value: 'EXPENSE', label: 'Pengeluaran' }
+      ]
+    },
+    {
+      key: 'userRole',
+      label: 'Peran Pengguna',
+      type: 'select',
+      options: [
+        { value: '', label: 'Semua Peran' },
+        { value: 'ADMIN', label: 'Admin' },
+        { value: 'MANAGER', label: 'Manager' },
+        { value: 'CASHIER', label: 'Kasir' },
+        { value: 'ATTENDANT', label: 'Pelayan' },
+        { value: 'WAREHOUSE', label: 'Gudang' }
       ]
     },
     {

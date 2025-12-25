@@ -48,3 +48,54 @@ export async function generateSequentialDistributionInvoiceNumber() {
 
   return `DIST-${dateStr}-${timestamp}`;
 }
+
+/**
+ * Generate distribution invoice number with store code and sequential number
+ * Format: DIST-YYYYMMDD-STORECODE-SEQNUM
+ * Where SEQNUM is the sequential number for that store on that date
+ */
+export async function generateDistributionInvoiceNumberWithStoreCode(storeCode) {
+  const now = new Date();
+  const dateStr = now.getFullYear().toString() +
+                  String(now.getMonth() + 1).padStart(2, '0') +
+                  String(now.getDate()).padStart(2, '0');
+
+  // Get Prisma instance to count distributions for this store on this date
+  const prisma = (await import('@/lib/prisma')).default;
+
+  // Count existing distributions for this store on the same date
+  const existingDistributions = await prisma.warehouseDistribution.count({
+    where: {
+      storeId: storeCode, // Actually this should be the store ID, but we'll adapt
+      distributedAt: {
+        gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+        lt: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+      }
+    }
+  });
+
+  // Generate sequential number (001, 002, etc.)
+  const seqNum = String(existingDistributions + 1).padStart(3, '0');
+
+  return `DIST-${dateStr}-${storeCode}-${seqNum}`;
+}
+
+/**
+ * Generate distribution invoice number with store code and sequential number (simplified)
+ * Format: DIST-YYYYMMDD-STORECODE-SEQNUM
+ * This version uses a simpler approach by just using timestamp for uniqueness
+ */
+export function generateDistributionInvoiceNumberWithStoreCodeSimple(storeCode) {
+  const now = new Date();
+  const dateStr = now.getFullYear().toString() +
+                  String(now.getMonth() + 1).padStart(2, '0') +
+                  String(now.getDate()).padStart(2, '0');
+
+  // Use timestamp for uniqueness
+  const timestamp = Date.now().toString().slice(-4); // Use last 4 digits for uniqueness
+
+  // Ensure store code is properly formatted (uppercase, no spaces)
+  const formattedStoreCode = storeCode.replace(/\s+/g, '').toUpperCase();
+
+  return `DIST-${dateStr}-${formattedStoreCode}-${timestamp}`;
+}

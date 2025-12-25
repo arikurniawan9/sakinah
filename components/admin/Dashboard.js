@@ -151,6 +151,19 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Pending Distributions Notification */}
+      <div className="mb-6">
+        <StatCard
+          title="Distribusi Tertunda"
+          value={pendingDistributions}
+          icon={Package}
+          darkMode={darkMode}
+          href="/admin/distributions/pending"
+          loading={pendingDistributionsLoading}
+          warning={pendingDistributions > 0}
+        />
+      </div>
+
       {/* Main Dashboard Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column */}
@@ -170,15 +183,6 @@ export default function Dashboard() {
             <StatCard title="Total Produk" value={totalProductsCount} icon={ShoppingBag} darkMode={darkMode} href="/admin/produk" loading={loading} />
             <StatCard title="Total Member" value={totalMembersCount} icon={UserRound} darkMode={darkMode} href="/admin/member" loading={loading} />
             <StatCard title="Karyawan Aktif" value={activeEmployeesCount} icon={Users} darkMode={darkMode} href="/admin/pelayan" loading={loading} />
-            <StatCard
-              title="Distribusi Tertunda"
-              value={pendingDistributions}
-              icon={Package}
-              darkMode={darkMode}
-              href="/admin/distributions/pending"
-              loading={pendingDistributionsLoading}
-              warning={pendingDistributions > 0}
-            />
           </div>
           <RecentActivityTable recentActivitiesData={recentActivitiesData} darkMode={darkMode} loading={loading} />
         </div>

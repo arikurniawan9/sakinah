@@ -74,8 +74,9 @@ export default function WarehouseDistributionHistoryPage() {
 
   const handlePrintReceipt = async (distributionId) => {
     try {
-      // Fetch the specific distribution record to get reference information
-      const response = await fetch(`/api/warehouse/distribution?id=${distributionId}`);
+      // Fetch the specific distribution record to get all related items in the same group
+      // Use the grouped API to get all items in the same distribution batch
+      const response = await fetch(`/api/warehouse/distribution/grouped?id=${distributionId}`);
       const distributionRecord = await response.json();
 
       if (response.ok) {
@@ -94,7 +95,8 @@ export default function WarehouseDistributionHistoryPage() {
   const handleViewDetails = async (distributionId) => {
     try {
       // Fetch the specific distribution record to get all details
-      const response = await fetch(`/api/warehouse/distribution?id=${distributionId}`);
+      // Use the grouped API to get all items in the same distribution batch
+      const response = await fetch(`/api/warehouse/distribution/grouped?id=${distributionId}`);
       const distributionRecord = await response.json();
 
       if (response.ok) {
@@ -128,12 +130,12 @@ export default function WarehouseDistributionHistoryPage() {
       )
     },
     {
-      key: 'store.name',
+      key: 'store',
       title: 'Toko Tujuan',
       sortable: true,
       render: (value, row) => (
         <div>
-          <div className="font-medium">{value}</div>
+          <div className="font-medium">{row.store?.name || 'Toko Tidak Dikenal'}</div>
           <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
             {row.store?.code || 'N/A'}
           </div>
@@ -330,8 +332,26 @@ export default function WarehouseDistributionHistoryPage() {
           ))}
         </div>
 
-        {/* Filter Form */}
+        {/* Search and Filter Form */}
         <div className="mb-6">
+          {/* Search Input */}
+          <div className={`p-4 rounded-xl mb-4 ${darkMode ? 'bg-gray-800' : 'bg-white'} border ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Cari distribusi berdasarkan nama produk, nama toko, atau kode toko..."
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                  darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                }`}
+              />
+            </div>
+          </div>
+
           <FilterForm />
         </div>
 
@@ -341,11 +361,11 @@ export default function WarehouseDistributionHistoryPage() {
             data={distributions}
             columns={columns}
             loading={loading}
-            onSearch={setSearchTerm}
+            // Note: Search is handled by the manual input above
             onItemsPerPageChange={setItemsPerPage}
             darkMode={darkMode}
             pagination={paginationData}
-            mobileColumns={['id', 'store.name', 'distributedAt', 'status']}
+            mobileColumns={['id', 'store', 'distributedAt', 'status']}
             rowActions={renderRowActions}
             emptyMessage="Tidak ada riwayat distribusi ditemukan"
           />

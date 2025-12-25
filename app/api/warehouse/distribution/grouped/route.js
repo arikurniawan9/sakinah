@@ -3,7 +3,8 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { ROLES } from '@/lib/constants';
-import { generateDistributionInvoiceNumber } from '@/utils/invoiceNumber';
+
+export const dynamic = 'force-dynamic';
 
 // GET - Get grouped warehouse distributions with filtering
 export async function GET(request) {
@@ -134,10 +135,24 @@ export async function GET(request) {
         }
       });
 
-      // Return the first record as the main reference but with all items
+      // Generate a consistent invoice number for this distribution batch
+      // based on the distribution date and store code
+      const dateStr = new Date(referenceDistribution.distributedAt).toISOString().split('T')[0].replace(/-/g, '');
+      // Use store code for invoice number
+      const storeCode = referenceDistribution.store.code.replace(/\s+/g, '').toUpperCase();
+
+      // Create a unique identifier using date, store code, and a timestamp for uniqueness
+      const timestamp = referenceDistribution.distributedAt.getTime().toString().slice(-4); // Use last 4 digits of timestamp
+      const invoiceNumber = `DIST-${dateStr}-${storeCode}-${timestamp}`;
+
+      // Return the first record as the main reference but with all items and invoice number
       return NextResponse.json({
         ...referenceDistribution,
-        items: allDistributionItems
+        invoiceNumber,
+        items: allDistributionItems.map(item => ({
+          ...item,
+          invoiceNumber // Add invoice number to each item as well
+        }))
       });
     }
 
@@ -245,12 +260,18 @@ export async function GET(request) {
       if (!distributionMap.has(key)) {
         // Generate a consistent invoice number for this distribution batch
         const dateStr = new Date(distribution.distributedAt).toISOString().split('T')[0].replace(/-/g, '');
-        // Use store name, take first 3 characters and make uppercase
-        const storeNameCode = distribution.store.name.substring(0, 3).replace(/\s+/g, '').toUpperCase();
-        const userCode = distribution.distributedByUser.username.substring(0, 3) || distribution.distributedBy.substring(0, 3);
+        // Use store code for invoice number
+        const storeCode = distribution.store.code.replace(/\s+/g, '').toUpperCase();
 
-        // Create a unique but consistent identifier
-        const invoiceNumber = `DIST-${dateStr}-${storeNameCode}-${userCode.toUpperCase()}`;
+        // Create a unique but consistent identifier using a hash-like approach
+        // We'll use the timestamp of the key components to create a unique but consistent ID
+        // The key is already based on `${distribution.distributedAt.getTime()}-${distribution.storeId}-${distribution.distributedBy}`
+        // So we can use a combination of these for the suffix
+        const keyComponents = `${distribution.distributedAt.getTime()}-${distribution.storeId}`;
+        const hash = Array.from(keyComponents).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const suffix = String(hash % 10000).padStart(4, '0'); // 4 digit suffix
+
+        const invoiceNumber = `DIST-${dateStr}-${storeCode}-${suffix}`;
 
         distributionMap.set(key, {
           id: distribution.id, // Use the first distribution ID as the group ID

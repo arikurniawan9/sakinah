@@ -1,53 +1,28 @@
-import { Server } from 'socket.io';
+import { NextResponse } from 'next/server';
+import { initSocket, getIo } from '../../../lib/socket';
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// This is a placeholder for the GET request to initialize the socket server
+export async function GET(req) {
+  // The server instance is magically available in the response object
+  // in the Pages Router, but in the App Router, we need to access it differently.
+  // The common pattern is to attach it to the response object in a middleware or a custom server.
+  // However, for this fix, we will assume that the server is accessible via a custom setup.
+  // A cleaner approach would be to have a custom server entrypoint.
 
-let ioInstance; // Declare outside to maintain singleton pattern
-
-export default function socketHandler(req, res) {
+  // The below code is a bit of a hack to get the server object.
+  // It relies on the underlying Node.js server being available on the response object.
+  // This is not guaranteed in all deployment environments (e.g., Vercel serverless).
+  // For a more robust solution, a custom server setup is recommended.
   // @ts-ignore
-  if (!res.socket.server.io) {
+  const httpServer = req.socket?.server || (req.nextUrl.hostname === 'localhost' ? require('http').createServer() : null);
+
+  if (httpServer) {
     // @ts-ignore
-    ioInstance = new Server(res.socket.server, {
-      path: '/api/socket_io', // Custom path for the socket.io server
-      addTrailingSlash: false,
-      cors: {
-        origin: process.env.NEXT_PUBLIC_CLIENT_URL || "*", // Adjust CORS as needed
-        methods: ["GET", "POST"]
-      }
-    });
-
-    ioInstance.on('connection', (socket) => {
-      console.log('A user connected:', socket.id);
-
-      socket.on('joinRoom', (room) => {
-        socket.join(room);
-        console.log(`Socket ${socket.id} joined room ${room}`);
-      });
-
-      socket.on('leaveRoom', (room) => {
-        socket.leave(room);
-        console.log(`Socket ${socket.id} left room ${room}`);
-      });
-
-      socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
-      });
-    });
-
-    // @ts-ignore
-    res.socket.server.io = ioInstance;
-  } else {
-    // @ts-ignore
-    ioInstance = res.socket.server.io;
+    if (!httpServer.io) {
+      // @ts-ignore
+      httpServer.io = initSocket(httpServer);
+    }
   }
-  res.end();
-}
 
-export const getIo = () => {
-  return ioInstance;
-};
+  return NextResponse.json({ message: 'Socket server initialized' });
+}

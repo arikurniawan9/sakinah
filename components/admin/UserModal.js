@@ -82,8 +82,8 @@ const UserModal = ({
                 }`} id="modal-title">
                   {editingUser 
                     ? (isAttendantForm ? 'Edit Pelayan' : 'Edit User') 
-                    : (isAttendantForm 
-                        ? <>Tambah Pelayan Baru untuk <span className={`font-bold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{currentStoreName || 'Toko Ini'}</span></>
+                    : ((isAttendantForm || (allowedRoles && !editingUser)) // Show store name for attendants or when allowedRoles is set for new user
+                        ? <>Tambah User Baru untuk <span className={`font-bold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>{currentStoreName || 'Toko Ini'}</span></>
                         : 'Tambah User Baru'
                       )
                   }
@@ -292,7 +292,7 @@ const UserModal = ({
                       </div>
                     )}
 
-                    {(!isAttendantForm && formData.role && formData.role !== ROLES.MANAGER && formData.role !== ROLES.WAREHOUSE) && (
+                    {(!isAttendantForm && !(allowedRoles && !editingUser) && formData.role && formData.role !== ROLES.MANAGER && formData.role !== ROLES.WAREHOUSE) && (
                       <div className="mb-4">
                         <label htmlFor="storeId" className={`block text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
                           Toko *

@@ -20,6 +20,8 @@ export default function UserManagement() {
   const darkMode = userTheme.darkMode;
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === 'ADMIN';
+  const currentStoreId = session?.user?.storeId;
+  const currentStoreName = session?.user?.storeAccess?.name; // Corrected: Access store name from storeAccess
 
   const {
     users,
@@ -49,7 +51,9 @@ export default function UserManagement() {
     openModalForCreate,
     closeModal,
     handleSave: originalHandleSave,
-  } = useUserForm(fetchUsers);
+  } = useUserForm(fetchUsers, {
+    currentStoreId: currentStoreId, // Pass currentStoreId to the form hook
+  });
 
   const [, setSuccess] = useState(''); // dummy state untuk memenuhi useEffect
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -348,7 +352,7 @@ export default function UserManagement() {
                   )}
                   <Tooltip content="Tambah User">
                     <button
-                      onClick={openModalForCreate}
+                      onClick={() => openModalForCreate({ storeId: currentStoreId })}
                       className="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
                     >
                       <Plus className="h-5 w-5" />
@@ -366,7 +370,7 @@ export default function UserManagement() {
             selectedRows={selectedRows}
             onSelectAll={handleSelectAll}
             onSelectRow={handleSelectRow}
-            onAdd={isAdmin ? openModalForCreate : undefined}
+            onAdd={isAdmin ? () => openModalForCreate({ storeId: currentStoreId }) : undefined}
             onSearch={setSearchTerm} // Keep search function for the search input outside DataTable
             onItemsPerPageChange={setItemsPerPage}
             darkMode={darkMode}
@@ -403,6 +407,7 @@ export default function UserManagement() {
               setFormError={setFormError}
               darkMode={darkMode}
               allowedRoles={[ROLES.ADMIN, ROLES.CASHIER]} // Only allow Admin and Cashier roles
+              currentStoreName={currentStoreName}
             />
             <ConfirmationModal
               isOpen={showDeleteModal}

@@ -337,7 +337,6 @@ export default function KasirTransaksiPage() {
     console.log("Cart items before API call:", cart);
     console.log("Calculation object:", calculation);
     console.log("Selected Attendant:", selectedAttendant);
-    console.log("Additional Discount:", additionalDiscount);
     console.log("Payment Method:", paymentMethod);
     console.log("Reference Number:", referenceNumber);
 

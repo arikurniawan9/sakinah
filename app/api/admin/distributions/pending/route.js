@@ -45,81 +45,64 @@ export async function GET(request) {
       },
     });
 
-    // Track sequence numbers per date for batch IDs
-    const batchSequenceCounters = {};
+    // Instead of grouping distributions, return each distribution individually
+    // This will ensure each distribution appears as a separate entry
+    const individualDistributions = allPendingDistributions.map((dist, index) => {
+      // Create a unique ID for each distribution in the format: DIST-YYYYMMDD-XXXXX
+      const distDate = new Date(dist.distributedAt);
+      const year = distDate.getFullYear().toString();
+      const month = (distDate.getMonth() + 1).toString().padStart(2, '0');
+      const day = distDate.getDate().toString().padStart(2, '0');
+      const datePart = `${year}${month}${day}`;
 
-    // Grouping in-memory for now to avoid complex Prisma groupBy with relations and date manipulation
-    // This will group by date (YYYY-MM-DD) and distributedByUserId
-    const groupedDistributions = allPendingDistributions.reduce((acc, dist) => {
-      const dateKey = dist.distributedAt.toISOString().split('T')[0];
-      const datePrefix = dateKey.replace(/-/g, ''); // Convert YYYY-MM-DD to YYYYMMDD
-      const batchKey = `${dateKey}-${dist.distributedBy}`;
+      // Use the actual distribution ID or create a unique identifier
+      const distId = `DIST-${datePart}-${(index + 1).toString().padStart(5, '0')}`;
 
-      if (!acc[batchKey]) {
-        // Create a readable batch ID in format: DIST-YYYYMMDD-XXXXX
-        const batchDate = new Date(dist.distributedAt);
-        const year = batchDate.getFullYear().toString();
-        const month = (batchDate.getMonth() + 1).toString().padStart(2, '0');
-        const day = batchDate.getDate().toString().padStart(2, '0');
-        const datePart = `${year}${month}${day}`;
+      return {
+        id: distId, // Unique ID for this individual distribution
+        distributionId: dist.id, // Original distribution ID
+        distributedAt: dist.distributedAt,
+        distributedByUserId: dist.distributedBy,
+        distributedByUserName: dist.distributedByUser?.name || 'N/A',
+        storeId: dist.storeId,
+        quantity: dist.quantity, // Individual quantity
+        unitPrice: dist.unitPrice, // Individual unit price
+        totalAmount: dist.totalAmount, // Individual total amount
+        productId: dist.productId, // Individual product ID
+        productName: dist.product?.name || 'N/A', // Individual product name
+        productCode: dist.product?.productCode || 'N/A', // Individual product code
+        originalDistribution: dist, // Store original distribution data
+      };
+    });
 
-        // Increment sequence counter for this date
-        if (!batchSequenceCounters[datePart]) {
-          batchSequenceCounters[datePart] = 1;
-        } else {
-          batchSequenceCounters[datePart]++;
-        }
+    let distributions = individualDistributions;
 
-        const batchId = `DIST-${datePart}-${batchSequenceCounters[datePart].toString().padStart(5, '0')}`;
-
-        acc[batchKey] = {
-          id: batchId, // Use readable batch ID instead of composite key
-          distributedAt: dist.distributedAt, // Use the actual distributedAt of the first item
-          distributedByUserId: dist.distributedBy,
-          distributedByUserName: dist.distributedByUser?.name || 'N/A',
-          storeId: dist.storeId, // Add storeId to the batch object
-          totalQuantity: 0,
-          totalAmount: 0,
-          itemCount: 0,
-          originalDistributions: [], // Keep original for potential later use if needed
-        };
-      }
-
-      acc[batchKey].totalQuantity += dist.quantity;
-      acc[batchKey].totalAmount += dist.totalAmount;
-      acc[batchKey].itemCount += 1;
-      acc[batchKey].originalDistributions.push(dist); // Store original distributions for batch
-      return acc;
-    }, {});
-
-    let batches = Object.values(groupedDistributions);
-
-    // Apply search filter to the grouped batches
+    // Apply search filter to the individual distributions
     if (search) {
       const lowerCaseSearch = search.toLowerCase();
-      batches = batches.filter(batch => 
-        batch.distributedByUserName.toLowerCase().includes(lowerCaseSearch) ||
-        new Date(batch.distributedAt).toLocaleDateString('id-ID').toLowerCase().includes(lowerCaseSearch)
+      distributions = distributions.filter(dist =>
+        dist.distributedByUserName.toLowerCase().includes(lowerCaseSearch) ||
+        new Date(dist.distributedAt).toLocaleDateString('id-ID').toLowerCase().includes(lowerCaseSearch)
       );
     }
 
-    // Sort the final grouped batches by distributedAt (descending)
-    batches.sort((a, b) => new Date(b.distributedAt).getTime() - new Date(a.distributedAt).getTime());
+    // Sort the final individual distributions by distributedAt (descending)
+    distributions.sort((a, b) => new Date(b.distributedAt).getTime() - new Date(a.distributedAt).getTime());
 
-    const totalBatches = batches.length;
+    const totalDistributions = distributions.length;
     const offset = (page - 1) * limit; // Reintroduce offset calculation
-    const paginatedBatches = batches.slice(offset, offset + limit);
-    const totalPages = Math.ceil(totalBatches / limit);
+    const paginatedDistributions = distributions.slice(offset, offset + limit);
+    const totalPages = Math.ceil(totalDistributions / limit);
 
     return NextResponse.json({
-      distributions: paginatedBatches, // Renamed key to match frontend expectation
+      distributions: paginatedDistributions, // Return individual distributions
       pagination: {
         currentPage: page,
         totalPages: totalPages,
-        total: totalBatches,
+        total: totalDistributions,
         itemsPerPage: limit,
         startIndex: offset + 1,
-        endIndex: Math.min(offset + limit, totalBatches)
+        endIndex: Math.min(offset + limit, totalDistributions)
       }
     });
   } catch (error) {

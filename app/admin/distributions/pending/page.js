@@ -7,7 +7,7 @@ import DataTable from '../../../../components/DataTable';
 import Breadcrumb from '../../../../components/Breadcrumb';
 import ConfirmationModal from '../../../../components/ConfirmationModal';
 import { AlertTriangle, CheckCircle, XCircle, Eye, Search, Clock } from 'lucide-react';
-import DistributionBatchDetailModal from '../../../../components/admin/DistributionBatchDetailModal';
+import DistributionDetailModal from '../../../../components/admin/DistributionDetailModal';
 
 export default function PendingDistributions() {
   const { data: session } = useSession();
@@ -18,7 +18,7 @@ export default function PendingDistributions() {
   const [error, setError] = useState('');
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [showDetailModal, setShowDetailModal] = useState(false); // Added for batch detail
+  const [showDetailModal, setShowDetailModal] = useState(false); // For individual distribution detail
   const [selectedBatch, setSelectedBatch] = useState(null); // Changed to selectedBatch
   const [acceptReason, setAcceptReason] = useState('');
   const [rejectReason, setRejectReason] = useState('');
@@ -78,15 +78,12 @@ export default function PendingDistributions() {
 
     setIsProcessing(true);
     try {
-      // Need to send batch identifiers instead of distributionId
+      // Send individual distribution ID instead of batch identifiers
       const response = await fetch('/api/admin/distribution/accept', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // Sending batch identifiers
-          date: new Date(selectedBatch.distributedAt).toISOString().split('T')[0],
-          distributedByUserId: selectedBatch.distributedByUserId,
-          storeId: session.user.storeId, // Ensure storeId is passed
+          distributionId: selectedBatch.distributionId, // Send the specific distribution ID
           reason: acceptReason
         })
       });
@@ -98,7 +95,7 @@ export default function PendingDistributions() {
         setSelectedBatch(null);
         fetchPendingBatches(); // Refresh the list
       } else {
-        throw new Error(result.error || 'Failed to accept batch distribution');
+        throw new Error(result.error || 'Failed to accept distribution');
       }
     } catch (err) {
       setError(err.message);
@@ -112,16 +109,13 @@ export default function PendingDistributions() {
 
     setIsProcessing(true);
     try {
-      // Need to send batch identifiers instead of distributionId
-      const response = await fetch('/api/admin/distribution/accept', {
-        method: 'PATCH',
+      // Send individual distribution ID to reject it using PUT method with status REJECTED
+      const response = await fetch(`/api/warehouse/distribution/${selectedBatch.distributionId}`, {
+        method: 'PUT', // Using PUT method to update status
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // Sending batch identifiers
-          date: new Date(selectedBatch.distributedAt).toISOString().split('T')[0],
-          distributedByUserId: selectedBatch.distributedByUserId,
-          storeId: session.user.storeId, // Ensure storeId is passed
-          reason: rejectReason
+          status: 'REJECTED',
+          notes: rejectReason
         })
       });
 
@@ -132,7 +126,7 @@ export default function PendingDistributions() {
         setSelectedBatch(null);
         fetchPendingBatches(); // Refresh the list
       } else {
-        throw new Error(result.error || 'Failed to reject batch distribution');
+        throw new Error(result.error || 'Failed to reject distribution');
       }
     } catch (err) {
       setError(err.message);
@@ -148,15 +142,15 @@ export default function PendingDistributions() {
       render: (_, __, index) => (currentPage - 1) * itemsPerPage + index + 1,
     },
     {
-      key: 'id', // This is the batch ID generated in the API
-      title: 'ID Batch',
+      key: 'id', // This is the individual distribution ID generated in the API
+      title: 'ID Distribusi',
       sortable: false, // Not directly sortable as it's a composite ID
-      render: (value) => value // Display the full batch ID
+      render: (value) => value // Display the full distribution ID
     },
-    { 
-      key: 'distributedByUserName', 
-      title: 'Dikirim Oleh', 
-      sortable: true 
+    {
+      key: 'distributedByUserName',
+      title: 'Dikirim Oleh',
+      sortable: true
     },
     {
       key: 'distributedAt',
@@ -165,22 +159,16 @@ export default function PendingDistributions() {
       sortable: true
     },
     {
-      key: 'itemCount',
-      title: 'Total Jenis Produk',
-      sortable: true,
-      render: (value) => value.toLocaleString('id-ID')
-    },
-    { 
-      key: 'totalQuantity', 
-      title: 'Total Kuantitas', 
+      key: 'quantity',
+      title: 'Kuantitas',
       render: (value) => value.toLocaleString('id-ID'),
-      sortable: true 
+      sortable: true
     },
-    { 
-      key: 'totalAmount', 
-      title: 'Total Jumlah', 
+    {
+      key: 'totalAmount',
+      title: 'Total Jumlah',
       render: (value) => `Rp ${value.toLocaleString('id-ID')}`,
-      sortable: true 
+      sortable: true
     },
   ];
 
@@ -312,12 +300,11 @@ export default function PendingDistributions() {
         message={
           selectedBatch ? (
             <div>
-              <p>Apakah Anda yakin ingin menerima batch distribusi berikut?</p>
+              <p>Apakah Anda yakin ingin menerima distribusi berikut?</p>
               <div className={`mt-4 p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                <p><strong>ID Batch:</strong> {selectedBatch.id}</p>
+                <p><strong>ID Distribusi:</strong> {selectedBatch.id}</p>
                 <p><strong>Dikirim oleh:</strong> {selectedBatch.distributedByUserName}</p>
-                <p><strong>Total Jenis Produk:</strong> {selectedBatch.itemCount?.toLocaleString('id-ID')}</p>
-                <p><strong>Total Kuantitas:</strong> {selectedBatch.totalQuantity?.toLocaleString('id-ID')}</p>
+                <p><strong>Kuantitas:</strong> {selectedBatch.quantity?.toLocaleString('id-ID')}</p>
                 <p><strong>Total Jumlah:</strong> Rp {selectedBatch.totalAmount?.toLocaleString('id-ID')}</p>
                 <p><strong>Tanggal:</strong> {new Date(selectedBatch.distributedAt).toLocaleDateString('id-ID')}</p>
               </div>
@@ -358,12 +345,11 @@ export default function PendingDistributions() {
         message={
           selectedBatch ? (
             <div>
-              <p>Apakah Anda yakin ingin menolak batch distribusi berikut?</p>
+              <p>Apakah Anda yakin ingin menolak distribusi berikut?</p>
               <div className={`mt-4 p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                <p><strong>ID Batch:</strong> {selectedBatch.id}</p>
+                <p><strong>ID Distribusi:</strong> {selectedBatch.id}</p>
                 <p><strong>Dikirim oleh:</strong> {selectedBatch.distributedByUserName}</p>
-                <p><strong>Total Jenis Produk:</strong> {selectedBatch.itemCount?.toLocaleString('id-ID')}</p>
-                <p><strong>Total Kuantitas:</strong> {selectedBatch.totalQuantity?.toLocaleString('id-ID')}</p>
+                <p><strong>Kuantitas:</strong> {selectedBatch.quantity?.toLocaleString('id-ID')}</p>
                 <p><strong>Total Jumlah:</strong> Rp {selectedBatch.totalAmount?.toLocaleString('id-ID')}</p>
                 <p><strong>Tanggal:</strong> {new Date(selectedBatch.distributedAt).toLocaleDateString('id-ID')}</p>
               </div>
@@ -392,22 +378,14 @@ export default function PendingDistributions() {
         isLoading={isProcessing}
       />
 
-      {/* Distribution Batch Detail Modal */}
-      <DistributionBatchDetailModal
+      {/* Distribution Detail Modal */}
+      <DistributionDetailModal
         isOpen={showDetailModal}
         onClose={() => {
           setShowDetailModal(false);
-          setSelectedBatch(null); // Clear selected batch when closing
+          setSelectedBatch(null); // Clear selected distribution when closing
         }}
-        batch={selectedBatch}
-        onBatchAccepted={() => {
-          fetchPendingBatches(); // Refresh list after accept
-          setShowDetailModal(false); // Close modal
-        }}
-        onBatchRejected={() => {
-          fetchPendingBatches(); // Refresh list after reject
-          setShowDetailModal(false); // Close modal
-        }}
+        distribution={selectedBatch}
       />
     </main>
   );

@@ -127,8 +127,6 @@ model Sale {
   memberId           String?
   date               DateTime     @default(now())
   total              Int
-  discount           Int
-  additionalDiscount Int          @default(0)
   tax                Int
   payment            Int
   change             Int
@@ -179,7 +177,6 @@ model SaleDetail {
   productId String
   quantity  Int
   price     Int     // Harga satuan yang digunakan saat transaksi
-  discount  Int     // Jumlah diskon (jika ada)
   subtotal  Int     // Jumlah subtotal (harga * jumlah - diskon)
   product   Product @relation(fields: [productId], references: [id])
   sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)

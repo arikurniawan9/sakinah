@@ -13,12 +13,6 @@ const execPromise = promisify(exec);
 // Rate limiting simulation - in production you might want to use a proper rate limiter
 const restoreAttempts = new Map();
 
-// Disable Next.js default body parser to handle file uploads
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
 
 export async function POST(request) {
   try {
@@ -44,34 +38,18 @@ export async function POST(request) {
 
     restoreAttempts.set(userId, now);
 
-    // Parse the multipart form data
-    const formData = await new Promise((resolve, reject) => {
-      const form = new formidable.IncomingForm();
-      form.uploadDir = path.join(process.cwd(), 'temp');
+    // Parse the multipart form data using Next.js App Router approach
+    const formData = await request.formData();
+    const backupFile = formData.get('backupFile');
 
-      // Create temp directory if it doesn't exist
-      if (!fs.existsSync(form.uploadDir)) {
-        fs.mkdirSync(form.uploadDir, { recursive: true });
-      }
-
-      form.parse(request, (err, fields, files) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve({ fields, files });
-        }
-      });
-    });
-
-    const backupFile = formData.files.backupFile;
-
-    if (!backupFile) {
+    if (!backupFile || !(backupFile instanceof Blob)) {
       return NextResponse.json({ error: 'No backup file provided' }, { status: 400 });
     }
 
     // Validate file type
     const allowedExtensions = ['.sql', '.json', '.dump'];
-    const fileExtension = path.extname(backupFile.originalFilename || backupFile.name).toLowerCase();
+    const fileName = backupFile.name || 'unknown';
+    const fileExtension = path.extname(fileName).toLowerCase();
 
     if (!allowedExtensions.includes(fileExtension)) {
       return NextResponse.json({ error: `Invalid file type. Allowed: ${allowedExtensions.join(', ')}` }, { status: 400 });
@@ -84,10 +62,23 @@ export async function POST(request) {
     }
 
     // Validate filename to prevent directory traversal
-    const fileName = backupFile.originalFilename || backupFile.name;
     if (fileName.includes('..') || fileName.includes('/')) {
       return NextResponse.json({ error: 'Invalid filename' }, { status: 400 });
     }
+
+    // Create temporary file to store uploaded content
+    const tempDir = path.join(process.cwd(), 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    // Create a unique temporary file name
+    const tempFileName = `restore_${Date.now()}_${fileName}`;
+    const tempFilePath = path.join(tempDir, tempFileName);
+
+    // Write the file content to the temporary file
+    const buffer = Buffer.from(await backupFile.arrayBuffer());
+    fs.writeFileSync(tempFilePath, buffer);
 
     // Get database connection details from environment variables
     const { DATABASE_URL } = process.env;
@@ -120,7 +111,7 @@ export async function POST(request) {
           ...process.env,
           PGPASSWORD: password,
         },
-        input: fs.readFileSync(backupFile.filepath, 'utf8'),
+        input: fs.readFileSync(tempFilePath, 'utf8'),
       });
 
       if (stderr) {
@@ -130,7 +121,7 @@ export async function POST(request) {
     } else if (fileExtension === '.json') {
       // For JSON files, we would need to implement a custom restore function
       // This is a simplified approach - in production you might want a more comprehensive solution
-      const backupData = JSON.parse(fs.readFileSync(backupFile.filepath, 'utf8'));
+      const backupData = JSON.parse(fs.readFileSync(tempFilePath, 'utf8'));
 
       // Here you would implement the logic to restore from JSON backup
       // This might involve using Prisma to insert the data back into the database
@@ -141,7 +132,7 @@ export async function POST(request) {
       // and insert it back into the database using Prisma
     } else if (fileExtension === '.dump') {
       // For dump files, use pg_restore
-      const pgRestoreCmd = `pg_restore -h ${host} -p ${port} -U ${username} -d ${database} --no-password --clean --if-exists ${backupFile.filepath}`;
+      const pgRestoreCmd = `pg_restore -h ${host} -p ${port} -U ${username} -d ${database} --no-password --clean --if-exists ${tempFilePath}`;
 
       const { stderr } = await execPromise(pgRestoreCmd, {
         env: {
@@ -157,7 +148,7 @@ export async function POST(request) {
     }
 
     // Clean up uploaded file
-    fs.unlinkSync(backupFile.filepath);
+    fs.unlinkSync(tempFilePath);
 
     return NextResponse.json({
       success: true,

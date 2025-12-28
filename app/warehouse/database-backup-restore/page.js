@@ -2,8 +2,8 @@
 
 import { useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import ProtectedRoute from '../../../../components/ProtectedRoute';
-import { useUserTheme } from '../../../../components/UserThemeContext';
+import ProtectedRoute from '../../../components/ProtectedRoute';
+import { useUserTheme } from '../../../components/UserThemeContext';
 import { ROLES } from '@/lib/constants';
 import { Download, Upload, File, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 

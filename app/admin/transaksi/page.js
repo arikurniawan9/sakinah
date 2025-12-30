@@ -28,6 +28,7 @@ import { useReactToPrint } from "react-to-print";
 import { printThermalReceipt } from "@/utils/thermalPrint";
 import { useProductSearch } from "@/lib/hooks/kasir/useProductSearch";
 import { useNotification } from "@/components/notifications/NotificationProvider";
+import PaymentDetailModal from "@/components/kasir/transaksi/PaymentDetailModal";
 
 export default function AdminTransactionPage() {
   const { data: session } = useSession();
@@ -35,6 +36,7 @@ export default function AdminTransactionPage() {
   const { showNotification } = useNotification();
   const darkMode = userTheme.darkMode;
   const router = useRouter();
+
 
   // State Management
   const [cart, setCart] = useState([]);
@@ -65,6 +67,7 @@ export default function AdminTransactionPage() {
   const [successMessage, setSuccessMessage] = useState('');
   const [successDetails, setSuccessDetails] = useState(null);
   const [storeInfo, setStoreInfo] = useState({ name: '', id: '' });
+  const [showPaymentModal, setShowPaymentModal] = useState(false); // New state for payment modal
 
   // --- Cart Logic ---
   const removeFromCart = useCallback((productId) => {
@@ -115,6 +118,17 @@ export default function AdminTransactionPage() {
       setShowLowStockModal(true);
     }
   }, [cart, updateQuantity]);
+
+  const clearForm = useCallback(() => {
+    setCart([]);
+    setSelectedMember(null);
+    setSelectedAttendant(null);
+    setPayment(0);
+    setCalculation(null);
+    setSearchTerm("");
+    setAdditionalDiscount(0);
+    setReferenceNumber("");
+  }, []);
 
   // --- Product Search Logic ---
   const {
@@ -1053,8 +1067,21 @@ export default function AdminTransactionPage() {
                   <h3 className={`text-lg font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                     Total Bayar
                   </h3>
-                  <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {calculation ? formatCurrency(calculation.grandTotal) : 'Rp 0'}
+                  <div className="flex items-center justify-between">
+                    <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {calculation ? formatCurrency(calculation.grandTotal) : 'Rp 0'}
+                    </div>
+                    <button
+                      onClick={() => setShowPaymentModal(true)}
+                      disabled={cart.length === 0}
+                      className={`py-2 px-4 rounded-md text-sm font-medium text-white ${
+                        darkMode
+                          ? 'bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600'
+                          : 'bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300'
+                      } disabled:cursor-not-allowed`}
+                    >
+                      Bayar
+                    </button>
                   </div>
                   <p className={`text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                     {calculation ? 'Terakhir diperbarui' : 'Nol Rupiah'}
@@ -1348,6 +1375,29 @@ export default function AdminTransactionPage() {
         message={successMessage}
         details={successDetails}
         darkMode={darkMode}
+      />
+
+      <PaymentDetailModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        calculation={calculation}
+        payment={payment}
+        setPayment={setPayment}
+        additionalDiscount={additionalDiscount}
+        setAdditionalDiscount={setAdditionalDiscount}
+        paymentMethod={paymentMethod}
+        setPaymentMethod={setPaymentMethod}
+        initiatePaidPayment={initiatePaidPayment}
+        initiateUnpaidPayment={initiateUnpaidPayment}
+        referenceNumber={referenceNumber}
+        setReferenceNumber={setReferenceNumber}
+        loading={loading}
+        darkMode={darkMode}
+        sessionStatus={session?.status ?? "loading"}
+        selectedMember={selectedMember}
+        selectedAttendant={selectedAttendant}
+        clearForm={clearForm}
+        formatCurrency={formatCurrency}
       />
     </ProtectedRoute>
   );

@@ -576,40 +576,57 @@ export default function AdminTransactionPage() {
           const storeData = await storeRes.json();
           setStoreInfo({
             name: storeData.name,
-            id: storeData.code || 'N/A' // Menggunakan code sebagai ID toko, jika tidak ada maka tampilkan 'N/A'
+            id: storeData.code || 'N/A'
           });
         } else {
           console.error("Gagal mengambil informasi toko:", storeRes.status);
-          // Fallback untuk handle kasus ketika API tidak bisa diakses
           setStoreInfo({
             name: process.env.NEXT_PUBLIC_SHOP_NAME || 'Toko SAKINAH',
-            id: session?.user?.storeId || 'TOKO001' // Gunakan storeId dari session jika tersedia
+            id: session?.user?.storeId || 'TOKO001'
           });
         }
 
         const [membersRes, attendantsRes] = await Promise.all([
-          fetch("/api/member?simple=true"),  // Gunakan parameter simple untuk array, hanya member dari toko ini
-          fetch("/api/store-users?role=ATTENDANT"),  // Gunakan endpoint store-users dengan filter role ATTENDANT
+          fetch("/api/member?simple=true"),
+          fetch("/api/store-users?role=ATTENDANT"),
         ]);
-        const membersData = await membersRes.json();
-        const attendantsData = await attendantsRes.json();
+        
+        let membersData = [];
+        if (membersRes.ok) {
+            const data = await membersRes.json();
+            if (Array.isArray(data)) {
+                membersData = data;
+            }
+        } else {
+            console.error("Error fetching members:", await membersRes.text());
+        }
+        
+        let attendantsData = { users: [] };
+        if (attendantsRes.ok) {
+            const data = await attendantsRes.json();
+            if (data && Array.isArray(data.users)) {
+                attendantsData = data;
+            }
+        } else {
+            console.error("Error fetching attendants:", await attendantsRes.text());
+        }
 
-        const allMembers = Array.isArray(membersData) ? membersData : [];
-        setMembers(allMembers);
+        setMembers(membersData);
 
-        const generalCustomer = allMembers.find(
+        const generalCustomer = membersData.find(
           (m) => m.name === "Pelanggan Umum"
         );
         setDefaultMember(generalCustomer);
 
-        const allAttendants = Array.isArray(attendantsData.users) ? attendantsData.users : [];
-        setAttendants(allAttendants);
+        setAttendants(attendantsData.users);
       } catch (error) {
         console.error("Error fetching initial data:", error);
+        setMembers([]);
+        setAttendants([]);
       }
     };
     fetchInitialData();
-  }, []);
+  }, [session?.user?.storeId]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -782,10 +799,8 @@ export default function AdminTransactionPage() {
     }
   };
 
-  // Request fullscreen on component mount
-  useEffect(() => {
-    requestFullscreen();
-  }, []);
+  // Removed automatic fullscreen request on component mount
+  // Fullscreen should only be triggered by user interaction
 
   return (
     <ProtectedRoute requiredRole="ADMIN">

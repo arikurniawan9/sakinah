@@ -71,23 +71,12 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Distribution not found' }, { status: 404 });
     }
 
-    // Now get all distribution records with the same distributedAt date (same day), storeId, and distributedBy
-    // This captures all items in the same distribution batch
-    const startOfDay = new Date(referenceDistribution.distributedAt);
-    startOfDay.setHours(0, 0, 0, 0);
-    
-    const endOfDay = new Date(referenceDistribution.distributedAt);
-    endOfDay.setHours(23, 59, 59, 999);
-
+    // Now get all distribution records with the same invoice number
+    // This captures all items in the same distribution batch regardless of status
     const allDistributionItems = await prisma.warehouseDistribution.findMany({
       where: {
-        distributedAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
+        invoiceNumber: referenceDistribution.invoiceNumber, // Group by invoice number
         storeId: referenceDistribution.storeId,
-        distributedBy: referenceDistribution.distributedBy,
-        status: 'PENDING_ACCEPTANCE', // Only get pending items in the same batch
       },
       include: {
         warehouse: {
@@ -124,14 +113,8 @@ export async function GET(request, { params }) {
       }
     });
 
-    // Generate a consistent invoice number for this distribution batch
-    const dateStr = new Date(referenceDistribution.distributedAt).toISOString().split('T')[0].replace(/-/g, '');
-    const storeCode = referenceDistribution.store.code.replace(/\s+/g, '').toUpperCase();
-
-    // Use a consistent identifier for this batch
-    const batchTime = referenceDistribution.distributedAt.getTime();
-    const suffix = String(batchTime % 10000).padStart(4, '0');
-    const invoiceNumber = `D-${dateStr}-${storeCode}-${suffix}`;
+    // Use the actual invoice number from the reference distribution
+    const invoiceNumber = referenceDistribution.invoiceNumber;
 
     // Calculate totals for the batch
     const totalQuantity = allDistributionItems.reduce((sum, item) => sum + item.quantity, 0);

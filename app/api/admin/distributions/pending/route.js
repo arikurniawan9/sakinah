@@ -39,44 +39,89 @@ export async function GET(request) {
             username: true,
           },
         },
+        store: {
+          select: {
+            id: true,
+            code: true,
+          }
+        },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            productCode: true,
+          }
+        },
       },
       orderBy: {
         distributedAt: 'desc',
       },
     });
 
-    // Instead of grouping distributions, return each distribution individually
-    // This will ensure each distribution appears as a separate entry
-    const individualDistributions = allPendingDistributions.map((dist, index) => {
-      return {
-        id: dist.id, // Use the original distribution ID from the database
-        distributionId: dist.id, // Original distribution ID (same as id)
-        distributedAt: dist.distributedAt,
-        distributedByUserId: dist.distributedBy,
-        distributedByUserName: dist.distributedByUser?.name || 'N/A',
-        storeId: dist.storeId,
-        quantity: dist.quantity, // Individual quantity
-        unitPrice: dist.unitPrice, // Individual unit price
-        totalAmount: dist.totalAmount, // Individual total amount
-        productId: dist.productId, // Individual product ID
-        productName: dist.product?.name || 'N/A', // Individual product name
-        productCode: dist.product?.productCode || 'N/A', // Individual product code
-        originalDistribution: dist, // Store original distribution data
-      };
+    // Group distributions by invoice number
+    const groupedDistributions = {};
+
+    allPendingDistributions.forEach((dist) => {
+      // Use invoice number as the key for grouping
+      // If invoice number is missing, generate one based on the distribution details
+      const invoiceNumber = dist.invoiceNumber || generateInvoiceNumber(dist);
+
+      if (!groupedDistributions[invoiceNumber]) {
+        groupedDistributions[invoiceNumber] = {
+          id: dist.id, // Use the first distribution ID as the group ID
+          invoiceNumber: invoiceNumber, // Use the invoice number
+          distributedAt: dist.distributedAt,
+          distributedByUserId: dist.distributedBy,
+          distributedByUserName: dist.distributedByUser?.name || 'N/A',
+          storeId: dist.storeId,
+          items: [], // Array to hold individual items in this group
+          totalQuantity: 0, // Total quantity for the group
+          totalAmount: 0, // Total amount for the group
+        };
+      }
+
+      // Add the current item to the group
+      groupedDistributions[invoiceNumber].items.push({
+        id: dist.id,
+        productId: dist.productId,
+        productName: dist.product?.name || 'N/A',
+        productCode: dist.product?.productCode || 'N/A',
+        quantity: dist.quantity,
+        unitPrice: dist.unitPrice,
+        totalAmount: dist.totalAmount,
+      });
+
+      // Update totals
+      groupedDistributions[invoiceNumber].totalQuantity += dist.quantity;
+      groupedDistributions[invoiceNumber].totalAmount += dist.totalAmount;
     });
 
-    let distributions = individualDistributions;
+    // Function to generate invoice number if not present
+    function generateInvoiceNumber(dist) {
+      const dateStr = new Date(dist.distributedAt).toISOString().split('T')[0].replace(/-/g, '');
+      const storeCode = dist.store?.code?.replace(/\s+/g, '').toUpperCase() || 'N/A';
+      const timestamp = dist.distributedAt.getTime().toString().slice(-4); // Use last 4 digits of timestamp
+      return `D-${dateStr}-${storeCode}-${timestamp}`;
+    }
 
-    // Apply search filter to the individual distributions
+    // Convert grouped object to array
+    let distributions = Object.values(groupedDistributions);
+
+    // Apply search filter to the grouped distributions
     if (search) {
       const lowerCaseSearch = search.toLowerCase();
       distributions = distributions.filter(dist =>
         dist.distributedByUserName.toLowerCase().includes(lowerCaseSearch) ||
-        new Date(dist.distributedAt).toLocaleDateString('id-ID').toLowerCase().includes(lowerCaseSearch)
+        new Date(dist.distributedAt).toLocaleDateString('id-ID').toLowerCase().includes(lowerCaseSearch) ||
+        dist.invoiceNumber.toLowerCase().includes(lowerCaseSearch) ||
+        dist.items.some(item =>
+          item.productName.toLowerCase().includes(lowerCaseSearch) ||
+          item.productCode.toLowerCase().includes(lowerCaseSearch)
+        )
       );
     }
 
-    // Sort the final individual distributions by distributedAt (descending)
+    // Sort the grouped distributions by distributedAt (descending)
     distributions.sort((a, b) => new Date(b.distributedAt).getTime() - new Date(a.distributedAt).getTime());
 
     const totalDistributions = distributions.length;
@@ -85,7 +130,7 @@ export async function GET(request) {
     const totalPages = Math.ceil(totalDistributions / limit);
 
     return NextResponse.json({
-      distributions: paginatedDistributions, // Return individual distributions
+      distributions: paginatedDistributions, // Return grouped distributions
       pagination: {
         currentPage: page,
         totalPages: totalPages,

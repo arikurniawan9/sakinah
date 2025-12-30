@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUserTheme } from '@/components/UserThemeContext';
-import { X, Package, User, Calendar, Hash, DollarSign, Loader2 } from 'lucide-react';
+import { X, Package, User, Calendar, Hash, DollarSign, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import DataTable from '@/components/DataTable'; // Assuming a generic DataTable component exists
 
 export default function DistributionDetailModal({
@@ -50,9 +50,9 @@ export default function DistributionDetailModal({
     setLoading(true);
     setError('');
     try {
-      // Call the individual API to get details for this specific distribution
+      // Call the grouped API to get all details for this distribution batch
       const response = await fetch(
-        `/api/warehouse/distribution/individual/${distribution.distributionId || distribution.id}`
+        `/api/warehouse/distribution/grouped/${distribution.id}`
       );
       const data = await response.json();
 
@@ -80,13 +80,27 @@ export default function DistributionDetailModal({
       key: 'product.name',
       title: 'Nama Produk',
       sortable: true,
-      render: (value, row) => value || row.productName || 'N/A'
+      render: (value, row) => {
+        // Handle case where product might be nested differently
+        if (row.product && typeof row.product === 'object') {
+          return row.product.name || 'N/A';
+        }
+        // Fallback to direct access
+        return value || 'N/A';
+      }
     },
     {
       key: 'product.productCode',
       title: 'Kode Produk',
       sortable: true,
-      render: (value, row) => value || row.productCode || 'N/A'
+      render: (value, row) => {
+        // Handle case where product might be nested differently
+        if (row.product && typeof row.product === 'object') {
+          return row.product.productCode || 'N/A';
+        }
+        // Fallback to direct access
+        return value || 'N/A';
+      }
     },
     {
       key: 'quantity',
@@ -104,6 +118,31 @@ export default function DistributionDetailModal({
       key: 'totalAmount',
       title: 'Total',
       render: (value) => value ? `Rp ${value.toLocaleString('id-ID')}` : 'Rp 0',
+      sortable: true
+    },
+    {
+      key: 'status',
+      title: 'Status',
+      render: (value, row) => {
+        // Determine status based on the distribution item's status
+        const itemStatus = row.status || 'PENDING_ACCEPTANCE';
+        let statusText = 'Menunggu';
+        let statusClass = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+
+        if (itemStatus === 'ACCEPTED') {
+          statusText = 'Diterima';
+          statusClass = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+        } else if (itemStatus === 'REJECTED') {
+          statusText = 'Ditolak';
+          statusClass = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+        }
+
+        return (
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusClass}`}>
+            {statusText}
+          </span>
+        );
+      },
       sortable: true
     },
   ];
@@ -135,8 +174,8 @@ export default function DistributionDetailModal({
               <div className="flex items-center">
                 <Hash className="h-5 w-5 mr-2 text-blue-500" />
                 <div>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>ID Distribusi:</p>
-                  <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{batchDetails.distributionId || batchDetails.id}</p>
+                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>No. Invoice Distribusi:</p>
+                  <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{batchDetails.invoiceNumber || batchDetails.distributionId || batchDetails.id || 'N/A'}</p>
                 </div>
               </div>
               <div className="flex items-center">
@@ -160,8 +199,7 @@ export default function DistributionDetailModal({
                 <div>
                   <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Jumlah Produk:</p>
                   <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {batchDetails.items ? batchDetails.items.length :
-                     batchDetails.itemCount ? batchDetails.itemCount.toLocaleString('id-ID') : '1'}
+                    {batchDetails.items ? batchDetails.items.length : '1'}
                   </p>
                 </div>
               </div>
@@ -172,8 +210,7 @@ export default function DistributionDetailModal({
                   <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                     {batchDetails.items ?
                       batchDetails.items.reduce((sum, item) => sum + (item.quantity || 0), 0).toLocaleString('id-ID') :
-                      batchDetails.totalQuantity ? batchDetails.totalQuantity.toLocaleString('id-ID') :
-                      batchDetails.quantity?.toLocaleString('id-ID') || '0'}
+                      batchDetails.totalQuantity?.toLocaleString('id-ID') || '0'}
                   </p>
                 </div>
               </div>
@@ -184,8 +221,7 @@ export default function DistributionDetailModal({
                   <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                     {batchDetails.items ?
                       `Rp ${batchDetails.items.reduce((sum, item) => sum + (item.totalAmount || 0), 0).toLocaleString('id-ID')}` :
-                      batchDetails.totalAmount ? `Rp ${batchDetails.totalAmount.toLocaleString('id-ID')}` :
-                      `Rp ${(batchDetails.totalAmount || 0).toLocaleString('id-ID')}`}
+                      `Rp ${batchDetails.totalAmount?.toLocaleString('id-ID') || '0'}`}
                   </p>
                 </div>
               </div>
@@ -208,13 +244,85 @@ export default function DistributionDetailModal({
             ) : batchDetails ? (
               <div className={`rounded-lg border ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                 <DataTable
-                  data={batchDetails.items || (batchDetails.product ? [batchDetails] : [])} // Use items array if available, otherwise single distribution if it has product data
+                  data={batchDetails.items || []} // Use items array from grouped distribution
                   columns={productColumns}
                   loading={false}
                   darkMode={darkMode}
                   emptyMessage="Tidak ada produk dalam distribusi ini."
-                  mobileColumns={['product.name', 'quantity', 'totalAmount']}
-                  rowActions={null} // Explicitly disable row actions to prevent action column
+                  mobileColumns={['productName', 'quantity', 'totalAmount', 'status']}
+                  rowActions={(row) => (
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={async () => {
+                          // Accept individual item
+                          try {
+                            const response = await fetch('/api/admin/distribution/item-accept', {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                distributionId: row.id
+                              })
+                            });
+
+                            if (response.ok) {
+                              alert('Item distribusi berhasil diterima');
+                              // Refresh the details to update status
+                              fetchDistributionDetails();
+                            } else {
+                              const result = await response.json();
+                              alert(`Gagal menerima item distribusi: ${result.error || 'Unknown error'}`);
+                            }
+                          } catch (error) {
+                            alert(`Error saat menerima item distribusi: ${error.message}`);
+                          }
+                        }}
+                        disabled={row.status === 'ACCEPTED'}
+                        className={`p-1.5 rounded ${
+                          row.status === 'ACCEPTED'
+                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500'
+                            : 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-800/50'
+                        }`}
+                        title="Terima Item"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={async () => {
+                          // Reject individual item
+                          try {
+                            const response = await fetch('/api/admin/distribution/item-reject', {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                distributionId: row.id,
+                                reason: 'Ditolak oleh admin (per item)'
+                              })
+                            });
+
+                            if (response.ok) {
+                              alert('Item distribusi berhasil ditolak');
+                              // Refresh the details to update status
+                              fetchDistributionDetails();
+                            } else {
+                              const result = await response.json();
+                              alert(`Gagal menolak item distribusi: ${result.error || 'Unknown error'}`);
+                            }
+                          } catch (error) {
+                            alert(`Error saat menolak item distribusi: ${error.message}`);
+                          }
+                        }}
+                        disabled={row.status === 'REJECTED'}
+                        className={`p-1.5 rounded ${
+                          row.status === 'REJECTED'
+                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500'
+                            : 'bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-800/50'
+                        }`}
+                        title="Tolak Item"
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
                 />
               </div>
             ) : (
@@ -228,61 +336,33 @@ export default function DistributionDetailModal({
           <div className="flex justify-end space-x-3 print:hidden">
             <button
               onClick={async () => {
-                // Reject the individual distribution
+                // Reject the entire batch based on the distribution's date, store, and distributor
                 try {
-                  const response = await fetch(`/api/warehouse/distribution/${distribution.distributionId || distribution.id}`, {
+                  const response = await fetch('/api/admin/distribution/batch-reject', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                      status: 'REJECTED'
+                      distributionId: distribution.id
                     })
                   });
 
                   if (response.ok) {
-                    alert('Distribusi berhasil ditolak');
+                    const result = await response.json();
+                    alert(`${result.message}`);
                     onClose(); // Close the modal after rejection
                   } else {
                     const result = await response.json();
-                    alert(`Gagal menolak distribusi: ${result.error || 'Unknown error'}`);
+                    alert(`Gagal menolak batch distribusi: ${result.error || 'Unknown error'}`);
                   }
                 } catch (error) {
-                  alert(`Error saat menolak distribusi: ${error.message}`);
+                  alert(`Error saat menolak batch distribusi: ${error.message}`);
                 }
               }}
               className={`px-4 py-2 rounded-lg ${
                 darkMode ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
               }`}
             >
-              Tolak Individu
-            </button>
-            <button
-              onClick={async () => {
-                // Accept the individual distribution
-                try {
-                  const response = await fetch(`/api/warehouse/distribution/${distribution.distributionId || distribution.id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      status: 'ACCEPTED'
-                    })
-                  });
-
-                  if (response.ok) {
-                    alert('Distribusi berhasil diterima');
-                    onClose(); // Close the modal after acceptance
-                  } else {
-                    const result = await response.json();
-                    alert(`Gagal menerima distribusi: ${result.error || 'Unknown error'}`);
-                  }
-                } catch (error) {
-                  alert(`Error saat menerima distribusi: ${error.message}`);
-                }
-              }}
-              className={`px-4 py-2 rounded-lg ${
-                darkMode ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-500 hover:bg-green-600 text-white'
-              }`}
-            >
-              Terima Individu
+              Tolak Batch
             </button>
             <button
               onClick={async () => {
@@ -292,7 +372,7 @@ export default function DistributionDetailModal({
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                      distributionId: distribution.distributionId || distribution.id
+                      distributionId: distribution.id
                     })
                   });
 
@@ -309,7 +389,7 @@ export default function DistributionDetailModal({
                 }
               }}
               className={`px-4 py-2 rounded-lg ${
-                darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'
+                darkMode ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-500 hover:bg-green-600 text-white'
               }`}
             >
               Terima Batch

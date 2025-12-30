@@ -49,13 +49,12 @@ export async function PUT(request) {
     }
 
     // Get all distributions that belong to the same distribution batch/group
-    // Based on the same distributedAt time, storeId, and distributedBy
+    // Based on the same invoice number
     // This ensures we only get distributions that were created together as a batch
     const distributionsToAccept = await prisma.warehouseDistribution.findMany({
       where: {
         storeId: referenceDistribution.storeId,
-        distributedBy: referenceDistribution.distributedBy,
-        distributedAt: referenceDistribution.distributedAt, // Exact same time to ensure it's the same batch
+        invoiceNumber: referenceDistribution.invoiceNumber, // Group by invoice number
         status: 'PENDING_ACCEPTANCE',
       },
       include: {

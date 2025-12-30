@@ -1036,8 +1036,6 @@ export default function AdminTransactionPage() {
 
               {/* Kolom kanan: Pemilihan Member, Pelayan dan Total Bayar */}
               <div className="space-y-6">
-              {/* Kolom kanan: Pemilihan Member, Pelayan dan Total Bayar */}
-              <div className="space-y-6">
                 <MemberSelection
                   selectedMember={selectedMember}
                   defaultMember={defaultMember}

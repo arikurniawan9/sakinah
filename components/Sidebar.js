@@ -53,6 +53,7 @@ const Sidebar = ({ children }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const userMenuRef = useRef(null);
+  const autoCollapseRef = useRef(false); // Ref untuk melacak apakah sidebar sudah di-collapse otomatis
   const pathname = usePathname();
   const { userTheme: { darkMode }, toggleDarkMode } = useUserTheme();
   const { isCollapsed, toggleSidebar } = useSidebar();
@@ -184,8 +185,8 @@ const Sidebar = ({ children }) => {
     return true;
   });
 
-  const sidebarWidthClass = isCollapsed ? 'w-20' : 'w-56';
-  const mainContentLeftMargin = isMobile ? 'ml-0' : (isCollapsed ? 'ml-20' : 'ml-56'); // Dynamic left margin
+  const sidebarWidthClass = isCollapsed ? 'w-16' : 'w-48'; // Reduced widths: 64px collapsed, 192px expanded
+  const mainContentLeftMargin = isMobile ? 'ml-0' : (isCollapsed ? 'ml-16' : 'ml-48'); // Dynamic left margin adjusted to match sidebar width
 
   return (
     <div className={`flex min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}> {/* Added min-h-screen */}
@@ -405,14 +406,14 @@ const Sidebar = ({ children }) => {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto pb-16"> {/* Added pb-16 for fixed footer */}
+        <div className={`flex-1 overflow-y-auto pb-16 transition-all duration-300`}> {/* Added pb-16 for fixed footer and dynamic margin */}
           {children}
         </div>
       </div>
 
       {/* Fixed Footer */}
       <footer className={`fixed bottom-0 left-0 right-0 z-40 py-4 px-4 text-right text-sm ${darkMode ? 'bg-gray-800 text-gray-400 border-gray-700' : 'bg-white text-gray-600 border-gray-200'} border-t`}>
-        <span className={`${isMobile ? 'ml-0' : (isCollapsed ? 'ml-20' : 'ml-56')} transition-all duration-300`}>
+        <span className={`${mainContentLeftMargin} transition-all duration-300`}>
           Copyright @2025 by Ari Kurniawan.
         </span>
       </footer>

@@ -104,6 +104,10 @@ export default function AdminTransactionPage() {
           quantity: 1,
           stock: product.stock,
           priceTiers: product.priceTiers,
+          retailPrice: product.retailPrice,
+          silverPrice: product.silverPrice,
+          goldPrice: product.goldPrice,
+          platinumPrice: product.platinumPrice,
         },
       ]);
     }
@@ -691,8 +695,12 @@ export default function AdminTransactionPage() {
   };
 
   useEffect(() => {
+    console.log("--- Calculation useEffect triggered ---");
+    console.log("Current cart:", JSON.stringify(cart, null, 2));
+
     if (cart.length === 0) {
       setCalculation(null);
+      console.log("Cart is empty, calculation set to null.");
       return;
     }
     let subtotal = 0;
@@ -713,6 +721,7 @@ export default function AdminTransactionPage() {
         subtotal: itemSubtotal,
       };
     });
+    console.log("Calculated items:", JSON.stringify(calculatedItems, null, 2));
 
     let memberDiscount = 0;
     if (selectedMember?.discount) {
@@ -744,6 +753,7 @@ export default function AdminTransactionPage() {
     };
 
     setCalculation(newCalculation);
+    console.log("New calculation state:", JSON.stringify(newCalculation, null, 2));
 
     // Periksa apakah ada produk dengan stok rendah dan tampilkan modal
     const hasLowStockItems = calculatedItems.some(item => item.stock < 5);

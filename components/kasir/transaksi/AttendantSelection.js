@@ -73,7 +73,7 @@ const AttendantSelection = ({ selectedAttendant, onSelectAttendant, onRemoveAtte
       <div className={`rounded-lg shadow p-6 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
         <div className="flex items-center justify-between mb-4">
           <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-          Pelayan <span className="text-xs text-gray-500 ml-2 float-right">(ALT+P)</span>
+          Pelayan
 </h2>
           {selectedAttendant && selectedAttendant.name && (
             <div className="text-right">

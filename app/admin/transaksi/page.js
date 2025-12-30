@@ -885,32 +885,44 @@ export default function AdminTransactionPage() {
                 darkMode ? "bg-gray-800" : "bg-gray-100"
               }`}
             >
-              <div className="flex items-center space-x-6">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Nama Toko</p>
-                  <p className="text-lg font-semibold">{storeInfo.name || 'Memuat...'}</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-6">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Nama Toko</p>
+                    <p className="text-lg font-semibold">{storeInfo.name || 'Memuat...'}</p>
+                  </div>
+                  <div className="border-l border-gray-300 dark:border-gray-600 h-10"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Kode Toko</p>
+                    <p className="text-lg font-semibold">{storeInfo.id || 'Memuat...'}</p>
+                  </div>
+                  <div className="border-l border-gray-300 dark:border-gray-600 h-10"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">
+                      Nama Admin
+                    </p>
+                    <p className="text-lg font-semibold">{session.user.name}</p>
+                  </div>
+                  <div className="border-l border-gray-300 dark:border-gray-600 h-10"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">
+                      Kode Admin
+                    </p>
+                    <p className="text-lg font-semibold">
+                      {session.user.employeeNumber}
+                    </p>
+                  </div>
                 </div>
-                <div className="border-l border-gray-300 dark:border-gray-600 h-10"></div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Kode Toko</p>
-                  <p className="text-lg font-semibold">{storeInfo.id || 'Memuat...'}</p>
-                </div>
-                <div className="border-l border-gray-300 dark:border-gray-600 h-10"></div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    Nama Admin
-                  </p>
-                  <p className="text-lg font-semibold">{session.user.name}</p>
-                </div>
-                <div className="border-l border-gray-300 dark:border-gray-600 h-10"></div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    Kode Admin
-                  </p>
-                  <p className="text-lg font-semibold">
-                    {session.user.employeeNumber}
-                  </p>
-                </div>
+
+                <AttendantSelection
+                  selectedAttendant={selectedAttendant}
+                  onSelectAttendant={setSelectedAttendant}
+                  onRemoveAttendant={() => setSelectedAttendant(null)}
+                  attendants={attendants}
+                  darkMode={darkMode}
+                  isOpen={showAttendantsModal}
+                  onToggle={setShowAttendantsModal}
+                />
               </div>
             </div>
           )}
@@ -1024,6 +1036,8 @@ export default function AdminTransactionPage() {
 
               {/* Kolom kanan: Pemilihan Member, Pelayan dan Total Bayar */}
               <div className="space-y-6">
+              {/* Kolom kanan: Pemilihan Member, Pelayan dan Total Bayar */}
+              <div className="space-y-6">
                 <MemberSelection
                   selectedMember={selectedMember}
                   defaultMember={defaultMember}
@@ -1034,16 +1048,6 @@ export default function AdminTransactionPage() {
                   isOpen={showMembersModal}
                   onToggle={setShowMembersModal}
                   onAddNewMember={() => setShowAddMemberModal(true)}
-                />
-
-                <AttendantSelection
-                  selectedAttendant={selectedAttendant}
-                  onSelectAttendant={setSelectedAttendant}
-                  onRemoveAttendant={() => setSelectedAttendant(null)}
-                  attendants={attendants}
-                  darkMode={darkMode}
-                  isOpen={showAttendantsModal}
-                  onToggle={setShowAttendantsModal}
                 />
 
                 {/* Total Bayar - dipindahkan ke bawah pilih pelayan */}

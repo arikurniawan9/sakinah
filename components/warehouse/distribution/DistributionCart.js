@@ -183,36 +183,45 @@ const DistributionCart = ({ items, updateQuantity, removeFromCart, cartTotal, da
 
   return (
     <div className={`rounded-lg shadow-lg overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-      <div className={`flex items-center px-4 py-3 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-        <ShoppingCart className={`h-6 w-6 mr-3 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-        <h2 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Keranjang Distribusi</h2>
-        <span className={`ml-2 px-2 py-1 text-xs rounded-full ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
-          {items.length} item
-        </span>
+      <div className={`flex flex-col sm:flex-row sm:items-center px-4 py-3 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className="flex items-center mb-2 sm:mb-0">
+          <ShoppingCart className={`h-6 w-6 mr-3 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+          <h2 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>Keranjang Distribusi</h2>
+          <span className={`ml-2 px-2 py-1 text-xs rounded-full ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
+            {items.length} item
+          </span>
+        </div>
         {selectedItemId && (
-          <span className={`ml-2 px-2 py-1 text-xs rounded-full ${darkMode ? 'bg-blue-700 text-blue-100' : 'bg-blue-200 text-blue-800'}`}>
+          <span className={`mt-1 sm:mt-0 sm:ml-2 px-2 py-1 text-xs rounded-full ${darkMode ? 'bg-blue-700 text-blue-100' : 'bg-blue-200 text-blue-800'}`}>
             Item dipilih: {items.find(item => item.productId === selectedItemId)?.name || 'N/A'}
           </span>
         )}
       </div>
       <div className="overflow-x-auto">
         {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-8 text-center">
-            <Package size={48} className="text-gray-400 dark:text-gray-600 mb-4" />
-            <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200">Keranjang Kosong</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Pilih produk untuk ditambahkan.</p>
+          <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center">
+            <div className={`p-4 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-100'} mb-4 sm:mb-6`}>
+              <ShoppingCart size={32} className={`h-8 w-8 sm:h-12 sm:w-12 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+            </div>
+            <h3 className={`text-base sm:text-lg font-semibold mb-1 sm:mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-800'}`}>Keranjang Distribusi Kosong</h3>
+            <p className={`text-xs sm:text-sm mb-2 sm:mb-4 ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+              Tambahkan produk dari daftar pencarian untuk memulai distribusi.
+            </p>
+            <div className={`text-xs p-2 sm:p-3 rounded-lg max-w-xs ${darkMode ? 'bg-gray-700/50 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+              <p>Cari produk di kolom atas, lalu klik produk untuk menambahkannya ke keranjang ini.</p>
+            </div>
           </div>
         ) : (
           <table className="w-full">
             <thead className={`${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
               <tr>
-                <th className="p-3 text-left">Nama Produk</th>
-                <th className="p-3 text-left">Kode Produk</th>
-                <th className="p-3 text-center">Jumlah</th>
-                <th className="p-3 text-right">Harga Satuan</th>
-                <th className="p-3 text-right">Subtotal</th>
-                <th className="p-3 text-center">Stok</th>
-                <th className="p-3 text-center">Aksi</th>
+                <th className="p-2 sm:p-3 text-left text-xs sm:text-sm">Nama Produk</th>
+                <th className="p-2 sm:p-3 text-left text-xs sm:text-sm">Kode Produk</th>
+                <th className="p-2 sm:p-3 text-center text-xs sm:text-sm">Jumlah</th>
+                <th className="p-2 sm:p-3 text-right text-xs sm:text-sm">Harga Satuan</th>
+                <th className="p-2 sm:p-3 text-right text-xs sm:text-sm">Subtotal</th>
+                <th className="p-2 sm:p-3 text-center text-xs sm:text-sm">Stok</th>
+                <th className="p-2 sm:p-3 text-center text-xs sm:text-sm">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -231,14 +240,14 @@ const DistributionCart = ({ items, updateQuantity, removeFromCart, cartTotal, da
           </table>
         )}
       </div>
-      <div className={`p-4 border-t ${darkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
-        <div className="flex justify-between items-center mb-2">
-          <span className={`text-base font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Total</span>
-          <span className={`text-2xl font-bold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
+      <div className={`p-3 sm:p-4 border-t ${darkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-2">
+          <span className={`text-sm sm:text-base font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>Total</span>
+          <span className={`text-xl sm:text-2xl font-bold mt-1 sm:mt-0 ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
             {formatNumber(cartTotal)}
           </span>
         </div>
-        <p className={`text-sm text-right italic ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+        <p className={`text-xs sm:text-sm text-right italic ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
           {terbilangText}
         </p>
         <div className={`text-xs mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>

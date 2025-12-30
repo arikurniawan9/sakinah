@@ -150,11 +150,11 @@ export default function WarehouseDashboard() {
               loading={isLoading} 
             />
             <StatCard
-              title="Distribusi Tertunda"
+              title="Distribusi Belum Dikonfirmasi"
               value={stats?.pendingDistributions}
               icon={Clock}
               darkMode={darkMode}
-              href="/warehouse/distribution/pending"
+              href="/warehouse/distribution/history"
               loading={isLoading}
               warning={stats?.pendingDistributions > 0}
             />

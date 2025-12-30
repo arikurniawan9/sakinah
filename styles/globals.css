@@ -285,7 +285,7 @@ html {
   top: -9999px;
 }
 
-/* From Uiverse.io by adamgiebl */ 
+/* From Uiverse.io by adamgiebl */
 .dots-container {
   display: flex;
   align-items: center;
@@ -301,6 +301,24 @@ html {
   border-radius: 10px;
   background-color: #b3d4fc;
   animation: pulse 1.5s infinite ease-in-out;
+}
+
+.dot.h-4, .dot.w-4 {
+  height: 1rem;
+  width: 1rem;
+  margin-right: 6px;
+}
+
+.dot.h-5, .dot.w-5 {
+  height: 1.25rem;
+  width: 1.25rem;
+  margin-right: 8px;
+}
+
+.dot.h-8, .dot.w-8 {
+  height: 2rem;
+  width: 2rem;
+  margin-right: 12px;
 }
 
 .dot:last-child {

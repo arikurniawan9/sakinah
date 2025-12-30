@@ -2,7 +2,8 @@
 'use client';
 
 import { Search, Loader, Package } from 'lucide-react';
-import { memo, forwardRef } from 'react';
+import { memo, forwardRef, useState, useEffect, useRef } from 'react';
+import ProductSearchDropdown from './ProductSearchDropdown';
 
 const formatNumber = (num) => {
   return new Intl.NumberFormat('id-ID', {
@@ -22,6 +23,14 @@ const DistributionProductSearchInner = forwardRef(({
   hasMore,
   darkMode,
 }, ref) => {
+  const [showResults, setShowResults] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    // Tampilkan hasil jika ada pencarian dan produk ditemukan
+    setShowResults(!!searchTerm && products.length > 0);
+  }, [searchTerm, products]);
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -47,7 +56,7 @@ const DistributionProductSearchInner = forwardRef(({
             ref={ref}
             type="text"
             placeholder="Cari produk di gudang..."
-            className={`w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+            className={`w-full pl-10 pr-16 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
               darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'
             }`}
             value={searchTerm}
@@ -59,82 +68,53 @@ const DistributionProductSearchInner = forwardRef(({
           <div className="absolute left-3 top-2.5">
             <Search className={`h-5 w-5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
           </div>
+          <div className="absolute right-3 top-2.5 flex space-x-2">
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('openBarcodeScanner'))}
+              className={`p-1 rounded ${darkMode ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-200'}`}
+              title="Pindai Barcode"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 3v4a2 2 0 0 0 2 2h4" />
+                <path d="M21 3v4a2 2 0 0 1-2 2h-4" />
+                <path d="M3 21v-4a2 2 0 0 1 2-2h4" />
+                <path d="M21 21v-4a2 2 0 0 0-2-2h-4" />
+                <path d="M9 3h6" />
+                <path d="M9 21h6" />
+                <path d="M3 9v6" />
+                <path d="M21 9v6" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Results Container - Positioned below search bar */}
       {searchTerm && (
-        <div className={`rounded-lg shadow overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-          <div className="p-2 border-b flex items-center">
-            <Package className={`h-4 w-4 mr-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-            <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-              {loading && products.length === 0 ? 'Memuat produk...' : `Ditemukan ${products.length} produk`}
-            </h3>
-          </div>
-          <div className="divide-y max-h-[60vh] overflow-y-auto styled-scrollbar">
-            {products && products.length > 0 && products.map(warehouseProduct => {
-              if (!warehouseProduct || !warehouseProduct.Product) return null;
-              const product = warehouseProduct.Product;
-              return (
-                <div
-                  key={warehouseProduct.id}
-                  className={`flex items-center p-4 cursor-pointer transition-all duration-200 ease-in-out ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} hover:shadow-md transform hover:-translate-y-1`}
-                  onClick={() => addToCart(warehouseProduct)}
-                  role="button"
-                  tabIndex="0"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') addToCart(warehouseProduct);
-                  }}
-                  title={`Tambahkan ${product.name} ke keranjang`}
-                >
-                  <div className={`p-3 rounded-full mr-4 ${darkMode ? 'bg-gray-900/50' : 'bg-gray-100'}`}>
-                    <Package className={`h-6 w-6 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className={`text-base font-bold truncate ${darkMode ? 'text-white' : 'text-gray-800'}`}>{product.name}</div>
-                    <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Kode: {product.productCode}</div>
-                  </div>
-                  <div className="text-right ml-4">
-                    <div className={`text-base font-bold ${darkMode ? 'text-purple-400' : 'text-purple-500'}`}>
-                      {formatNumber(product.purchasePrice)}
-                    </div>
-                    <div className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Stok: <span className="font-semibold">{warehouseProduct.quantity}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-            {loading && (
-              <div className="p-4 text-center flex justify-center items-center">
-                <Loader className="animate-spin mr-2" size={20} />
-                <span>Memuat...</span>
-              </div>
-            )}
-
-            {!loading && hasMore && (
-              <button
-                onClick={loadMore}
-                className={`w-full p-3 text-center text-sm font-medium ${darkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'}`}
-              >
-                Tampilkan Lebih Banyak
-              </button>
-            )}
-
-            {!loading && products.length === 0 && (
-              <div className="p-4 text-center text-gray-500">
-                Produk tidak ditemukan.
-              </div>
-            )}
-          </div>
+        <div className="relative" ref={containerRef}>
+          <ProductSearchDropdown
+            products={products}
+            addToCart={addToCart}
+            darkMode={darkMode}
+            searchTerm={searchTerm}
+            loading={loading}
+            hasMore={hasMore}
+            loadMore={loadMore}
+            showResults={showResults}
+          />
         </div>
       )}
 
       {/* Placeholder when no search term */}
       {!searchTerm && (
-        <div className={`rounded-lg shadow overflow-hidden flex items-center justify-center p-8 text-center ${darkMode ? 'bg-gray-800 text-gray-400' : 'bg-white text-gray-500'}`}>
-          <p>Ketik nama atau kode produk untuk memulai pencarian.</p>
+        <div className={`rounded-lg shadow overflow-hidden flex flex-col items-center justify-center p-6 sm:p-8 text-center ${darkMode ? 'bg-gray-800 text-gray-400' : 'bg-white text-gray-500'}`}>
+          <div className={`mb-4 p-3 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+            <Search className={`h-8 w-8 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+          </div>
+          <h3 className={`text-lg font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>Cari Produk</h3>
+          <p className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+            Ketik nama atau kode produk untuk memulai pencarian.
+          </p>
         </div>
       )}
     </div>

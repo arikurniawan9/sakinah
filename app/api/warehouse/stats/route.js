@@ -68,13 +68,11 @@ export async function GET(request) {
     });
     const totalStoresLinked = distributionStores.length;
 
-    // Fetch pending distributions
+    // Fetch pending distributions - only those that are waiting for store confirmation
     const pendingDistributions = await globalPrisma.warehouseDistribution.count({
         where: {
           warehouseId: centralWarehouse.id, // Only from the central warehouse
-          status: {
-                notIn: ['DELIVERED', 'CANCELLED'],
-            },
+          status: 'PENDING_ACCEPTANCE', // Only count distributions waiting for store confirmation
         },
     });
 

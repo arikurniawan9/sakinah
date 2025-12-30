@@ -12,14 +12,17 @@ import ErrorBoundary from '../../../components/ErrorBoundary';
 
 // New Hooks
 import { useDistributionCart } from '../../../lib/hooks/warehouse/useDistributionCart';
-import { useDistributionProductSearch } from '../../../lib/hooks/warehouse/useDistributionProductSearch';
+import { useCachedDistributionProductSearch } from '../../../lib/hooks/warehouse/useCachedDistributionProductSearch';
+import { useCachedWarehouseData } from '../../../lib/hooks/warehouse/useCachedWarehouseData';
 import { useHotkeys } from '../../../lib/hooks/useHotkeys';
 
 
-// New Components
-import DistributionProductSearch from '../../../components/warehouse/distribution/DistributionProductSearch';
-import DistributionCart from '../../../components/warehouse/distribution/DistributionCart';
-import DistributionDetails from '../../../components/warehouse/distribution/DistributionDetails';
+// New Components (Lazy Loaded)
+import LazyDistributionProductSearch from '../../../components/warehouse/distribution/LazyDistributionProductSearch';
+import LazyDistributionCart from '../../../components/warehouse/distribution/LazyDistributionCart';
+import LazyDistributionDetails from '../../../components/warehouse/distribution/LazyDistributionDetails';
+import DraftDistributionManager from '../../../components/warehouse/distribution/DraftDistributionManager';
+import BarcodeScannerManager from '../../../components/warehouse/distribution/BarcodeScannerManager';
 
 export default function WarehouseDistributionPage() {
   const { data: session } = useSession();
@@ -32,9 +35,6 @@ export default function WarehouseDistributionPage() {
   const [selectedWarehouseUser, setSelectedWarehouseUser] = useState(null);
   const [notes, setNotes] = useState('');
   const [distributionDate, setDistributionDate] = useState(new Date());
-
-  const [stores, setStores] = useState([]);
-  const [warehouseUsers, setWarehouseUsers] = useState([]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
@@ -52,7 +52,8 @@ export default function WarehouseDistributionPage() {
     setSearchTerm,
     loadMore,
     hasMore,
-  } = useDistributionProductSearch();
+    refresh: refreshProducts,
+  } = useCachedDistributionProductSearch();
 
   const {
     items: distributionItems,
@@ -62,6 +63,16 @@ export default function WarehouseDistributionPage() {
     clearCart,
     cartTotal,
   } = useDistributionCart();
+
+  // Hook for cached warehouse data
+  const {
+    stores,
+    warehouseUsers,
+    isLoading: warehouseDataLoading,
+    hasError: warehouseDataError,
+    mutateStores,
+    mutateUsers,
+  } = useCachedWarehouseData();
 
   // Hotkeys setup
   const hotkeys = [
@@ -110,31 +121,12 @@ export default function WarehouseDistributionPage() {
     };
   }, []);
 
-
-  // Fetch data for dropdowns
+  // Handle error from cached data
   useEffect(() => {
-    const fetchDropdownData = async () => {
-      try {
-        // Fetch users with ATTENDANT role only for distribution
-        const [storesResponse, usersResponse] = await Promise.all([
-          fetch('/api/warehouse/stores'),
-          fetch('/api/warehouse/users?role=ATTENDANT'),
-        ]);
-
-        if (storesResponse.ok) {
-          const storesData = await storesResponse.json();
-          setStores(storesData.stores || []);
-        }
-        if (usersResponse.ok) {
-          const usersData = await usersResponse.json();
-          setWarehouseUsers(usersData.users || []);
-        }
-      } catch (error) {
-        console.error('Error fetching dropdown data:', error);
-      }
-    };
-    fetchDropdownData();
-  }, []);
+    if (warehouseDataError) {
+      console.error('Error loading warehouse data:', warehouseDataError);
+    }
+  }, [warehouseDataError]);
 
   const submitDistribution = async () => {
     if (!selectedStore || distributionItems.length === 0) {
@@ -196,6 +188,11 @@ export default function WarehouseDistributionPage() {
         setNotes('');
         setDistributionDate(new Date());
 
+        // Refresh cached data after successful distribution
+        refreshProducts();
+        mutateStores();
+        mutateUsers();
+
       } catch (err) {
         setConfirmationMessage('Error: ' + err.message);
         setConfirmationCallback(null);
@@ -249,7 +246,7 @@ export default function WarehouseDistributionPage() {
           <div className="lg:col-span-2">
             <div className="relative" style={{zIndex: 10}}>
               <ErrorBoundary darkMode={darkMode}>
-                <DistributionProductSearch
+                <LazyDistributionProductSearch
                   ref={searchRef}
                   products={availableProducts}
                   loading={productsLoading}
@@ -266,7 +263,7 @@ export default function WarehouseDistributionPage() {
             {/* Distribution Cart as Table - Below search */}
             <div className="mt-6">
               <ErrorBoundary darkMode={darkMode}>
-                <DistributionCart
+                <LazyDistributionCart
                   items={distributionItems}
                   updateQuantity={updateQuantity}
                   removeFromCart={removeFromCart}
@@ -275,12 +272,52 @@ export default function WarehouseDistributionPage() {
                 />
               </ErrorBoundary>
             </div>
+
+            {/* Draft Distribution Manager */}
+            <div className="mt-6">
+              <ErrorBoundary darkMode={darkMode}>
+                <DraftDistributionManager
+                  items={distributionItems}
+                  selectedStore={selectedStore}
+                  notes={notes}
+                  darkMode={darkMode}
+                  onSaveDraft={async () => {
+                    // This will be handled inside the component
+                  }}
+                  onLoadDraft={(draft) => {
+                    // Load the draft items into the cart
+                    clearCart();
+                    draft.items.forEach(item => {
+                      addToCart({
+                        id: item.productId,
+                        Product: item.product,
+                        quantity: item.quantity,
+                        purchasePrice: item.purchasePrice,
+                        stock: item.quantity, // This might need adjustment based on actual stock
+                      });
+                    });
+                    setSelectedStore(draft.storeId);
+                    setNotes(draft.notes || '');
+                  }}
+                  onDeleteDraft={async (draftId) => {
+                    // This will be handled inside the component
+                  }}
+                />
+              </ErrorBoundary>
+            </div>
+
+            {/* Barcode Scanner Manager */}
+            <BarcodeScannerManager
+              products={availableProducts}
+              addToCart={addToCart}
+              darkMode={darkMode}
+            />
           </div>
 
           {/* Distribution Details - Right side, top position */}
           <div>
             <ErrorBoundary darkMode={darkMode}>
-              <DistributionDetails
+              <LazyDistributionDetails
                 stores={stores}
                 warehouseUsers={warehouseUsers}
                 selectedStore={selectedStore}

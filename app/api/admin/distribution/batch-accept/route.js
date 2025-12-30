@@ -71,19 +71,45 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'No pending distributions found in this batch' }, { status: 404 });
     }
 
+    // Group distributions by product code to handle duplicate products in the same batch
+    const groupedDistributions = {};
+    for (const distribution of distributionsToAccept) {
+      const productCode = distribution.product.productCode;
+      if (!groupedDistributions[productCode]) {
+        groupedDistributions[productCode] = {
+          ...distribution,
+          totalQuantity: 0,
+          totalAmount: 0,
+          individualDistributions: [] // Keep track of individual distributions for updating their status
+        };
+      }
+
+      groupedDistributions[productCode].totalQuantity += distribution.quantity;
+      groupedDistributions[productCode].totalAmount += distribution.totalAmount;
+      groupedDistributions[productCode].individualDistributions.push(distribution);
+    }
+
     // Use transaction to ensure atomicity for all distributions in the batch
     const updatedDistributions = await prisma.$transaction(async (tx) => {
       const results = [];
-      for (const distribution of distributionsToAccept) {
-        // Update distribution status to ACCEPTED
-        const updatedDist = await tx.warehouseDistribution.update({
-          where: { id: distribution.id },
-          data: {
-            status: 'ACCEPTED',
-            notes: distribution.notes ? `${distribution.notes} | Accepted via batch accept` : 'Accepted via batch accept',
-            updatedAt: new Date(),
-          },
-        });
+
+      // Process each unique product in the batch
+      for (const productCode in groupedDistributions) {
+        const groupedDist = groupedDistributions[productCode];
+        const distribution = groupedDist.individualDistributions[0]; // Use the first distribution as reference
+
+        // Update distribution status for all individual distributions of this product
+        for (const individualDist of groupedDist.individualDistributions) {
+          const updatedDist = await tx.warehouseDistribution.update({
+            where: { id: individualDist.id },
+            data: {
+              status: 'ACCEPTED',
+              notes: individualDist.notes ? `${individualDist.notes} | Accepted via batch accept` : 'Accepted via batch accept',
+              updatedAt: new Date(),
+            },
+          });
+          results.push(updatedDist);
+        }
 
         // First, ensure the supplier exists in the target store (create if doesn't exist)
         const supplierInStore = await tx.supplier.findFirst({
@@ -119,15 +145,15 @@ export async function PUT(request) {
             supplierId: targetSupplierId,
             userId: session.user.id,
             purchaseDate: new Date(distribution.distributedAt),
-            totalAmount: distribution.totalAmount,
+            totalAmount: groupedDist.totalAmount, // Use total amount for all items of this product
             status: 'COMPLETED',
             items: {
               create: {
                 storeId: session.user.storeId,
                 productId: distribution.productId,
-                quantity: distribution.quantity,
+                quantity: groupedDist.totalQuantity, // Use total quantity for all items of this product
                 purchasePrice: distribution.unitPrice,
-                subtotal: distribution.totalAmount,
+                subtotal: groupedDist.totalAmount,
               }
             }
           },
@@ -157,6 +183,7 @@ export async function PUT(request) {
         }
 
         // Update product stock in the store using upsert to handle cases where product doesn't exist yet
+        // Use the total quantity for all items of this product in the batch
         await tx.product.upsert({
           where: {
             productCode_storeId: {
@@ -166,7 +193,7 @@ export async function PUT(request) {
           },
           update: {
             stock: {
-              increment: distribution.quantity
+              increment: groupedDist.totalQuantity // Use total quantity for all items of this product
             },
             // Update other product fields if needed
             name: distribution.product.name,
@@ -186,7 +213,7 @@ export async function PUT(request) {
             categoryId: targetCategoryId,
             name: distribution.product.name,
             productCode: distribution.product.productCode,
-            stock: distribution.quantity, // Set initial stock to the distributed quantity
+            stock: groupedDist.totalQuantity, // Set initial stock to the total distributed quantity for this product
             purchasePrice: distribution.product.purchasePrice,
             retailPrice: distribution.product.retailPrice,
             silverPrice: distribution.product.silverPrice,
@@ -197,7 +224,6 @@ export async function PUT(request) {
             image: distribution.product.image,
           }
         });
-        results.push(updatedDist);
       }
       return results;
     });

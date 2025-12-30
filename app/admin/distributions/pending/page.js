@@ -61,13 +61,13 @@ export default function PendingDistributions() {
     }
   };
 
-  const handleAccept = (batch) => { // Operates on batch
+  const handleAccept = (batch) => { // Accept entire batch
     setSelectedBatch(batch);
     setShowAcceptModal(true);
     setAcceptReason('');
   };
 
-  const handleReject = (batch) => { // Operates on batch
+  const handleReject = (batch) => { // Reject entire batch
     setSelectedBatch(batch);
     setShowRejectModal(true);
     setRejectReason('');
@@ -78,12 +78,12 @@ export default function PendingDistributions() {
 
     setIsProcessing(true);
     try {
-      // Send individual distribution ID instead of batch identifiers
-      const response = await fetch('/api/admin/distribution/accept', {
+      // Send distribution ID to accept the entire batch
+      const response = await fetch('/api/admin/distribution/batch-accept', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          distributionId: selectedBatch.distributionId, // Send the specific distribution ID
+          distributionId: selectedBatch.id, // Send the distribution ID to identify the batch
           reason: acceptReason
         })
       });
@@ -109,13 +109,13 @@ export default function PendingDistributions() {
 
     setIsProcessing(true);
     try {
-      // Send individual distribution ID to reject it using PUT method with status REJECTED
-      const response = await fetch(`/api/warehouse/distribution/${selectedBatch.distributionId}`, {
-        method: 'PUT', // Using PUT method to update status
+      // Send distribution ID to reject the entire batch
+      const response = await fetch('/api/admin/distribution/batch-reject', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status: 'REJECTED',
-          notes: rejectReason
+          distributionId: selectedBatch.id, // Send the distribution ID to identify the batch
+          reason: rejectReason
         })
       });
 
@@ -142,10 +142,10 @@ export default function PendingDistributions() {
       render: (_, __, index) => (currentPage - 1) * itemsPerPage + index + 1,
     },
     {
-      key: 'distributionId', // Use the actual distribution ID from the database
-      title: 'ID Distribusi',
-      sortable: true, // Now it's sortable as it's the actual ID
-      render: (value) => value // Display the actual distribution ID
+      key: 'invoiceNumber',
+      title: 'No. Invoice Distribusi',
+      sortable: true,
+      render: (value) => value || 'N/A' // Display the invoice number or N/A if not available
     },
     {
       key: 'distributedByUserName',
@@ -159,7 +159,7 @@ export default function PendingDistributions() {
       sortable: true
     },
     {
-      key: 'quantity',
+      key: 'totalQuantity',
       title: 'Kuantitas',
       render: (value) => value.toLocaleString('id-ID'),
       sortable: true
@@ -175,7 +175,7 @@ export default function PendingDistributions() {
   const renderRowActions = (row) => (
     <div className="flex space-x-2">
       <button
-        onClick={() => { 
+        onClick={() => {
           setSelectedBatch(row);
           setShowDetailModal(true); // Open detail modal
         }}
@@ -187,14 +187,14 @@ export default function PendingDistributions() {
       <button
         onClick={() => handleAccept(row)}
         className="p-2 text-green-500 hover:text-green-700 rounded-full hover:bg-green-100 dark:hover:bg-green-900/30"
-        title="Terima Distribusi"
+        title="Terima Distribusi (Batch)"
       >
         <CheckCircle size={20} />
       </button>
       <button
         onClick={() => handleReject(row)}
         className="p-2 text-red-500 hover:text-red-700 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30"
-        title="Tolak Distribusi"
+        title="Tolak Distribusi (Batch)"
       >
         <XCircle size={20} />
       </button>
@@ -271,7 +271,7 @@ export default function PendingDistributions() {
           onItemsPerPageChange={setItemsPerPage}
           darkMode={darkMode}
           pagination={paginationData}
-          mobileColumns={['id', 'distributedByUserName', 'totalQuantity']} // Adjusted mobile columns
+          mobileColumns={['invoiceNumber', 'distributedByUserName', 'totalQuantity']} // Adjusted mobile columns
           rowActions={renderRowActions}
           emptyMessage="Tidak ada distribusi menunggu konfirmasi"
         />
@@ -302,9 +302,9 @@ export default function PendingDistributions() {
             <div>
               <p>Apakah Anda yakin ingin menerima distribusi berikut?</p>
               <div className={`mt-4 p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                <p><strong>ID Distribusi:</strong> {selectedBatch.distributionId}</p>
+                <p><strong>No. Invoice Distribusi:</strong> {selectedBatch.invoiceNumber || 'N/A'}</p>
                 <p><strong>Dikirim oleh:</strong> {selectedBatch.distributedByUserName}</p>
-                <p><strong>Kuantitas:</strong> {selectedBatch.quantity?.toLocaleString('id-ID')}</p>
+                <p><strong>Kuantitas:</strong> {selectedBatch.totalQuantity?.toLocaleString('id-ID')}</p>
                 <p><strong>Total Jumlah:</strong> Rp {selectedBatch.totalAmount?.toLocaleString('id-ID')}</p>
                 <p><strong>Tanggal:</strong> {new Date(selectedBatch.distributedAt).toLocaleDateString('id-ID')}</p>
               </div>
@@ -347,9 +347,9 @@ export default function PendingDistributions() {
             <div>
               <p>Apakah Anda yakin ingin menolak distribusi berikut?</p>
               <div className={`mt-4 p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                <p><strong>ID Distribusi:</strong> {selectedBatch.distributionId}</p>
+                <p><strong>No. Invoice Distribusi:</strong> {selectedBatch.invoiceNumber || 'N/A'}</p>
                 <p><strong>Dikirim oleh:</strong> {selectedBatch.distributedByUserName}</p>
-                <p><strong>Kuantitas:</strong> {selectedBatch.quantity?.toLocaleString('id-ID')}</p>
+                <p><strong>Kuantitas:</strong> {selectedBatch.totalQuantity?.toLocaleString('id-ID')}</p>
                 <p><strong>Total Jumlah:</strong> Rp {selectedBatch.totalAmount?.toLocaleString('id-ID')}</p>
                 <p><strong>Tanggal:</strong> {new Date(selectedBatch.distributedAt).toLocaleDateString('id-ID')}</p>
               </div>

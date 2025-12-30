@@ -33,14 +33,14 @@ class ErrorBoundary extends React.Component {
             <details className="whitespace-pre-wrap">
               {this.state.error && this.state.error.toString()}
               <br />
-              {this.state.errorInfo.componentStack}
+              {this.state.errorInfo && this.state.errorInfo.componentStack}
             </details>
           )}
           <button
             onClick={() => window.location.reload()}
             className={`mt-3 px-4 py-2 rounded ${
-              this.props.darkMode 
-                ? 'bg-red-700 hover:bg-red-600 text-white' 
+              this.props.darkMode
+                ? 'bg-red-700 hover:bg-red-600 text-white'
                 : 'bg-red-600 hover:bg-red-500 text-white'
             }`}
           >

@@ -72,11 +72,21 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Distribution not found' }, { status: 404 });
     }
 
+    // Generate invoice number if not already present
+    let invoiceNumber = distribution.invoiceNumber;
+    if (!invoiceNumber) {
+      // Generate invoice number in the same format as warehouse distribution
+      const dateStr = new Date(distribution.distributedAt).toISOString().split('T')[0].replace(/-/g, '');
+      const storeCode = distribution.store?.code?.replace(/\s+/g, '').toUpperCase() || 'N/A';
+      const timestamp = distribution.distributedAt.getTime().toString().slice(-4); // Use last 4 digits of timestamp
+      invoiceNumber = `D-${dateStr}-${storeCode}-${timestamp}`;
+    }
+
     // Format the distribution data to match what the DataTable expects
     // Flatten product properties to avoid nested property access issues in DataTable
     const formattedDistribution = {
       id: distribution.id,
-      invoiceNumber: distribution.invoiceNumber, // Use the actual invoice number if available
+      invoiceNumber: invoiceNumber, // Use the invoice number (generated if not present)
       distributedAt: distribution.distributedAt,
       distributedByUser: distribution.distributedByUser,
       store: distribution.store,

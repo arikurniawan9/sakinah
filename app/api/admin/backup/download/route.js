@@ -8,6 +8,8 @@ import { ROLES } from '@/lib/constants';
 // Rate limiting simulation - in production you might want to use a proper rate limiter
 const downloadAttempts = new Map();
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);

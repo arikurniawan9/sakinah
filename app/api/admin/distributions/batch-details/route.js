@@ -76,6 +76,7 @@ export async function GET(request) {
         store: {
           select: {
             name: true,
+            code: true, // Include store code for invoice number generation
           }
         },
       },
@@ -106,13 +107,31 @@ export async function GET(request) {
     const sequenceNum = Math.abs(hash) % 99999 + 1; // Ensure it's within 5 digits
     const batchId = `DIST-${datePart}-${sequenceNum.toString().padStart(5, '0')}`;
 
+    // Add invoice number to each item if not present
+    const itemsWithInvoiceNumber = batchItems.map(item => {
+      // Generate invoice number if not already present
+      let invoiceNumber = item.invoiceNumber;
+      if (!invoiceNumber) {
+        // Generate invoice number in the same format as warehouse distribution
+        const dateStr = new Date(item.distributedAt).toISOString().split('T')[0].replace(/-/g, '');
+        const storeCode = item.store?.code?.replace(/\s+/g, '').toUpperCase() || 'N/A';
+        const timestamp = item.distributedAt.getTime().toString().slice(-4); // Use last 4 digits of timestamp
+        invoiceNumber = `D-${dateStr}-${storeCode}-${timestamp}`;
+      }
+
+      return {
+        ...item,
+        invoiceNumber: invoiceNumber // Add invoice number to the item
+      };
+    });
+
     // Return the batch details along with some summary info
     return NextResponse.json({
       batchId: batchId, // A readable unique identifier for this batch
       distributedAt: batchItems[0].distributedAt,
       distributedBy: batchItems[0].distributedByUser,
       storeName: batchItems[0].store.name,
-      items: batchItems,
+      items: itemsWithInvoiceNumber,
       totalItems: batchItems.length,
       totalQuantity: batchItems.reduce((sum, item) => sum + item.quantity, 0),
       totalAmount: batchItems.reduce((sum, item) => sum + item.totalAmount, 0),

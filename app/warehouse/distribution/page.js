@@ -172,7 +172,7 @@ export default function WarehouseDistributionPage() {
           warehouse: { name: 'Gudang Pusat' },
           distributedByUser: warehouseUsers.find(u => u.id === selectedWarehouseUser) || session.user,
           distributedAt: distributionDate.toISOString(),
-          items: distributionItems,
+          items: distributionItems.map(item => ({ ...item, unitPrice: item.purchasePrice })),
           notes: notes,
           status: 'PENDING_ACCEPTANCE',
           totalAmount: cartTotal,

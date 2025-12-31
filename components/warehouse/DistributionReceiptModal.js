@@ -74,6 +74,15 @@ const DistributionReceiptModal = ({ distributionData, isOpen, onClose }) => {
             top: 0;
             width: 100%;
           }
+          .multi-page-invoice {
+            display: block;
+          }
+          .multi-page-invoice > div {
+            page-break-after: always;
+          }
+          .multi-page-invoice > div:last-child {
+            page-break-after: auto;
+          }
           @page {
             size: ${printType === 'receipt' ? '80mm auto' : 'A4'};
             margin: ${printType === 'receipt' ? '0.25in' : '0.4in'};

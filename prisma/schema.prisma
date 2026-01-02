@@ -16,6 +16,7 @@ model User {
   gender                 String?
   address                String?
   phone                  String?
+  email                  String?
   status                 String                  @default("AKTIF")
   password               String
   role                   String

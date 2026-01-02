@@ -100,25 +100,39 @@ export default function KasirTransaksiPage() {
   const [unlockPassword, setUnlockPassword] = useState('');
 
   const receiptRef = useRef();
-  const productSearchInputRef = useRef(null);
-
-  const focusAndSelectProductSearch = () => {
-    setTimeout(() => {
-      if (productSearchInputRef.current) {
-        productSearchInputRef.current.focus();
-        if (productSearchInputRef.current.value) {
-          productSearchInputRef.current.select();
-        }
+  const productSearchInputRef = useRef();
+  // --- Fullscreen Logic ---
+  const goFullscreen = async () => {
+    const elem = document.documentElement;
+    try {
+      if (elem.requestFullscreen) {
+        await elem.requestFullscreen();
+      } else if (elem.mozRequestFullScreen) { // Firefox
+        await elem.mozRequestFullScreen();
+      } else if (elem.webkitRequestFullscreen) { // Chrome, Safari and Opera
+        await elem.webkitRequestFullscreen();
+      } else if (elem.msRequestFullscreen) { // IE/Edge
+        await elem.msRequestFullscreen();
       }
-    }, 100);
+    } catch (error) {
+      console.warn('Fullscreen permission denied or not supported:', error.message);
+      // Jangan tampilkan error ke pengguna, cukup log ke konsol
+    }
   };
 
-  // Effect to focus on product search after payment modal closes
   useEffect(() => {
-    if (!showPaymentModal) {
-      focusAndSelectProductSearch();
-    }
-  }, [showPaymentModal]);
+    goFullscreen();
+
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []); // Empty dependency array to run only once on mount
 
   // --- HELPER & LOGIC FUNCTIONS (Defined before useEffects that use them) ---
 
@@ -231,6 +245,7 @@ export default function KasirTransaksiPage() {
       const result = await response.json();
 
       if (response.ok) {
+        setShowPaymentModal(false); // Close payment modal on success
         // Correctly calculate finalTotal. calculation.subTotal already has member prices applied.
         const finalTotal = calculation.subTotal - (additionalDiscount || 0);
         const remainingAmount = finalTotal - payment;

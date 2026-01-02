@@ -1,0 +1,18 @@
+feat(kasir): Improve debt management and audit logging
+
+This commit introduces several enhancements and bug fixes related to the cashier and member debt management workflow.
+
+- **Refactor Debt List UI**: Redesigned the "Daftar Member dengan Hutang" modal to use a responsive, table-like layout for better readability and a more professional appearance. The attendant's name is now also displayed for each debt record.
+- **Fix Data Discrepancies**:
+    - Corrected the final total calculation in the backend transaction API (`/api/transaksi`) to prevent double-subtracting member discounts, ensuring the `amountDue` for receivables is accurate.
+    - Corrected the "Sisa Hutang" calculation in the success modal after saving a debt to be consistent with the backend logic.
+- **Improve UX Workflow**:
+    - Implemented a check to guide users to the "Bayar Lunas" button if they try to save a debt with sufficient payment.
+    - The Payment Modal now closes automatically after "Simpan Hutang", "Bayar Lunas", or "Bersihkan Form" actions.
+    - After the Payment Modal closes, the product search input is now automatically focused and its content selected. This required refactoring the `ProductSearch` component to support `ref` forwarding.
+- **Bug Fixes**:
+    - **Audit Log**: Fixed a `PrismaClientValidationError` by renaming `recordId` to `entityId` in all `logAudit` calls within `lib/auditLogger.js` to match the schema.
+    - **Audit Log Schema**: Added the `additionalData` field to the `AuditLog` model in `prisma/schema.prisma` and ran a migration to resolve an 'Unknown argument' error.
+- **Component Refactoring**:
+    - Removed obsolete percentage-based discount logic from the `AddMemberModal` component.
+    - Fixed a React Hooks rule violation in `AddMemberModal`.

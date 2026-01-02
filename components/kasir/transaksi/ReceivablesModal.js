@@ -22,14 +22,16 @@ const ReceivablesModal = ({ isOpen, onClose, memberId, darkMode }) => {
 
   // Handle ESC key press for main modal
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleEscKey = (e) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape') {
         onClose();
       }
     };
 
     document.addEventListener('keydown', handleEscKey);
-    
+
     return () => {
       document.removeEventListener('keydown', handleEscKey);
     };
@@ -40,14 +42,14 @@ const ReceivablesModal = ({ isOpen, onClose, memberId, darkMode }) => {
     if (!showPaymentModal) return;
 
     const handleEscKey = (e) => {
-      if (e.key === 'Escape' && showPaymentModal) {
+      if (e.key === 'Escape') {
         setShowPaymentModal(false);
         setReferenceNumber(''); // Reset reference number when modal is closed
       }
     };
 
     document.addEventListener('keydown', handleEscKey);
-    
+
     return () => {
       document.removeEventListener('keydown', handleEscKey);
     };

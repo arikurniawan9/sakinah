@@ -38,6 +38,20 @@ const SuspendedSalesListModal = ({ isOpen, onClose, onResume, darkMode }) => {
     }
   }, [isOpen, fetchSuspendedSales]);
 
+  useEffect(() => {
+    const handleEscKey = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isOpen, onClose]);
+
   const confirmDelete = (saleId) => {
     setSaleToDelete(saleId);
     setShowDeleteConfirm(true);
@@ -82,20 +96,6 @@ const SuspendedSalesListModal = ({ isOpen, onClose, onResume, darkMode }) => {
   };
 
   if (!isOpen) return null;
-
-  useEffect(() => {
-    const handleEscKey = (e) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleEscKey);
-
-    return () => {
-      document.removeEventListener('keydown', handleEscKey);
-    };
-  }, [isOpen, onClose]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Plus, Download, Upload, Trash2, Folder, Edit, Eye, Hash } from 'lucide-react';
+import { Search, Plus, Download, Upload, Trash2, Folder, Edit, Eye, Hash, X, CheckCircle, XCircle } from 'lucide-react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import { useUserTheme } from '../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react';
@@ -52,6 +52,10 @@ export default function ProductManagement() {
     totalProducts,
     fetchProducts,
     setError: setTableError,
+    // Optimistic update functions
+    removeProductsOptimistic,
+    addProductOptimistic,
+    updateProductOptimistic,
     categoryFilter,
     supplierFilter,
     minStock,
@@ -84,7 +88,7 @@ export default function ProductManagement() {
     handleSave,
     setError: setFormError,
     setSuccess,
-  } = useProductForm(fetchProducts);
+  } = useProductForm(fetchProducts, { removeProductsOptimistic, addProductOptimistic, updateProductOptimistic });
 
   const { selectedRows, handleSelectAll, handleSelectRow, clearSelection, setSelectedRows } = useTableSelection(products);
 
@@ -101,6 +105,11 @@ export default function ProductManagement() {
   const [showImportConfirmModal, setShowImportConfirmModal] = useState(false);
   const [duplicateProducts, setDuplicateProducts] = useState([]);
   const [fileToImport, setFileToImport] = useState(null);
+  const [importFile, setImportFile] = useState(null);
+  const fileToImportRef = useRef(fileToImport);
+  fileToImportRef.current = fileToImport;
+  const importFileRef = useRef(importFile);
+  importFileRef.current = importFile;
 
   const { categories: cachedCategories, loading: categoriesLoading, error: categoriesError } = useCachedCategories();
   const { suppliers: cachedSuppliers, loading: suppliersLoading, error: suppliersError } = useCachedSuppliers();
@@ -148,9 +157,7 @@ export default function ProductManagement() {
   };
 
   const handleDelete = (id) => {
-    if (!isAdmin) return;
-    setItemToDelete(id);
-    setShowDeleteModal(true);
+    handleDeleteSingle(id);
   };
 
   const handleDeleteMultiple = useCallback(() => {
@@ -159,11 +166,19 @@ export default function ProductManagement() {
     setShowDeleteModal(true);
   }, [isAdmin, selectedRows]);
 
+  // Fungsi untuk menghapus produk tunggal dengan refresh langsung
+  const handleDeleteSingle = useCallback((id) => {
+    if (!isAdmin) return;
+    setItemToDelete(id);
+    setShowDeleteModal(true);
+  }, [isAdmin]);
+
   const handleConfirmDelete = async () => {
     if (!itemToDelete || !isAdmin) return;
     setIsDeleting(true);
 
     const isMultiple = Array.isArray(itemToDelete);
+
     let url = '/api/produk';
     let options = {
       method: 'DELETE',
@@ -183,7 +198,12 @@ export default function ProductManagement() {
         throw new Error(errorData.error || 'Gagal menghapus produk');
       }
 
-      fetchProducts();
+      // Fetch updated data to ensure consistency, forcing cache refresh
+      await fetchProducts(true);
+
+      // Reset pagination to ensure all products are visible
+      setCurrentPage(1);
+
       if (isMultiple) {
         clearSelection();
         setSuccess(`Berhasil menghapus ${itemToDelete.length} produk`);
@@ -194,6 +214,8 @@ export default function ProductManagement() {
 
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
+      // If deletion failed, refetch to restore original state
+      await fetchProducts(true);
       setTableError('Terjadi kesalahan saat menghapus: ' + err.message);
       setTimeout(() => setTableError(''), 5000);
     } finally {
@@ -203,39 +225,6 @@ export default function ProductManagement() {
     }
   };
 
-  const handleImportWithConfirmation = async (force = true) => {
-    if (!fileToImport) return;
-
-    setShowImportConfirmModal(false);
-    setImportLoading(true);
-
-    const formData = new FormData();
-    formData.append('file', fileToImport);
-    formData.append('force', force.toString());
-
-    try {
-      toast.info(`Memproses file ${fileToImport.name}...`);
-      const response = await fetch('/api/produk/import', { method: 'POST', body: formData });
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Gagal mengimport produk');
-      } else {
-        fetchProducts();
-        toast.success(result.message || `Berhasil mengimport produk`);
-        if (result.errors && result.errors.length > 0) {
-          console.warn('Import errors:', result.errors);
-          toast.warn(`Beberapa produk gagal diimpor: ${result.errors.length} error(s)`);
-        }
-      }
-    } catch (err) {
-      toast.error('Terjadi kesalahan saat import: ' + err.message);
-    } finally {
-      setImportLoading(false);
-      setFileToImport(null);
-      setDuplicateProducts([]);
-    }
-  };
 
   const handleViewDetails = (product) => {
     setSelectedProductForDetail(product);
@@ -366,57 +355,477 @@ export default function ProductManagement() {
     }
   }, [selectedRows, products, darkMode]);
 
+  const [importStatus, setImportStatus] = useState('idle'); // idle, processing, success, error
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0, status: '', show: false });
+  const [previewData, setPreviewData] = useState({ headers: [], previewData: [], totalRows: 0, show: false });
+  const [previewCurrentPage, setPreviewCurrentPage] = useState(1);
+  const PREVIEW_ROWS_PER_PAGE = 10;
+  const [isCheckingFile, setIsCheckingFile] = useState(false);
+  const [importErrors, setImportErrors] = useState([]);
+
+  // Fungsi untuk menyimpan status import ke localStorage
+  const saveImportStatus = useCallback((status, file = null, progress = null) => {
+    if (typeof window !== 'undefined') {
+      const importData = {
+        status,
+        timestamp: Date.now(),
+        fileName: file ? file.name : null,
+        progress: progress || { current: 0, total: 0, status: '' }
+      };
+      localStorage.setItem('adminImportStatus', JSON.stringify(importData));
+    }
+  }, []);
+
+  const saveImportStatusRef = useRef(saveImportStatus);
+  saveImportStatusRef.current = saveImportStatus;
+
+  // Fungsi untuk menghapus status import dari localStorage
+  const clearImportStatus = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('adminImportStatus');
+    }
+  }, []);
+
+  const clearImportStatusRef = useRef(clearImportStatus);
+  clearImportStatusRef.current = clearImportStatus;
+
+  // Cek status import dari localStorage saat komponen dimuat
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const importData = localStorage.getItem('adminImportStatus');
+      const storedStatus = importData ? JSON.parse(importData) : null;
+
+      if (storedStatus) {
+        if (storedStatus.status === 'processing') {
+          setImportStatus(storedStatus.status);
+          setImportProgress(storedStatus.progress);
+          setShowImportModal(true);
+          setImportFile({ name: storedStatus.fileName });
+          setFileToImport({ name: storedStatus.fileName }); // Update referensi file
+        } else if (['success', 'error'].includes(storedStatus.status)) {
+          setImportStatus(storedStatus.status);
+          setImportProgress(storedStatus.progress);
+          setShowImportModal(true);
+          setImportFile({ name: storedStatus.fileName });
+          setFileToImport({ name: storedStatus.fileName }); // Update referensi file
+        }
+      }
+      setIsCheckingStoredImport(false);
+    }
+  }, []);
+
+  // Mencegah pengguna meninggalkan halaman saat proses import sedang berlangsung
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      const importData = localStorage.getItem('adminImportStatus');
+      const storedStatus = importData ? JSON.parse(importData) : null;
+
+      if (storedStatus && storedStatus.status === 'processing') {
+        e.preventDefault();
+        e.returnValue = 'Proses import sedang berlangsung. Apakah Anda yakin ingin meninggalkan halaman ini?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [isCheckingStoredImport, setIsCheckingStoredImport] = useState(true);
+
+  // Effect untuk refresh data produk secara berkala saat modal import sedang aktif
+  useEffect(() => {
+    let interval = null;
+
+    if (showImportModal && importStatus === 'processing') {
+      // Refresh data setiap 5 detik saat proses import berlangsung
+      interval = setInterval(() => {
+        fetchProducts(true);
+      }, 5000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [showImportModal, importStatus, fetchProducts]);
+
   const handleImport = async (e) => {
     if (!isAdmin) return;
 
-    let file;
     if (e && e.target && e.target.files) {
-      file = e.target.files[0];
+      const file = e.target.files?.[0];
       if (!file) return;
-    } else if (e instanceof File) {
-      file = e;
+
+      if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls') && !file.name.toLowerCase().endsWith('.csv')) {
+        toast.error('Silakan pilih file Excel (.xlsx, .xls) atau CSV (.csv)');
+        e.target.value = '';
+        return;
+      }
+
+      // Reset state untuk file baru
+      setImportFile(file);
+      setFileToImport(file); // Update referensi file
+      setImportStatus('idle');
+      setIsFileChecked(false);
+      setImportProgress({ current: 0, total: 0, status: '', show: false });
+      setPreviewData({ headers: [], previewData: [], totalRows: 0, show: false });
+      setShowImportModal(true);
+
     } else {
-      console.error('Invalid input for handleImport:', e);
+      const hiddenFileInput = document.getElementById('hidden-import-file-input');
+      if (hiddenFileInput) {
+        hiddenFileInput.click();
+      } else {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.xlsx,.xls,.csv';
+        input.style.display = 'none';
+        input.onchange = (event) => handleImport(event);
+        document.body.appendChild(input);
+        input.click();
+        document.body.removeChild(input);
+      }
+    }
+  };
+
+  const handleCheckFile = useCallback(async () => {
+    if (!fileToImportRef.current) {
+      toast.error("Tidak ada file yang dipilih.");
       return;
     }
+    setIsCheckingFile(true);
+    try {
+      // Baca file untuk mengetahui jumlah produk sebelum dikirim
+      const totalProducts = await getTotalProductsFromFileRef.current(fileToImportRef.current);
 
-    if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls') && !file.name.toLowerCase().endsWith('.csv')) {
-      setTableError('Silakan pilih file Excel (.xlsx, .xls) atau CSV (.csv)');
-      setTimeout(() => setTableError(''), 5000);
-      if (e && e.target) e.target.value = '';
-      return;
+      // Baca preview data
+      const preview = await getPreviewDataFromFileRef.current(fileToImportRef.current);
+
+      // Update progress dengan jumlah total produk
+      const initialProgress = {
+        current: 0,
+        total: totalProducts,
+        status: `Siap mengimpor ${totalProducts} produk...`,
+        show: true
+      };
+      setImportProgress(initialProgress);
+
+      // Set preview data
+      setPreviewData({ ...preview, show: true });
+
+      setIsFileChecked(true);
+      setPreviewCurrentPage(1);
+    } catch (error) {
+      toast.error("Gagal memeriksa file: " + error.message);
+    } finally {
+      setIsCheckingFile(false);
     }
+  }, []);
 
+  // Fungsi untuk membaca file dan menghitung jumlah produk
+  const getTotalProductsFromFile = useCallback(async (file) => {
+    try {
+      const fileExtension = file.name.split('.').pop().toLowerCase();
+
+      if (fileExtension === 'csv') {
+        // Baca file CSV dan hitung jumlah baris (kurangi header)
+        const text = await file.text();
+        const lines = text.split('\n');
+        // Kurangi 1 untuk header
+        return Math.max(0, lines.length - 1);
+      } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+        // Baca file Excel menggunakan library xlsx
+        const XLSX = await import('xlsx');
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        // Kurangi 1 untuk header
+        return Math.max(0, jsonData.length - 1);
+      }
+
+      return 0;
+    } catch (error) {
+      console.error('Error reading file for product count:', error);
+      return 0;
+    }
+  }, []);
+
+  const getTotalProductsFromFileRef = useRef(getTotalProductsFromFile);
+  getTotalProductsFromFileRef.current = getTotalProductsFromFile;
+
+  // Fungsi untuk menampilkan preview data dari file
+  const getPreviewDataFromFile = useCallback(async (file) => {
+    try {
+      const fileExtension = file.name.split('.').pop().toLowerCase();
+
+      if (fileExtension === 'csv') {
+        const text = await file.text();
+        const lines = text.split('\n').filter(line => line.trim() !== '');
+        if (lines.length === 0) return { headers: [], previewData: [], totalRows: 0 };
+
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        const dataRows = lines.slice(1);
+        const previewData = dataRows.map(line => {
+            const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+            const row = {};
+            headers.forEach((header, index) => {
+              row[header] = values[index] || '';
+            });
+            return row;
+        });
+
+        return { headers, previewData, totalRows: dataRows.length };
+
+      } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+        const XLSX = await import('xlsx');
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        if (jsonData.length < 1) {
+            return { headers: [], previewData: [], totalRows: 0 };
+        }
+
+        const headers = jsonData[0];
+        const dataRows = jsonData.slice(1);
+
+        const previewData = dataRows.map(row => {
+          const rowObject = {};
+          headers.forEach((header, index) => {
+            rowObject[header] = row[index];
+          });
+          return rowObject;
+        });
+
+        return { headers, previewData, totalRows: dataRows.length };
+      }
+
+      return { headers: [], previewData: [], totalRows: 0 };
+    } catch (error) {
+      console.error('Error reading file for preview:', error);
+      return { headers: [], previewData: [], totalRows: 0 };
+    }
+  }, []);
+
+  const getPreviewDataFromFileRef = useRef(getPreviewDataFromFile);
+  getPreviewDataFromFileRef.current = getPreviewDataFromFile;
+
+  const processImport = useCallback(async (formData, event = null) => {
     setImportLoading(true);
-    const formData = new FormData();
-    formData.append('file', file);
+    setImportStatus('processing');
+
+    const total = importProgress.total;
+    setImportProgress({ current: 0, total: total, status: 'Mengirim file...', show: true });
+
+    let progressInterval = null;
+
+    // Simulate progress
+    if (total > 0) {
+      const simulationTime = Math.min(total * 100, 15000); // Max 15 detik simulasi
+      const increment = total / (simulationTime / 100);
+
+      progressInterval = setInterval(() => {
+        setImportProgress(prev => {
+          const newCurrent = Math.min(prev.current + increment, total * 0.95); // Jangan sampai 100%
+          if (newCurrent >= total * 0.95) {
+            clearInterval(progressInterval);
+          }
+          return {
+            ...prev,
+            current: Math.round(newCurrent),
+            status: `Memproses ${Math.round(newCurrent)} dari ${total} produk...`
+          };
+        });
+      }, 100);
+    }
+
+    saveImportStatusRef.current('processing', fileToImportRef.current, importProgress);
+    toast.info('Mengirim file untuk diimpor...');
 
     try {
-      toast.info(`Memproses file ${file.name}...`);
+      const response = await fetch('/api/produk/import', { method: 'POST', body: formData });
+      clearInterval(progressInterval); // Stop simulation on response
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Gagal memproses file import');
+      }
+
+      const importedCount = result.importedCount || 0;
+      const finalProgress = {
+        current: importedCount,
+        total: total,
+        status: `Selesai - ${importedCount} dari ${total} produk berhasil diimpor.`,
+        show: true
+      };
+      setImportProgress(finalProgress);
+
+      if (result.errors && result.errors.length > 0) {
+        setImportErrors(result.errors);
+        setImportStatus('success_with_errors');
+        toast.warn(`Berhasil mengimpor ${importedCount} produk, tetapi ${result.errors.length} baris gagal.`);
+      } else if (result.needConfirmation && result.duplicateProducts) {
+        setDuplicateProducts(result.duplicateProducts);
+        setImportStatus('confirmation_needed');
+        setShowImportConfirmModal(true);
+      } else {
+        setImportStatus('success');
+        toast.success(result.message || `Berhasil mengimport ${importedCount} produk.`);
+      }
+
+      // Refresh data produk setelah import selesai
+      await fetchProducts(true);
+      // Reset pagination untuk memastikan produk baru terlihat
+      setCurrentPage(1);
+
+    } catch (err) {
+      clearInterval(progressInterval);
+      setImportStatus('error');
+      setImportErrors([{ row: 'General', error: err.message }]);
+      toast.error('Terjadi kesalahan saat import: ' + err.message);
+    } finally {
+      clearInterval(progressInterval);
+      setImportLoading(false);
+    }
+  }, [importProgress, fetchProducts]);
+
+  const handleImportWithConfirmation = useCallback(async (updateMode) => {
+    if (!fileToImportRef.current) {
+        toast.error("File import tidak ditemukan. Silakan coba lagi.");
+        return;
+    }
+
+    setShowImportConfirmModal(false);
+
+    const totalProducts = await getTotalProductsFromFile(fileToImportRef.current);
+
+    const formData = new FormData();
+    formData.append('file', fileToImportRef.current);
+    formData.append('updateMode', updateMode);
+
+    setImportLoading(true);
+    setImportStatus('processing');
+    const initialProgress = {
+      current: 0,
+      total: totalProducts,
+      status: updateMode === 'overwrite' ? `Mengimpor dan menimpa produk... (0/${totalProducts})` : `Mengimpor dan menambahkan stok... (0/${totalProducts})`,
+      show: true
+    };
+    setImportProgress(initialProgress);
+    saveImportStatusRef.current('processing', fileToImportRef.current, initialProgress);
+    toast.info(updateMode === 'overwrite' ? 'Mengimpor dan menimpa produk yang sudah ada...' : 'Mengimpor dan menambahkan stok produk yang sudah ada...');
+
+    try {
       const response = await fetch('/api/produk/import', { method: 'POST', body: formData });
       const result = await response.json();
 
-      if (result.needConfirmation && result.duplicateProducts) {
-        setDuplicateProducts(result.duplicateProducts);
-        setFileToImport(file);
-        setShowImportConfirmModal(true);
-      } else if (!response.ok) {
-        throw new Error(result.error || 'Gagal mengimport produk');
-      } else {
-        fetchProducts();
-        toast.success(result.message || `Berhasil mengimport ${result.importedCount || 0} produk`);
-        if (result.errors && result.errors.length > 0) {
-          console.warn('Import errors:', result.errors);
-          toast.warn(`Beberapa produk gagal diimpor: ${result.errors.length} error(s)`);
-        }
-        if (e && e.target) e.target.value = '';
+      if (!response.ok) {
+        throw new Error(result.error || 'Gagal memproses file import');
       }
+
+      const updatedProgress = {
+        current: result.importedCount || 0,
+        total: totalProducts || result.importedCount || 0,
+        status: `Selesai - ${result.importedCount || 0} produk berhasil diimpor`,
+        show: true
+      };
+      setImportProgress(updatedProgress);
+      saveImportStatusRef.current('success', fileToImportRef.current, updatedProgress);
+
+      setImportStatus('success');
+      // Refresh data produk setelah import selesai
+      await fetchProducts(true);
+      // Reset pagination untuk memastikan produk baru terlihat
+      setCurrentPage(1);
+      toast.success(result.message || `Berhasil mengimport ${result.importedCount || 0} produk`);
+      if (result.errors && result.errors.length > 0) {
+        console.warn('Import errors:', result.errors);
+        toast.warn(`Beberapa produk gagal diimpor: ${result.errors.length} error(s)`);
+      }
+      resetImportState();
     } catch (err) {
+      setImportStatus('error');
+      saveImportStatusRef.current('error', fileToImportRef.current, importProgress);
       toast.error('Terjadi kesalahan saat import: ' + err.message);
-      if (e && e.target) e.target.value = '';
     } finally {
       setImportLoading(false);
+      setTimeout(() => {
+        setImportProgress({ current: 0, total: 0, status: '', show: false });
+        setPreviewData({ headers: [], previewData: [], totalRows: 0, show: false });
+      }, 2000);
     }
+  }, [getTotalProductsFromFile, fetchProducts]);
+
+  const startImportProcess = useCallback(async () => {
+    if (!fileToImportRef.current) return;
+
+    // Simpan status import ke localStorage sebelum memulai proses
+    saveImportStatusRef.current('processing', fileToImportRef.current, importProgress);
+
+    const formData = new FormData();
+    formData.append('file', fileToImportRef.current);
+
+    await processImport(formData);
+  }, [processImport, importProgress]);
+
+  const resetImportState = useCallback(() => {
+    setFileToImport(null);
+    setDuplicateProducts([]);
+    setShowImportConfirmModal(false);
+    setPreviewData({ headers: [], previewData: [], totalRows: 0, show: false });
+    setImportFile(null);
+    setShowImportModal(false);
+    setImportStatus('idle');
+    setImportErrors([]);
+    clearImportStatusRef.current();
+  }, []);
+
+  const [isFileChecked, setIsFileChecked] = useState(false);
+
+  // Fungsi untuk reset pagination ke halaman pertama
+  const resetPagination = useCallback(() => {
+    setCurrentPage(1);
+  }, [setCurrentPage]);
+
+  // Ref untuk menyimpan referensi ke resetPagination agar bisa diakses dari fungsi lain
+  const resetPaginationRef = useRef(resetPagination);
+
+  // Update ref setiap kali resetPagination berubah
+  useEffect(() => {
+    resetPaginationRef.current = resetPagination;
+  }, [resetPagination]);
+
+  // Fungsi untuk refresh data produk secara manual
+  const refreshProducts = useCallback((forceRefresh = false) => {
+    fetchProducts(forceRefresh);
+  }, [fetchProducts]);
+
+  const handleDownloadTemplate = () => {
+    // Membuat template CSV dengan format yang sesuai dengan API import
+    const csvContent = [
+      'Nama,Kode,Stok,Kategori,Supplier,Deskripsi,Harga Beli,Harga Jual/Eceran,Harga Member Silver,Harga Member Gold,Harga Member Platinum (Partai)',
+      'Contoh Produk,001,100,Umum,Supplier A,"Deskripsi produk",10000,15000,14000,13000,12000',
+      'Produk Contoh 2,002,50,Kategori B,Supplier B,"Deskripsi produk 2",20000,25000,24000,23000,22000'
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'template-import-produk.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleTriggerImport = useCallback(() => {
@@ -435,14 +844,6 @@ export default function ProductManagement() {
     'alt+n': openModalForCreate,
     'alt+i': handleTriggerImport,
     'alt+e': handleExport,
-    'alt+t': () => {
-      const link = document.createElement('a');
-      link.href = '/templates/contoh-import-produk.csv';
-      link.download = 'contoh-import-produk.csv';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    },
     'alt+b': handlePrintBarcode,
     'alt+f': handleFocusSearch,
     'delete': handleDeleteMultiple,
@@ -455,7 +856,6 @@ export default function ProductManagement() {
     { key: 'Alt + F', description: 'Cari Produk' },
     { key: 'Alt + I', description: 'Import Produk' },
     { key: 'Alt + E', description: 'Export Produk' },
-    { key: 'Alt + T', description: 'Download Template' },
     { key: 'Alt + B', description: 'Cetak Barcode' },
     { key: 'Delete', description: 'Hapus Produk Terpilih' },
   ];
@@ -531,12 +931,9 @@ export default function ProductManagement() {
                   </Tooltip>
                 )}
                 <Tooltip content="Import produk dari file (Alt+I)">
-                  <label className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'} cursor-pointer`}>
-                    <Upload className="h-4 w-4" /><input ref={importInputRef} type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleImport} disabled={importLoading} />
-                  </label>
-                </Tooltip>
-                <Tooltip content="Template Produk (Alt+T)">
-                  <a href="/templates/contoh-import-produk.csv" download="contoh-import-produk.csv" className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}><Folder className="h-4 w-4" /></a>
+                  <button onClick={handleImport} className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`} disabled={importLoading}>
+                    <Upload className="h-4 w-4" />
+                  </button>
                 </Tooltip>
                 <Tooltip content="Cetak barcode produk (Alt+B)">
                   <button onClick={handlePrintBarcode} className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}><Hash className="h-4 w-4" /></button>
@@ -548,6 +945,15 @@ export default function ProductManagement() {
                 </Tooltip>
                 {isAdmin && <Tooltip content="Tambah produk baru (Alt+N)"><button onClick={openModalForCreate} className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"><Plus className="h-4 w-4 mr-2" /><span>Baru</span></button></Tooltip>}
               </div>
+
+              {/* Hidden file input for import shortcut */}
+              <input
+                id="hidden-import-file-input"
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                style={{ display: 'none' }}
+                onChange={handleImport}
+              />
             </div>
           </div>
 
@@ -608,6 +1014,8 @@ export default function ProductManagement() {
             addTier={addTier}
             removeTier={removeTier}
             handleSave={handleSave}
+            onRefresh={refreshProducts}
+            onResetPagination={() => resetPaginationRef.current && resetPaginationRef.current()}
             darkMode={darkMode}
             categories={categories}
             suppliers={suppliers}
@@ -634,36 +1042,240 @@ export default function ProductManagement() {
         />
 
         {showImportConfirmModal && (
-          <div className="fixed z-[100] inset-0 overflow-y-auto">
-            <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-              <div className="fixed inset-0 transition-opacity" aria-hidden="true"><div className={darkMode ? 'bg-gray-800 bg-opacity-75' : 'bg-gray-500 bg-opacity-75'}></div></div>
-              <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-              <div className={`inline-block align-bottom ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${darkMode ? 'border-gray-700' : 'border-gray-200'} border`}>
-                <div className="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <div className="sm:flex sm:items-start">
-                    <div className={`mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full ${darkMode ? 'bg-red-900' : 'bg-red-100'} sm:mx-0 sm:h-10 sm:w-10`}>
-                      <svg className={`${darkMode ? 'text-red-400' : 'text-red-600'} h-6 w-6`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                    </div>
-                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                      <h3 className={`text-lg leading-6 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>Produk yang Sama Ditemukan</h3>
-                      <div className="mt-2">
-                        <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>Ditemukan {duplicateProducts.length} produk yang sudah ada di sistem. Apakah Anda ingin menimpa produk yang sudah ada?</p>
-                        <div className="mt-4 max-h-40 overflow-y-auto"><ul className={`list-disc pl-5 space-y-1 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>{duplicateProducts.map((product, index) => (<li key={index}><span className="font-medium">{product.productCode}</span> - {product.name}</li>))}</ul></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className={`px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                  <button type="button" onClick={() => handleImportWithConfirmation(true)} className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">Timpa Produk</button>
-                  <button type="button" onClick={() => { setShowImportConfirmModal(false); setFileToImport(null); setDuplicateProducts([]); }} className={`mt-3 w-full inline-flex justify-center rounded-md border px-4 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm ${darkMode ? 'bg-gray-600 text-white hover:bg-gray-500 border-gray-500 focus:ring-gray-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300 focus:ring-gray-300'}`}>Batalkan</button>
-                </div>
+          <ConfirmationModal
+            isOpen={showImportConfirmModal}
+            onClose={() => {
+              setShowImportConfirmModal(false);
+              setFileToImport(null);
+              setDuplicateProducts([]);
+            }}
+            onConfirm={() => handleImportWithConfirmation('overwrite')}
+            onConfirmSecondary={() => handleImportWithConfirmation('add_stock')}
+            title="Produk yang Sama Ditemukan"
+            message={`Ditemukan ${duplicateProducts.length} produk yang sudah ada di sistem. Apa yang ingin Anda lakukan?`}
+            primaryActionText="Timpa Produk"
+            secondaryActionText="Tambah Stok Saja"
+            hasSecondaryAction={true}
+            darkMode={darkMode}
+          >
+            <div className="mt-4 max-h-40 overflow-y-auto">
+              <ul className={`list-disc pl-5 space-y-1 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                {duplicateProducts.map((product, index) => (
+                  <li key={index}>
+                    <span className="font-medium">{product.productCode}</span> - {product.name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </ConfirmationModal>
+        )}
+
+        <ExportFormatSelector isOpen={showExportFormatModal} onClose={() => setShowExportFormatModal(false)} onConfirm={handleExportWithFormat} title="Produk" darkMode={darkMode} />
+        <PDFPreviewModal isOpen={showPDFPreviewModal} onClose={() => setShowPDFPreviewModal(false)} data={pdfPreviewData?.data} title={pdfPreviewData?.title} darkMode={darkMode} />
+
+        {/* Loading state saat mengecek status import dari storage */}
+        {isCheckingStoredImport && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-50">
+            <div className={`p-6 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-500 mr-3"></div>
+                <span className={`text-lg ${darkMode ? 'text-white' : 'text-gray-800'}`}>Memeriksa status import sebelumnya...</span>
               </div>
             </div>
           </div>
         )}
 
-        <ExportFormatSelector isOpen={showExportFormatModal} onClose={() => setShowExportFormatModal(false)} onExport={handleExportWithFormat} title="Produk" darkMode={darkMode} />
-        <PDFPreviewModal isOpen={showPDFPreviewModal} onClose={() => setShowPDFPreviewModal(false)} data={pdfPreviewData?.data} title={pdfPreviewData?.title} darkMode={darkMode} />
+        {/* Import Modal */}
+        {showImportModal && !isCheckingStoredImport && (
+          <div className="fixed inset-0 z-[100] overflow-y-auto">
+            <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+              <div className="fixed inset-0 transition-opacity" aria-hidden="true" onClick={() => { if (importStatus !== 'processing') resetImportState() }}>
+                <div className={`${darkMode ? 'bg-gray-800 bg-opacity-75' : 'bg-gray-500 bg-opacity-75'}`}></div>
+              </div>
+              <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+              <div className={`inline-block align-bottom rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full ${darkMode ? 'bg-gray-800' : 'bg-white'} ${darkMode ? 'border-gray-700' : 'border-gray-200'} border`}>
+                <div className={`px-4 pt-5 pb-4 sm:p-6 sm:pb-4 ${darkMode ? 'bg-gray-800' : ''}`}>
+                  <div className="w-full">
+                    <div className="flex justify-between items-center mb-4">
+                      <div>
+                        <h3 className={`text-lg leading-6 font-medium ${darkMode ? 'text-purple-400' : 'text-purple-800'}`}>
+                          Import Produk
+                        </h3>
+                        <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          Format kolom: Kode, Nama, Stok, Kategori, Supplier, Deskripsi, Harga Beli, Harga Jual/Eceran, Harga Member Silver, Harga Member Gold, Harga Member Platinum (Partai)
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (importStatus !== 'processing') {
+                            resetImportState();
+                          }
+                        }}
+                        disabled={importStatus === 'processing'}
+                        className="p-1 rounded-md text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+
+                    {/* ----- Initial View & Preview ----- */}
+                    {['idle', 'processing'].includes(importStatus) && (
+                       <>
+                        <div className={`mb-4 p-3 rounded-lg ${darkMode ? 'bg-gray-750 border border-gray-700' : 'bg-blue-50 border border-blue-200'}`}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <div>
+                                <span className={`text-xs font-medium ${darkMode ? 'text-gray-400' : 'text-blue-700'}`}>NAMA FILE</span>
+                                <p className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>{importFileRef.current?.name || 'Belum dipilih'}</p>
+                                </div>
+                                {isFileChecked && (
+                                <div>
+                                <span className={`text-xs font-medium ${darkMode ? 'text-gray-400' : 'text-blue-700'}`}>JUMLAH DATA</span>
+                                <p className={`text-sm font-medium ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>{previewData.totalRows > 0 ? `${previewData.totalRows} produk` : '0 produk'}</p>
+                                </div>
+                                )}
+                            </div>
+                            <div className={`mt-2 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                <p>Format kolom yang didukung: Kode, Nama, Stok, Kategori, Supplier, Deskripsi, Harga Beli, Harga Jual/Eceran, Harga Member Silver, Harga Member Gold, Harga Member Platinum (Partai)</p>
+                            </div>
+                        </div>
+
+                        {importStatus === 'processing' && (
+                            <div className="mb-6">
+                                <div className="flex items-center justify-between mb-2">
+                                <span className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{importProgress.status}</span>
+                                <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{Math.round(importProgress.current)} / {importProgress.total}</span>
+                                </div>
+                                <div className={`w-full h-3 rounded-full overflow-hidden ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                                <div className="h-full bg-green-500 transition-all duration-500 ease-out" style={{ width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%` }}></div>
+                                </div>
+                            </div>
+                        )}
+
+                        {isFileChecked && previewData.show && previewData.previewData.length > 0 && (
+                            <div className={`rounded-lg overflow-hidden mb-4 ${darkMode ? 'bg-gray-750 border border-gray-700' : 'bg-gray-50 border border-gray-200'}`}>
+                            <div className={`p-3 border-b ${darkMode ? 'border-gray-700 bg-gray-700' : 'border-gray-200 bg-gray-100'}`}>
+                                <h4 className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                Preview Data ({previewData.totalRows} total baris)
+                                </h4>
+                            </div>
+                            <div className="max-h-80 overflow-y-auto">
+                                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead className={`${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                                    <tr>
+                                    {previewData.headers.map((header, index) => (
+                                        <th key={index} className={`px-3 py-2 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>{header}</th>
+                                    ))}
+                                    </tr>
+                                </thead>
+                                <tbody className={`divide-y ${darkMode ? 'divide-gray-700 bg-gray-800' : 'divide-gray-200 bg-white'} text-xs`}>
+                                    {previewData.previewData.slice((previewCurrentPage - 1) * PREVIEW_ROWS_PER_PAGE, previewCurrentPage * PREVIEW_ROWS_PER_PAGE).map((row, rowIndex) => {
+                                    const absoluteIndex = ((previewCurrentPage - 1) * PREVIEW_ROWS_PER_PAGE) + rowIndex;
+                                    const isUploaded = importStatus === 'processing' && absoluteIndex < importProgress.current;
+                                    return (
+                                        <tr key={rowIndex} className={`${isUploaded ? (darkMode ? 'bg-green-800 bg-opacity-50' : 'bg-green-100') : (rowIndex % 2 === 0 ? (darkMode ? 'bg-gray-800' : 'bg-white') : (darkMode ? 'bg-gray-750' : 'bg-gray-50'))} transition-colors duration-300`}>
+                                        {previewData.headers.map((header, cellIndex) => (
+                                            <td key={cellIndex} className={`px-3 py-2 whitespace-nowrap ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{row[header] !== undefined ? String(row[header]) : '-'}</td>
+                                        ))}
+                                        </tr>
+                                    );
+                                    })}
+                                </tbody>
+                                </table>
+                            </div>
+                            {previewData.totalRows > PREVIEW_ROWS_PER_PAGE && (
+                                <div className={`p-3 flex items-center justify-between ${darkMode ? 'bg-gray-700 border-t border-gray-600' : 'bg-gray-100 border-t border-gray-200'}`}>
+                                <button onClick={() => setPreviewCurrentPage(p => Math.max(1, p - 1))} disabled={previewCurrentPage === 1} className={`px-3 py-1 text-sm rounded-md ${darkMode ? 'bg-gray-600 hover:bg-gray-500 disabled:bg-gray-800 disabled:text-gray-500' : 'bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400'}`}>Sebelumnya</button>
+                                <span className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>Halaman {previewCurrentPage} dari {Math.ceil(previewData.totalRows / PREVIEW_ROWS_PER_PAGE)}</span>
+                                <button onClick={() => setPreviewCurrentPage(p => Math.min(Math.ceil(previewData.totalRows / PREVIEW_ROWS_PER_PAGE), p + 1))} disabled={previewCurrentPage === Math.ceil(previewData.totalRows / PREVIEW_ROWS_PER_PAGE)} className={`px-3 py-1 text-sm rounded-md ${darkMode ? 'bg-gray-600 hover:bg-gray-500 disabled:bg-gray-800 disabled:text-gray-500' : 'bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400'}`}>Berikutnya</button>
+                                </div>
+                            )}
+                            </div>
+                        )}
+                        </>
+                    )}
+
+                    {/* ----- Success View ----- */}
+                    {importStatus === 'success' && (
+                      <div className="text-center p-6">
+                        <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium">Import Berhasil</h3>
+                        <p className={`mt-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                          {importProgress.current} dari {importProgress.total} produk berhasil diimpor.
+                        </p>
+                        {importProgress.current === 0 && (
+                          <div className={`mt-4 p-3 rounded-md ${darkMode ? 'bg-red-900 bg-opacity-20 text-red-400' : 'bg-red-100 text-red-700'}`}>
+                            <p className="text-sm">Perhatian: Tidak ada produk yang berhasil diimpor. Pastikan format file sesuai dengan template.</p>
+                            <p className="text-xs mt-2">Format kolom yang didukung: Kode, Nama, Stok, Kategori, Supplier, Deskripsi, Harga Beli, Harga Jual/Eceran, Harga Member Silver, Harga Member Gold, Harga Member Platinum (Partai)</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ----- Partial Success / Error Details View ----- */}
+                    {importStatus === 'success_with_errors' && (
+                        <div>
+                            <div className="text-center p-6 border-b border-gray-200 dark:border-gray-700">
+                                <XCircle className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
+                                <h3 className="text-lg font-medium">Import Selesai dengan Peringatan</h3>
+                                <p className={`mt-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                Berhasil mengimpor {importProgress.current} dari {importProgress.total} produk. Terdapat {importErrors.length} baris yang gagal.
+                                </p>
+                            </div>
+                            <div className="p-4">
+                                <h4 className="font-bold mb-2">Detail Error:</h4>
+                                <ul className="max-h-48 overflow-y-auto text-sm space-y-2">
+                                    {importErrors.map((err, index) => (
+                                        <li key={index} className={`p-2 rounded-md ${darkMode ? 'bg-gray-700' : 'bg-red-50'}`}>
+                                            <span className="font-semibold">Baris {err.row}:</span>
+                                            <span className={`ml-2 ${darkMode ? 'text-red-400' : 'text-red-700'}`}>{err.error}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ----- General Error View ----- */}
+                    {importStatus === 'error' && (
+                      <div className="text-center p-6">
+                        <XCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium">Import Gagal</h3>
+                        <p className={`mt-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                          {importErrors[0]?.error || "Terjadi kesalahan saat memproses file. Silakan coba lagi."}
+                        </p>
+                      </div>
+                    )}
+
+                  </div>
+                </div>
+
+                <div className={`px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                  {/* --- Action Buttons --- */}
+                  {importStatus === 'idle' && (
+                    <button type="button" onClick={handleCheckFile} disabled={isCheckingFile || !importFile} className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm ${isCheckingFile || !importFile ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                        {isCheckingFile ? 'Memeriksa...' : 'Cek File'}
+                    </button>
+                  )}
+                  {importStatus === 'idle' && isFileChecked && (
+                    <button type="button" onClick={startImportProcess} disabled={importLoading || previewData.totalRows === 0} className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm ${importLoading || previewData.totalRows === 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}>
+                        {`Import ${previewData.totalRows} produk`}
+                    </button>
+                  )}
+
+
+                  {/* --- Close Button --- */}
+                  <button
+                    type="button"
+                    onClick={() => resetImportState()}
+                    className={`mt-3 w-full inline-flex justify-center rounded-md border shadow-sm px-4 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-sm ${darkMode ? 'bg-gray-600 text-white hover:bg-gray-500 border-gray-500' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
+                  >
+                    {importStatus === 'idle' || importStatus === 'processing' ? 'Batal' : 'Tutup'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </ProtectedRoute>
   );

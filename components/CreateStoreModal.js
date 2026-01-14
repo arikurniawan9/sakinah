@@ -28,9 +28,41 @@ const CreateStoreModal = ({ isOpen, onClose, onStoreCreated }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validasi form sebelum submit
+    if (!formData.name.trim()) {
+      setError('Nama toko wajib diisi');
+      return;
+    }
+
+    if (!formData.address.trim()) {
+      setError('Alamat toko wajib diisi');
+      return;
+    }
+
+    if (!adminData.name.trim()) {
+      setError('Nama admin wajib diisi');
+      return;
+    }
+
+    if (!adminData.username.trim()) {
+      setError('Username admin wajib diisi');
+      return;
+    }
+
+    if (!adminData.password) {
+      setError('Password admin wajib diisi');
+      return;
+    }
+
     // Validasi password
     if (adminData.password !== adminData.confirmPassword) {
       setError('Password dan konfirmasi password tidak cocok');
+      return;
+    }
+
+    // Validasi panjang password
+    if (adminData.password.length < 6) {
+      setError('Password minimal 6 karakter');
       return;
     }
 
@@ -69,12 +101,12 @@ const CreateStoreModal = ({ isOpen, onClose, onStoreCreated }) => {
           password: '',
           confirmPassword: ''
         });
-        
+
         // Panggil callback untuk refresh data
         if (onStoreCreated) {
           onStoreCreated();
         }
-        
+
         onClose();
       } else {
         setError(result.error || 'Gagal membuat toko');

@@ -16,7 +16,8 @@ import {
   AlertTriangle,
   CreditCard,
   FileText,
-  Activity
+  Activity,
+  Database
 } from 'lucide-react';
 import { useUserTheme } from '@/components/UserThemeContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -116,8 +117,10 @@ export default function ManagerDashboard() {
       const response = await fetch('/api/dashboard/manager-summary', {
         headers: {
           'Cache-Control': 'no-cache',
-          'Authorization': `Bearer ${session?.user?.token || ''}` // Include auth token if available
-        }
+          'Authorization': `Bearer ${session?.user?.token || ''}`, // Include auth token if available
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
       });
 
       if (!response.ok) {
@@ -145,7 +148,7 @@ export default function ManagerDashboard() {
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      showNotification('Gagal memuat data dashboard', 'error');
+      showNotification('Gagal memuat data dashboard: ' + (error.message || 'Terjadi kesalahan jaringan'), 'error');
       if (error.message.includes('401') || error.message.includes('403')) {
         router.push('/login');
       }
@@ -167,8 +170,10 @@ export default function ManagerDashboard() {
       const response = await fetch(`/api/stores?${query}`, {
         headers: {
           'Cache-Control': 'no-cache',
-          'Authorization': `Bearer ${session?.user?.token || ''}` // Include auth token if available
-        }
+          'Authorization': `Bearer ${session?.user?.token || ''}`, // Include auth token if available
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
       });
 
       if (!response.ok) {
@@ -188,7 +193,7 @@ export default function ManagerDashboard() {
       dispatch({ type: 'SET_TOTAL_ITEMS', payload: data.totalItems || 0 });
     } catch (error) {
       console.error('Error fetching stores:', error);
-      showNotification('Gagal memuat data toko', 'error');
+      showNotification('Gagal memuat data toko: ' + (error.message || 'Terjadi kesalahan jaringan'), 'error');
       if (error.message.includes('401') || error.message.includes('403')) {
         router.push('/login');
       }
@@ -329,6 +334,22 @@ export default function ManagerDashboard() {
       icon: Activity,
       color: "bg-purple-100 text-purple-600",
       darkModeColor: "bg-purple-900/30 text-purple-400",
+    },
+    {
+      title: "Log Aktivitas",
+      description: "Lihat log aktivitas sistem",
+      href: "/manager/activity-log",
+      icon: Activity,
+      color: "bg-indigo-100 text-indigo-600",
+      darkModeColor: "bg-indigo-900/30 text-indigo-400",
+    },
+    {
+      title: "Backup & Restore",
+      description: "Cadangkan dan pulihkan data sistem",
+      href: "/manager/backup-restore",
+      icon: Database,
+      color: "bg-cyan-100 text-cyan-600",
+      darkModeColor: "bg-cyan-900/30 text-cyan-400",
     },
     {
       title: "Gudang Pusat",
@@ -497,12 +518,20 @@ export default function ManagerDashboard() {
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">Aktivitas Terbaru</h3>
-                <button
-                  onClick={() => updateWidgetVisibility('recent-activity', false)}
-                  className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-                >
-                  ×
-                </button>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => router.push('/manager/activity-log')}
+                    className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
+                  >
+                    Lihat Semua
+                  </button>
+                  <button
+                    onClick={() => updateWidgetVisibility('recent-activity', false)}
+                    className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
               {state.recentActivity.length > 0 ? (
                 <ul className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -511,75 +540,33 @@ export default function ManagerDashboard() {
                       <div className="flex items-center">
                         <div className="flex-shrink-0">
                           <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                            activity.type === 'SALE' ? 'bg-green-100 dark:bg-green-800' :
-                            activity.type === 'STOCK' ? 'bg-yellow-100 dark:bg-yellow-800' :
-                            activity.type === 'CREATE' ? 'bg-blue-100 dark:bg-blue-800' :
-                            activity.type === 'UPDATE' ? 'bg-purple-100 dark:bg-purple-800' :
+                            activity.type === 'CREATE' ? 'bg-green-100 dark:bg-green-800' :
+                            activity.type === 'UPDATE' ? 'bg-blue-100 dark:bg-blue-800' :
                             activity.type === 'DELETE' ? 'bg-red-100 dark:bg-red-800' :
-                            'bg-blue-100 dark:bg-blue-800'
+                            activity.type === 'LOGIN' ? 'bg-purple-100 dark:bg-purple-800' :
+                            activity.type === 'LOGOUT' ? 'bg-gray-100 dark:bg-gray-700' :
+                            'bg-yellow-100 dark:bg-yellow-800'
                           }`}>
-                            {activity.type === 'SALE' ? (
-                              <ShoppingCart className={`h-4 w-4 ${
-                                activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' :
-                                activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' :
-                                activity.type === 'CREATE' ? 'text-blue-800 dark:text-blue-100' :
-                                activity.type === 'UPDATE' ? 'text-purple-800 dark:text-purple-100' :
-                                activity.type === 'DELETE' ? 'text-red-800 dark:text-red-100' :
-                                'text-blue-800 dark:text-blue-100'
-                              }`} />
-                            ) : activity.type === 'STOCK' ? (
-                              <Package className={`h-4 w-4 ${
-                                activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' :
-                                activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' :
-                                activity.type === 'CREATE' ? 'text-blue-800 dark:text-blue-100' :
-                                activity.type === 'UPDATE' ? 'text-purple-800 dark:text-purple-100' :
-                                activity.type === 'DELETE' ? 'text-red-800 dark:text-red-100' :
-                                'text-blue-800 dark:text-blue-100'
-                              }`} />
-                            ) : activity.type === 'CREATE' ? (
-                              <Plus className={`h-4 w-4 ${
-                                activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' :
-                                activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' :
-                                activity.type === 'CREATE' ? 'text-blue-800 dark:text-blue-100' :
-                                activity.type === 'UPDATE' ? 'text-purple-800 dark:text-purple-100' :
-                                activity.type === 'DELETE' ? 'text-red-800 dark:text-red-100' :
-                                'text-blue-800 dark:text-blue-100'
-                              }`} />
+                            {activity.type === 'CREATE' ? (
+                              <Plus className="h-4 w-4 text-green-800 dark:text-green-100" />
                             ) : activity.type === 'UPDATE' ? (
-                              <Settings className={`h-4 w-4 ${
-                                activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' :
-                                activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' :
-                                activity.type === 'CREATE' ? 'text-blue-800 dark:text-blue-100' :
-                                activity.type === 'UPDATE' ? 'text-purple-800 dark:text-purple-100' :
-                                activity.type === 'DELETE' ? 'text-red-800 dark:text-red-100' :
-                                'text-blue-800 dark:text-blue-100'
-                              }`} />
+                              <Settings className="h-4 w-4 text-blue-800 dark:text-blue-100" />
                             ) : activity.type === 'DELETE' ? (
-                              <Trash2 className={`h-4 w-4 ${
-                                activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' :
-                                activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' :
-                                activity.type === 'CREATE' ? 'text-blue-800 dark:text-blue-100' :
-                                activity.type === 'UPDATE' ? 'text-purple-800 dark:text-purple-100' :
-                                activity.type === 'DELETE' ? 'text-red-800 dark:text-red-100' :
-                                'text-blue-800 dark:text-blue-100'
-                              }`} />
+                              <Trash2 className="h-4 w-4 text-red-800 dark:text-red-100" />
+                            ) : activity.type === 'LOGIN' ? (
+                              <User className="h-4 w-4 text-purple-800 dark:text-purple-100" />
+                            ) : activity.type === 'LOGOUT' ? (
+                              <User className="h-4 w-4 text-gray-800 dark:text-gray-100" />
                             ) : (
-                              <Activity className={`h-4 w-4 ${
-                                activity.type === 'SALE' ? 'text-green-800 dark:text-green-100' :
-                                activity.type === 'STOCK' ? 'text-yellow-800 dark:text-yellow-100' :
-                                activity.type === 'CREATE' ? 'text-blue-800 dark:text-blue-100' :
-                                activity.type === 'UPDATE' ? 'text-purple-800 dark:text-purple-100' :
-                                activity.type === 'DELETE' ? 'text-red-800 dark:text-red-100' :
-                                'text-blue-800 dark:text-blue-100'
-                              }`} />
+                              <Activity className="h-4 w-4 text-yellow-800 dark:text-yellow-100" />
                             )}
                           </div>
                         </div>
-                        <div className="ml-4">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">{activity.storeName}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{activity.description}</p>
+                        <div className="ml-4 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{activity.storeName}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{activity.description}</p>
                         </div>
-                        <div className="ml-auto">
+                        <div className="ml-auto text-right">
                           <p className="text-xs text-gray-500 dark:text-gray-400">{activity.time}</p>
                         </div>
                       </div>

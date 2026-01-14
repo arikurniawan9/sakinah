@@ -15,7 +15,8 @@ import {
   TrendingUp,
   ShoppingCart,
   BarChart3,
-  Printer
+  Printer,
+  Database
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -81,6 +82,15 @@ const menuItems = [
     title: "Pengaturan",
     href: "/manager/settings",
     icon: Settings,
+  },
+  {
+    title: "Backup & Restore",
+    href: "/manager/backup-restore",
+    icon: Database,
+    children: [
+      { title: "Backup Data", href: "/manager/backup-restore", icon: Database },
+      { title: "Riwayat Backup", href: "/manager/backup-restore", icon: Activity },
+    ]
   }
 ];
 

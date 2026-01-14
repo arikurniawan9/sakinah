@@ -1,225 +1,373 @@
-// GET /api/manager/users - Get all users (for MANAGER role)
+// app/api/manager/users/route.js
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/authOptions';
+import prisma from '@/lib/prisma';
+import { ROLES } from '@/lib/constants';
+import bcrypt from 'bcryptjs';
+import { logActivity } from '@/lib/auditTrail';
+
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
 
     if (!session || session.user.role !== ROLES.MANAGER) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page')) || 1;
-    const limit = parseInt(searchParams.get('limit')) || 10;
-    const search = searchParams.get('search') || '';
-    const role = searchParams.get('role') || '';
-    const status = searchParams.get('status') || '';
-    const offset = (page - 1) * limit;
-
-    const whereConditions = [];
-
-    // Role filtering: if a specific role is passed, use it. Otherwise, exclude WAREHOUSE.
-    if (role) {
-      whereConditions.push({ role: role });
-    } else {
-      whereConditions.push({ role: { not: ROLES.WAREHOUSE } });
-    }
-    
-    // Status filtering
-    if (status) {
-      whereConditions.push({ status: status });
-    }
-
-    // Search filtering
-    if (search) {
-      whereConditions.push({
-        OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { username: { contains: search, mode: 'insensitive' } },
-          { code: { contains: search, mode: 'insensitive' } },
-          { employeeNumber: { contains: search, mode: 'insensitive' } },
-        ],
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
       });
     }
-    
-    const whereClause = whereConditions.length > 0 ? { AND: whereConditions } : {};
 
-    const [users, totalCount] = await prisma.$transaction([
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page')) || 1;
+    const limit = parseInt(url.searchParams.get('limit')) || 10;
+    const search = url.searchParams.get('search') || '';
+    const role = url.searchParams.get('role') || ''; // Filter berdasarkan role
+
+    // Validasi input
+    if (page < 1 || limit < 1 || limit > 100) {
+      return new Response(JSON.stringify({ error: 'Parameter halaman atau batas tidak valid' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Bangun where clause
+    const whereClause = {};
+    
+    if (search) {
+      whereClause.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { username: { contains: search, mode: 'insensitive' } },
+        { employeeNumber: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+    
+    if (role) {
+      whereClause.role = role;
+    }
+
+    const [users, total] = await Promise.all([
       prisma.user.findMany({
         where: whereClause,
         select: {
-            id: true,
-            name: true,
-            username: true,
-            employeeNumber: true,
-            code: true,
-            address: true,
-            phone: true,
-            status: true,
-            createdAt: true,
-            updatedAt: true,
-            role: true,
+          id: true,
+          name: true,
+          username: true,
+          email: true,
+          role: true,
+          status: true,
+          employeeNumber: true,
+          createdAt: true,
+          updatedAt: true
         },
-        skip: offset,
+        skip: (page - 1) * limit,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'desc' }
       }),
       prisma.user.count({ where: whereClause })
     ]);
 
-    return NextResponse.json({
-      users,
-      pagination: {
-        page,
-        limit,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / limit)
-      }
+    return new Response(JSON.stringify({ 
+      users, 
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
     });
-
   } catch (error) {
-    console.error('Error fetching global users:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch users' },
-      { status: 500 }
-    );
+    console.error('Error fetching users:', error);
+    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/authOptions';
-import prisma from '@/lib/prisma';
-import bcrypt from 'bcryptjs';
-import { ROLES } from '@/lib/constants';
 
-// POST /api/manager/users - Create a new global user (e.g., WAREHOUSE)
 export async function POST(request) {
   try {
     const session = await getServerSession(authOptions);
 
     if (!session || session.user.role !== ROLES.MANAGER) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    const { name, username, employeeNumber, code, password, role, address, phone } = await request.json();
+    const data = await request.json();
 
-    // Validation
-    if (!name || !username || !password || !role) {
-      return NextResponse.json(
-        { error: 'Nama, username, password, dan role wajib diisi' },
-        { status: 400 }
-      );
+    // Validasi input
+    if (!data.name || !data.username || !data.password) {
+      return new Response(JSON.stringify({ error: 'Nama, username, dan password wajib diisi' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    // Validasi panjang nomor telepon
-    if (phone && phone.trim() !== '' && phone.trim().length > 13) {
-      return NextResponse.json({ error: 'Nomor telepon maksimal 13 karakter' }, { status: 400 });
+    // Validasi role - hanya boleh membuat role tertentu
+    if (!['WAREHOUSE', 'ADMIN', 'CASHIER', 'ATTENDANT'].includes(data.role)) {
+      return new Response(JSON.stringify({ error: 'Role tidak valid' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    // Only allow creating global roles via this endpoint
-    const validGlobalRoles = [ROLES.WAREHOUSE, ROLES.MANAGER];
-    if (!validGlobalRoles.includes(role)) {
-      return NextResponse.json(
-        { error: `Role '${role}' tidak valid untuk endpoint ini. Gunakan endpoint /api/store-users untuk role spesifik toko.` },
-        { status: 400 }
-      );
-    }
-
-    // Check if username already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { username: username.trim() }
-    });
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'Username sudah digunakan' },
-        { status: 400 }
-      );
-    }
-    
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    // Create the user in the User table
-    // No StoreUser record is created, as this is a global user.
-    const user = await prisma.user.create({
+    // Buat user baru
+    const newUser = await prisma.user.create({
       data: {
-        name: name.trim(),
-        username: username.trim(),
-        employeeNumber: employeeNumber ? employeeNumber.trim() : null,
-        code: code ? code.trim() : null,
+        name: data.name,
+        username: data.username,
+        email: data.email || null,
         password: hashedPassword,
-        address,
-        phone,
-        role: role,
-        status: 'AKTIF',
+        role: data.role,
+        status: data.status || 'AKTIF',
+        employeeNumber: data.employeeNumber || null
+      },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        email: true,
+        role: true,
+        status: true,
+        employeeNumber: true,
+        createdAt: true,
+        updatedAt: true
       }
     });
 
-    // Don't return the password hash
-    const { password: _, ...userWithoutPassword } = user;
-    return NextResponse.json(userWithoutPassword, { status: 201 });
-
-  } catch (error) {
-    console.error('Error creating global user:', error);
-    return NextResponse.json(
-      { error: 'Failed to create user' },
-      { status: 500 }
+    // Catat aktivitas
+    await logActivity(
+      session.user.id,
+      'CREATE',
+      'USER',
+      newUser.id,
+      `Pengguna "${newUser.name}" dibuat dengan role ${newUser.role}`,
+      null,
+      { ...newUser }
     );
+
+    return new Response(JSON.stringify(newUser), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    
+    if (error.code === 'P2002') {
+      // Unique constraint violation
+      return new Response(JSON.stringify({ error: 'Username sudah digunakan' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    
+    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
 
-// DELETE /api/manager/users - Delete multiple global users
+export async function PUT(request) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session || session.user.role !== ROLES.MANAGER) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const url = new URL(request.url);
+    const userId = url.pathname.split('/').pop(); // Ambil ID dari path
+
+    // Validasi ID
+    if (!userId) {
+      return new Response(JSON.stringify({ error: 'ID pengguna tidak valid' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const data = await request.json();
+
+    // Ambil data user sebelum update
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        email: true,
+        role: true,
+        status: true,
+        employeeNumber: true
+      }
+    });
+
+    if (!existingUser) {
+      return new Response(JSON.stringify({ error: 'Pengguna tidak ditemukan' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Siapkan data update
+    const updateData = {
+      name: data.name,
+      username: data.username,
+      email: data.email,
+      role: data.role,
+      status: data.status,
+      employeeNumber: data.employeeNumber
+    };
+
+    // Jika password disertakan, hash dulu
+    if (data.password) {
+      updateData.password = await bcrypt.hash(data.password, 10);
+    }
+
+    // Update user
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        email: true,
+        role: true,
+        status: true,
+        employeeNumber: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    // Catat aktivitas
+    await logActivity(
+      session.user.id,
+      'UPDATE',
+      'USER',
+      updatedUser.id,
+      `Data pengguna "${updatedUser.name}" diperbarui`,
+      { ...existingUser },
+      { ...updatedUser }
+    );
+
+    return new Response(JSON.stringify(updatedUser), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    
+    if (error.code === 'P2002') {
+      // Unique constraint violation
+      return new Response(JSON.stringify({ error: 'Username sudah digunakan' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    
+    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
 export async function DELETE(request) {
   try {
     const session = await getServerSession(authOptions);
 
     if (!session || session.user.role !== ROLES.MANAGER) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    const { ids } = await request.json();
+    const url = new URL(request.url);
+    const userId = url.pathname.split('/').pop(); // Ambil ID dari path
 
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return NextResponse.json(
-        { error: 'Array ID pengguna harus disediakan' },
-        { status: 400 }
-      );
-    }
-    
-    // Prevent a manager from deleting themselves
-    if (ids.includes(session.user.id)) {
-        return NextResponse.json({ error: 'Anda tidak dapat menghapus akun Anda sendiri.' }, { status: 400 });
+    // Validasi ID
+    if (!userId) {
+      return new Response(JSON.stringify({ error: 'ID pengguna tidak valid' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    // Ensure users to be deleted are global users, not store-specific ones by mistake
-    const usersToDelete = await prisma.user.findMany({
-        where: {
-            id: { in: ids },
-            role: { in: [ROLES.WAREHOUSE, ROLES.MANAGER] }
-        }
+    // Ambil data user sebelum dihapus
+    const userToDelete = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        role: true
+      }
     });
 
-    if (usersToDelete.length !== ids.length) {
-        return NextResponse.json({ error: 'Beberapa pengguna yang dipilih bukan pengguna global atau tidak ditemukan.' }, { status: 404 });
+    if (!userToDelete) {
+      return new Response(JSON.stringify({ error: 'Pengguna tidak ditemukan' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    const deletedUsers = await prisma.user.deleteMany({
-      where: {
-        id: { in: ids },
-      },
+    // Jangan hapus user manager
+    if (userToDelete.role === ROLES.MANAGER) {
+      return new Response(JSON.stringify({ error: 'Tidak dapat menghapus pengguna dengan role MANAGER' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Update status menjadi INAKTIF alih-alih menghapus
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { status: 'INAKTIF' },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        role: true,
+        status: true
+      }
     });
 
-    return NextResponse.json({
-      message: `Berhasil menghapus ${deletedUsers.count} user.`,
-      deletedCount: deletedUsers.count
-    });
-
-  } catch (error) {
-    console.error('Error deleting global users:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete users' },
-      { status: 500 }
+    // Catat aktivitas
+    await logActivity(
+      session.user.id,
+      'DELETE',
+      'USER',
+      updatedUser.id,
+      `Pengguna "${updatedUser.name}" dinonaktifkan`,
+      { ...userToDelete },
+      { ...updatedUser }
     );
+
+    return new Response(JSON.stringify({ 
+      message: 'Pengguna berhasil dinonaktifkan',
+      user: updatedUser 
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
-

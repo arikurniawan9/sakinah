@@ -1,288 +1,138 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useCallback } from 'react';
 import { ROLES } from '@/lib/constants';
-import {
-  HardDrive,
-  RotateCcw,
-  Download,
-  Upload,
-  Store,
-  Calendar,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Clock
-} from 'lucide-react';
-import { toast, ToastContainer } from 'react-toastify';
-import ConfirmationModal from '@/components/ConfirmationModal';
-import 'react-toastify/dist/ReactToastify.css';
 import { useUserTheme } from '@/components/UserThemeContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import Breadcrumb from '@/components/Breadcrumb';
+import { Database, Upload, Download, AlertTriangle, CheckCircle, RotateCcw } from 'lucide-react';
 
 export default function BackupRestorePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { userTheme } = useUserTheme();
   const darkMode = userTheme.darkMode;
-  const [loading, setLoading] = useState(true);
-  const [stores, setStores] = useState([]);
-  const [selectedStore, setSelectedStore] = useState('');
-  const [backupFileName, setBackupFileName] = useState('');
-  const [restoreFileName, setRestoreFileName] = useState('');
-  const [backupFiles, setBackupFiles] = useState([]);
-  const [backupProgress, setBackupProgress] = useState(0);
-  const [restoreProgress, setRestoreProgress] = useState(0);
-  const [backupMessage, setBackupMessage] = useState('');
-  const [restoreMessage, setRestoreMessage] = useState('');
-  const [backupStatus, setBackupStatus] = useState(''); // 'idle', 'in-progress', 'success', 'error'
-  const [restoreStatus, setRestoreStatus] = useState(''); // 'idle', 'in-progress', 'success', 'error'
+  
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [backupProgress, setBackupProgress] = useState(null);
+  const [restoreProgress, setRestoreProgress] = useState(null);
+  const [backupHistory, setBackupHistory] = useState([]);
 
-  // State untuk modal konfirmasi
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
-  const [fileToDelete, setFileToDelete] = useState(null);
-  const [restoreConfirm, setRestoreConfirm] = useState(false);
-
-
+  // Cek apakah pengguna adalah MANAGER
   useEffect(() => {
     if (status === 'loading') return;
     if (status !== 'authenticated' || session.user.role !== ROLES.MANAGER) {
       router.push('/unauthorized');
       return;
     }
-
-    fetchStores();
   }, [status, session, router]);
 
-  useEffect(() => {
-    if (selectedStore) {
-      fetchBackupFiles(selectedStore);
-    }
-  }, [selectedStore]);
+  // Fungsi untuk membuat backup
+  const handleCreateBackup = async () => {
+    setLoading(true);
+    setMessage('');
+    setError('');
+    setBackupProgress({ status: 'starting', message: 'Memulai proses backup...' });
 
-  const fetchStores = async () => {
     try {
-      const response = await fetch('/api/stores');
-      const data = await response.json();
+      const response = await fetch('/api/manager/backup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.user?.token || ''}`
+        }
+      });
 
-      if (response.ok) {
-        setStores(data.stores || []);
-      } else {
-        console.error('Error fetching stores:', data.error);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
-    } catch (error) {
-      console.error('Error fetching stores:', error);
+
+      const result = await response.json();
+      setMessage(result.message || 'Backup berhasil dibuat');
+      setBackupProgress(null);
+    } catch (err) {
+      console.error('Error creating backup:', err);
+      setError('Gagal membuat backup: ' + err.message);
+      setBackupProgress(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchBackupFiles = async (storeId) => {
-    try {
-      const response = await fetch(`/api/backup-restore/list?storeId=${storeId}`);
-      const data = await response.json();
+  // Fungsi untuk mengunggah file backup
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
 
-      if (response.ok) {
-        setBackupFiles(data.files || []);
-      } else {
-        console.error('Error fetching backup files:', data.error);
-      }
-    } catch (error) {
-      console.error('Error fetching backup files:', error);
-    }
-  };
-
-  const handleBackup = async () => {
-    if (!selectedStore) {
-      setBackupMessage('Silakan pilih toko terlebih dahulu');
-      setBackupStatus('error');
-      return;
-    }
-
-    setBackupStatus('in-progress');
-    setBackupProgress(0);
-    setBackupMessage('Memulai proses backup...');
+    setLoading(true);
+    setMessage('');
+    setError('');
+    setRestoreProgress({ status: 'uploading', message: 'Mengunggah file...' });
 
     try {
-      // Simulasi progress backup
-      for (let i = 0; i <= 10; i++) {
-        await new Promise(resolve => setTimeout(resolve, 300)); // Simulasi delay
-        setBackupProgress(i * 10);
-        setBackupMessage(`Backup sedang berlangsung... ${i * 10}%`);
-      }
+      const formData = new FormData();
+      formData.append('backupFile', file);
 
-      // Buat request ke API untuk backup
-      const response = await fetch('/api/backup-restore/backup', {
+      const response = await fetch('/api/manager/restore', {
         method: 'POST',
+        body: formData,
         headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          storeId: selectedStore,
-          backupType: 'full' // full, partial, daily, weekly, monthly
-        }),
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setBackupStatus('success');
-        setBackupMessage(`Backup berhasil dibuat!`);
-        setBackupFileName(result.fileName);
-        // Refresh daftar file backup
-        fetchBackupFiles(selectedStore);
-      } else {
-        throw new Error(result.error || 'Gagal melakukan backup');
-      }
-    } catch (error) {
-      console.error('Error during backup:', error);
-      setBackupStatus('error');
-      setBackupMessage(`Error: ${error.message}`);
-    }
-  };
-
-  const handleRestore = async () => {
-    if (!restoreFileName) {
-      setRestoreMessage('Silakan pilih file backup untuk restore');
-      setRestoreStatus('error');
-      toast.error('Silakan pilih file backup untuk restore');
-      return;
-    }
-
-    // Tampilkan modal konfirmasi
-    setRestoreConfirm(true);
-  };
-
-  const handleConfirmRestore = async () => {
-    setRestoreConfirm(false); // tutup modal
-    setRestoreStatus('in-progress');
-    setRestoreProgress(0);
-    setRestoreMessage('Memulai proses restore...');
-
-    try {
-      // Dapatkan file input untuk upload
-      const fileInput = document.querySelector('input[type="file"]');
-      if (!fileInput || !fileInput.files[0]) {
-        throw new Error('File tidak ditemukan');
-      }
-
-      const file = fileInput.files[0];
-
-      // Validasi file - sekarang hanya menerima .json
-      const fileName = file.name.toLowerCase();
-      if (!fileName.endsWith('.json')) {
-        throw new Error('Hanya file .json yang diperbolehkan');
-      }
-
-      if (file.size > 100 * 1024 * 1024) {
-        throw new Error('Ukuran file terlalu besar (maksimal 100MB)');
-      }
-
-      setRestoreMessage('Mengupload file backup...');
-
-      // Upload file ke server
-      const uploadFormData = new FormData();
-      uploadFormData.append('file', file);
-      // Kita tidak bisa mengirim storeId sekarang karena kita belum tahu storeId-nya
-      // Kita akan mengirimkan file dulu, lalu baca metadata dari file untuk menentukan storeId
-      uploadFormData.append('filename', file.name);
-
-      const uploadResponse = await fetch('/api/backup-restore/upload', {
-        method: 'POST',
-        body: uploadFormData,
-      });
-
-      if (!uploadResponse.ok) {
-        const uploadResult = await uploadResponse.json();
-        throw new Error(uploadResult.error || 'Gagal mengupload file');
-      }
-
-      // Ekstrak storeId dari nama file
-      // Format: selective-backup-STOREID-timestamp.json
-      let storeId;
-      const backupFileName = file.name;
-
-      // Coba cocokkan format selective-backup-STOREID-timestamp.json
-      const jsonMatch = backupFileName.match(/selective-backup-([a-zA-Z0-9]+)-/);
-      if (jsonMatch) {
-        storeId = jsonMatch[1];
-      }
-
-      if (!storeId) {
-        throw new Error('Nama file backup tidak mengandung informasi toko yang valid. Format yang didukung: selective-backup-STOREID-timestamp.json');
-      }
-
-      // Proses restore setelah upload berhasil
-      setRestoreMessage('File berhasil diupload. Memulai proses restore...');
-
-      // Simulasi progress restore
-      for (let i = 0; i <= 10; i++) {
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulasi delay
-        setRestoreProgress(i * 10);
-        setRestoreMessage(`Restore sedang berlangsung... ${i * 10}%`);
-      }
-
-      // Buat request ke API untuk restore database
-      const response = await fetch('/api/backup-restore/restore', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          storeId: storeId,
-          fileName: file.name,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        if (result.warning) {
-          setRestoreStatus('success');
-          setRestoreMessage(`${result.message} Silakan hubungi administrator sistem untuk proses restore.`);
-          toast.warning(`${result.message} Silakan hubungi administrator sistem.`);
-        } else {
-          setRestoreStatus('success');
-          setRestoreMessage('Restore berhasil! Data telah diperbarui.');
-          toast.success('Restore berhasil! Data telah diperbarui.');
+          'Authorization': `Bearer ${session?.user?.token || ''}`
         }
-      } else {
-        throw new Error(result.error || 'Gagal melakukan restore');
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
-    } catch (error) {
-      console.error('Error during restore:', error);
-      setRestoreStatus('error');
-      setRestoreMessage(`Error: ${error.message}`);
-      toast.error(`Restore gagal: ${error.message}`);
+
+      const result = await response.json();
+      setMessage(result.message || 'Restore berhasil dilakukan');
+      setRestoreProgress(null);
+    } catch (err) {
+      console.error('Error restoring backup:', err);
+      setError('Gagal melakukan restore: ' + err.message);
+      setRestoreProgress(null);
+    } finally {
+      setLoading(false);
+      // Reset input file
+      event.target.value = '';
     }
   };
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Validasi file - sekarang hanya menerima .json
-      const fileName = file.name.toLowerCase();
-      if (!fileName.endsWith('.json')) {
-        setRestoreMessage('Hanya file .json yang diperbolehkan');
-        setRestoreStatus('error');
-        return;
+  // Fungsi untuk mendapatkan riwayat backup
+  const fetchBackupHistory = async () => {
+    try {
+      const response = await fetch('/api/manager/backup-history', {
+        headers: {
+          'Authorization': `Bearer ${session?.user?.token || ''}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
 
-      // Batasi ukuran file (misal 100MB)
-      if (file.size > 100 * 1024 * 1024) {
-        setRestoreMessage('Ukuran file terlalu besar (maksimal 100MB)');
-        setRestoreStatus('error');
-        return;
-      }
-
-      setRestoreFileName(file.name);
-      setRestoreMessage('File siap untuk restore');
-      setRestoreStatus('idle');
+      const data = await response.json();
+      setBackupHistory(data.history || []);
+    } catch (err) {
+      console.error('Error fetching backup history:', err);
+      setError('Gagal mengambil riwayat backup: ' + err.message);
     }
   };
+
+  // Ambil riwayat backup saat komponen dimuat
+  useEffect(() => {
+    if (status === 'authenticated' && session.user.role === ROLES.MANAGER) {
+      fetchBackupHistory();
+    }
+  }, [status, session]);
 
   // Hydration-safe loading and authentication checks
   if (status === 'loading') {
@@ -298,450 +148,193 @@ export default function BackupRestorePage() {
     return null;
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-      {/* Header */}
+    <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
+      <Breadcrumb
+        items={[
+          { title: 'Dashboard', href: '/manager' },
+          { title: 'Backup & Restore', href: '/manager/backup-restore' },
+        ]}
+        darkMode={darkMode}
+      />
+      
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Backup & Restore Data Toko</h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">
-          Backup dan restore data untuk masing-masing toko dalam sistem
+        <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+          Backup & Restore Data
+        </h1>
+        <p className={`mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+          Kelola backup dan restore data sistem Anda
         </p>
       </div>
 
-      {/* Pemilihan Toko */}
-      <div className={`rounded-xl shadow p-6 mb-8 ${
-        darkMode ? 'bg-gray-800' : 'bg-white'
-      }`}>
-        <div className="flex items-center mb-4">
-          <Store className="h-5 w-5 mr-2 text-blue-500" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Pilih Toko</h2>
-        </div>
-        
-        <div className="mb-4">
-          <label htmlFor="store-select" className={`block text-sm font-medium mb-2 ${
-            darkMode ? 'text-white' : 'text-gray-700'
-          }`}>
-            Toko yang akan di-backup atau di-restore
-          </label>
-          <select
-            id="store-select"
-            value={selectedStore}
-            onChange={(e) => setSelectedStore(e.target.value)}
-            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              darkMode
-                ? 'bg-gray-700 border-gray-600 text-white'
-                : 'bg-white border-gray-300 text-gray-900'
-            }`}
-          >
-            <option value="">Pilih Toko</option>
-            {stores.map(store => (
-              <option key={store.id} value={store.id}>
-                {store.name} ({store.code || 'Tanpa Kode'})
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Backup Section */}
-      <div className={`rounded-xl shadow p-6 mb-8 ${
-        darkMode ? 'bg-gray-800' : 'bg-white'
-      }`}>
-        <div className="flex items-center mb-4">
-          <HardDrive className="h-5 w-5 mr-2 text-green-500" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Backup Data</h2>
-        </div>
-        
-        <div className="mb-4">
-          <p className={`mb-4 ${
-            darkMode ? 'text-gray-300' : 'text-gray-700'
-          }`}>
-            Buat cadangan data untuk toko yang dipilih. File backup akan disimpan dalam format .sql.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4">
-            <button
-              onClick={handleBackup}
-              disabled={backupStatus === 'in-progress' || !selectedStore}
-              className={`flex items-center px-4 py-2 rounded-lg text-white ${
-                backupStatus === 'in-progress' || !selectedStore
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-green-600 hover:bg-green-700'
-              }`}
-            >
-              <HardDrive className="h-5 w-5 mr-2" />
-              {backupStatus === 'in-progress' ? 'Sedang Memproses...' : 'Backup Data Sekarang'}
-            </button>
-            
-            <button
-              className={`flex items-center px-4 py-2 rounded-lg ${
-                darkMode
-                  ? 'bg-gray-700 text-white hover:bg-gray-600'
-                  : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-              }`}
-              disabled
-            >
-              <Download className="h-5 w-5 mr-2" />
-              Unduh Backup (akan datang)
-            </button>
-          </div>
-        </div>
-        
-        {/* Backup Status */}
-        {backupStatus !== 'idle' && backupStatus !== '' && (
-          <div className={`mt-4 p-4 rounded-lg ${
-            backupStatus === 'success' ? 'bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
-            backupStatus === 'error' ? 'bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
-            'bg-blue-50 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-          }`}>
-            {backupStatus === 'in-progress' && (
-              <div className="flex items-center">
-                <Clock className="h-5 w-5 mr-2" />
-                <span>{backupMessage}</span>
-              </div>
-            )}
-            {backupStatus === 'success' && (
-              <div>
-                <div className="flex items-center">
-                  <CheckCircle className="h-5 w-5 mr-2" />
-                  <span>{backupMessage}</span>
-                </div>
-                {backupFileName && (
-                  <div className="mt-3">
-                    <a
-                      href={`/api/backup-restore/download?fileName=${encodeURIComponent(backupFileName)}&storeId=${selectedStore}`}
-                      download={backupFileName}
-                      className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                    >
-                      <Download className="h-5 w-5 mr-2" />
-                      Download Backup Baru
-                    </a>
-                  </div>
-                )}
-              </div>
-            )}
-            {backupStatus === 'error' && (
-              <div className="flex items-center">
-                <XCircle className="h-5 w-5 mr-2" />
-                <span>{backupMessage}</span>
-              </div>
-            )}
-
-            {backupStatus === 'in-progress' && (
-              <div className="mt-3">
-                <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                  <div
-                    className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                    style={{ width: `${backupProgress}%` }}
-                  ></div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Available Backup Files */}
-        {selectedStore && (
-          <div className={`mt-6 p-4 rounded-lg ${
-            darkMode ? 'bg-gray-700' : 'bg-gray-100'
-          }`}>
-            <div className="flex justify-between items-center mb-3">
-              <h3 className={`text-lg font-medium ${
-                darkMode ? 'text-white' : 'text-gray-900'
-              }`}>File Backup Tersedia</h3>
-              {backupFiles.length > 0 && (
-                <button
-                  onClick={() => {
-                    setShowDeleteAllModal(true);
-                  }}
-                  className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-colors"
-                >
-                  Hapus Semua
-                </button>
-              )}
-            </div>
-            {backupFiles.length > 0 ? (
-              <div className="space-y-2">
-                {backupFiles.map((file, index) => (
-                  <div
-                    key={index}
-                    className={`flex justify-between items-center p-3 rounded ${
-                      darkMode ? 'bg-gray-600' : 'bg-white'
-                    }`}
-                  >
-                    <div>
-                      <p className={`font-medium ${
-                        darkMode ? 'text-white' : 'text-gray-900'
-                      }`}>{file.name}</p>
-                      <p className={`text-sm ${
-                        darkMode ? 'text-gray-300' : 'text-gray-600'
-                      }`}>
-                        {new Date(file.createdAt).toLocaleString('id-ID')} | {(file.size / 1024).toFixed(2)} KB
-                      </p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <a
-                        href={`/api/backup-restore/download?fileName=${encodeURIComponent(file.name)}&storeId=${selectedStore}`}
-                        download={file.name}
-                        className="flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-sm transition-colors"
-                      >
-                        <Download className="h-4 w-4 mr-1" />
-                        Download
-                      </a>
-                      <button
-                        onClick={() => {
-                          setFileToDelete(file);
-                          setShowDeleteModal(true);
-                        }}
-                        className="flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-colors"
-                      >
-                        Hapus
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                Tidak ada file backup tersedia untuk toko ini.
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Restore Section */}
-      <div className={`rounded-xl shadow p-6 ${
-        darkMode ? 'bg-gray-800' : 'bg-white'
-      }`}>
-        <div className="flex items-center mb-4">
-          <RotateCcw className="h-5 w-5 mr-2 text-purple-500" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Restore Data</h2>
-        </div>
-        
-        <div className="mb-4">
-          <p className={`mb-4 ${
-            darkMode ? 'text-gray-300' : 'text-gray-700'
-          }`}>
-            Kembalikan data dari file backup (.json). Toko akan otomatis terdeteksi dari file backup.
-          </p>
-          
-          <div className="mb-4">
-            <label className={`block text-sm font-medium mb-2 ${
-              darkMode ? 'text-white' : 'text-gray-700'
-            }`}>
-              Pilih File Backup
-            </label>
+      {(message || error) && (
+        <div className={`mb-6 p-4 rounded-lg ${
+          error 
+            ? (darkMode ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700') 
+            : (darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700')
+        }`}>
+          {error ? (
             <div className="flex items-center">
-              <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer ${
-                darkMode
-                  ? 'border-gray-600 hover:border-gray-500 bg-gray-700/50 hover:bg-gray-700'
-                  : 'border-gray-300 hover:border-gray-400 bg-gray-50 hover:bg-gray-100'
-              }`}>
-                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <Upload className="w-8 h-8 mb-4 text-gray-500 dark:text-gray-400" />
-                  <p className={`text-sm ${
-                    darkMode ? 'text-gray-400' : 'text-gray-500'
-                  }`}>
-                    <span className="font-semibold">Klik untuk mengunggah</span> atau seret file ke sini
-                  </p>
-                  <p className={`text-xs ${
-                    darkMode ? 'text-gray-400' : 'text-gray-500'
-                  }`}>
-                    JSON File (selective-backup-STOREID-timestamp.json) (MAX. 100MB)
-                  </p>
-                </div>
-                <input 
-                  type="file" 
-                  className="hidden" 
-                  accept=".json"
-                  onChange={handleFileUpload}
-                />
-              </label>
+              <AlertTriangle className="h-5 w-5 mr-2" />
+              {error}
             </div>
-            {restoreFileName && (
-              <div className="mt-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  File dipilih: {restoreFileName}
-                </span>
-              </div>
-            )}
+          ) : (
+            <div className="flex items-center">
+              <CheckCircle className="h-5 w-5 mr-2" />
+              {message}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Backup Section */}
+        <div className={`rounded-xl shadow-lg p-6 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
+          <div className="flex items-center mb-4">
+            <Database className={`h-6 w-6 mr-2 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            <h2 className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Buat Backup
+            </h2>
           </div>
+          
+          <p className={`mb-6 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            Buat cadangan data sistem Anda untuk mencegah kehilangan informasi penting.
+          </p>
+          
+          {backupProgress && (
+            <div className={`mb-4 p-3 rounded-lg ${darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
+              <div className="flex items-center">
+                <RotateCcw className="h-4 w-4 mr-2 animate-spin" />
+                {backupProgress.message}
+              </div>
+            </div>
+          )}
           
           <button
-            onClick={handleRestore}
-            disabled={restoreStatus === 'in-progress' || !selectedStore || !restoreFileName}
-            className={`flex items-center px-4 py-2 rounded-lg text-white ${
-              restoreStatus === 'in-progress' || !selectedStore || !restoreFileName
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-purple-600 hover:bg-purple-700'
-            }`}
+            onClick={handleCreateBackup}
+            disabled={loading}
+            className={`w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium ${
+              loading 
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                : (darkMode 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                  : 'bg-blue-600 hover:bg-blue-700 text-white')
+            } transition duration-200`}
           >
-            <RotateCcw className="h-5 w-5 mr-2" />
-            {restoreStatus === 'in-progress' ? 'Sedang Memproses...' : 'Restore Data'}
+            <Download className="h-5 w-5 mr-2" />
+            Buat Backup Baru
           </button>
         </div>
-        
-        {/* Restore Status */}
-        {restoreStatus !== 'idle' && restoreStatus !== '' && (
-          <div className={`mt-4 p-4 rounded-lg ${
-            restoreStatus === 'success' ? 'bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
-            restoreStatus === 'error' ? 'bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
-            'bg-blue-50 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-          }`}>
-            {restoreStatus === 'in-progress' && (
-              <div className="flex items-center">
-                <Clock className="h-5 w-5 mr-2" />
-                <span>{restoreMessage}</span>
-              </div>
-            )}
-            {restoreStatus === 'success' && (
-              <div className="flex items-center">
-                <CheckCircle className="h-5 w-5 mr-2" />
-                <span>{restoreMessage}</span>
-              </div>
-            )}
-            {restoreStatus === 'error' && (
-              <div className="flex items-center">
-                <XCircle className="h-5 w-5 mr-2" />
-                <span>{restoreMessage}</span>
-              </div>
-            )}
-            
-            {restoreStatus === 'in-progress' && (
-              <div className="mt-3">
-                <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                  <div 
-                    className="bg-purple-600 h-2.5 rounded-full transition-all duration-300" 
-                    style={{ width: `${restoreProgress}%` }}
-                  ></div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
 
-      {/* Informasi Penting */}
-      <div className={`rounded-xl shadow p-6 mt-8 ${
-        darkMode ? 'bg-amber-900/20 border border-amber-700' : 'bg-amber-50 border border-amber-200'
-      }`}>
-        <div className="flex items-start">
-          <AlertTriangle className={`h-5 w-5 mr-2 mt-0.5 ${
-            darkMode ? 'text-amber-400' : 'text-amber-600'
-          }`} />
-          <div>
-            <h3 className={`text-lg font-medium ${
-              darkMode ? 'text-amber-200' : 'text-amber-800'
-            }`}>
-              Informasi Penting
-            </h3>
-            <ul className={`mt-2 space-y-1 text-sm ${
-              darkMode ? 'text-amber-100' : 'text-amber-700'
-            }`}>
-              <li>• Fitur backup dan restore hanya tersedia untuk role MANAGER</li>
-              <li>• Proses backup hanya akan mencadangkan data untuk toko yang dipilih</li>
-              <li>• Proses restore akan menggantikan seluruh data toko yang terdapat dalam file backup</li>
-              <li>• Pastikan untuk mencadangkan data sebelum melakukan restore</li>
-              <li>• File backup disimpan dalam format SQL atau JSON</li>
-            </ul>
+        {/* Restore Section */}
+        <div className={`rounded-xl shadow-lg p-6 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
+          <div className="flex items-center mb-4">
+            <Upload className={`h-6 w-6 mr-2 ${darkMode ? 'text-green-400' : 'text-green-600'}`} />
+            <h2 className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Restore Data
+            </h2>
+          </div>
+          
+          <p className={`mb-6 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            Kembalikan data dari file backup yang telah Anda simpan sebelumnya.
+          </p>
+          
+          {restoreProgress && (
+            <div className={`mb-4 p-3 rounded-lg ${darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
+              <div className="flex items-center">
+                <RotateCcw className="h-4 w-4 mr-2 animate-spin" />
+                {restoreProgress.message}
+              </div>
+            </div>
+          )}
+          
+          <div className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-200">
+            <input
+              type="file"
+              id="restore-file"
+              className="hidden"
+              accept=".json,.sql,.zip,.bak"
+              onChange={handleFileUpload}
+              disabled={loading}
+            />
+            <label htmlFor="restore-file" className="cursor-pointer">
+              <Upload className={`h-10 w-10 mx-auto mb-3 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+              <p className={`font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                Klik untuk mengunggah file backup
+              </p>
+              <p className={`text-sm mt-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                Format yang didukung: JSON, SQL, ZIP
+              </p>
+            </label>
           </div>
         </div>
       </div>
 
-      {/* Confirmation Modal for Restore */}
-      <ConfirmationModal
-        isOpen={restoreConfirm}
-        onClose={() => setRestoreConfirm(false)}
-        onConfirm={handleConfirmRestore}
-        title="Konfirmasi Restore Data"
-        message="Anda yakin ingin restore data? Aksi ini akan menggantikan data saat ini dan tidak dapat dibatalkan."
-        confirmText="Restore Data"
-        confirmButtonColor="bg-red-600 hover:bg-red-700"
-      />
-
-      {/* Confirmation Modal for Delete */}
-      <ConfirmationModal
-        isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        onConfirm={async () => {
-          if (fileToDelete) {
-            try {
-              const response = await fetch(`/api/backup-restore/delete?fileName=${encodeURIComponent(fileToDelete.name)}&storeId=${selectedStore}`, {
-                method: 'DELETE'
-              });
-              const result = await response.json();
-              if (response.ok) {
-                toast.success(`File ${fileToDelete.name} berhasil dihapus`);
-                // Refresh daftar file backup
-                fetchBackupFiles(selectedStore);
-              } else {
-                toast.error(`Gagal menghapus file: ${result.error}`);
-              }
-            } catch (error) {
-              console.error('Error deleting backup file:', error);
-              toast.error('Terjadi kesalahan saat menghapus file backup');
-            } finally {
-              setShowDeleteModal(false);
-              setFileToDelete(null);
-            }
-          }
-        }}
-        title="Konfirmasi Hapus File"
-        message={fileToDelete ? `Anda yakin ingin menghapus file backup ${fileToDelete.name}?` : ''}
-        confirmText="Hapus File"
-        confirmButtonColor="bg-red-600 hover:bg-red-700"
-      />
-
-      {/* Confirmation Modal for Delete All */}
-      <ConfirmationModal
-        isOpen={showDeleteAllModal}
-        onClose={() => setShowDeleteAllModal(false)}
-        onConfirm={async () => {
-          try {
-            const response = await fetch(`/api/backup-restore/delete-all?storeId=${selectedStore}`, {
-              method: 'DELETE'
-            });
-            const result = await response.json();
-            if (response.ok) {
-              toast.success(result.message);
-              // Refresh daftar file backup
-              fetchBackupFiles(selectedStore);
-            } else {
-              toast.error(`Gagal menghapus semua file: ${result.error}`);
-            }
-          } catch (error) {
-            console.error('Error deleting all backup files:', error);
-            toast.error('Terjadi kesalahan saat menghapus semua file backup');
-          } finally {
-            setShowDeleteAllModal(false);
-          }
-        }}
-        title="Konfirmasi Hapus Semua File"
-        message="Anda yakin ingin menghapus semua file backup untuk toko ini?"
-        confirmText="Hapus Semua"
-        confirmButtonColor="bg-red-600 hover:bg-red-700"
-      />
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme={userTheme.darkMode ? "dark" : "light"}
-      />
-    </div>
+      {/* Backup History */}
+      <div className={`mt-8 rounded-xl shadow-lg p-6 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
+        <div className="flex items-center mb-4">
+          <Database className={`h-6 w-6 mr-2 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+          <h2 className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            Riwayat Backup
+          </h2>
+        </div>
+        
+        {backupHistory.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead>
+                <tr>
+                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 bg-gray-700' : 'text-gray-500 bg-gray-50'}`}>
+                    Tanggal
+                  </th>
+                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 bg-gray-700' : 'text-gray-500 bg-gray-50'}`}>
+                    Nama File
+                  </th>
+                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 bg-gray-700' : 'text-gray-500 bg-gray-50'}`}>
+                    Ukuran
+                  </th>
+                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? 'text-gray-300 bg-gray-700' : 'text-gray-500 bg-gray-50'}`}>
+                    Aksi
+                  </th>
+                </tr>
+              </thead>
+              <tbody className={`divide-y divide-gray-200 dark:divide-gray-700 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                {backupHistory.map((backup, index) => (
+                  <tr key={index} className={index % 2 === 0 ? (darkMode ? 'bg-gray-800' : 'bg-white') : (darkMode ? 'bg-gray-900/20' : 'bg-gray-50')}>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                      {new Date(backup.createdAt).toLocaleString('id-ID')}
+                    </td>
+                    <td className={`px-6 py-4 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                      {backup.fileName}
+                    </td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                      {backup.size ? `${(backup.size / 1024 / 1024).toFixed(2)} MB` : 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <button
+                        onClick={() => {
+                          // Implementasi download backup
+                          const link = document.createElement('a');
+                          link.href = `/api/manager/backup/${backup.id}/download`;
+                          link.download = backup.fileName;
+                          link.click();
+                        }}
+                        className={`px-3 py-1 rounded ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                      >
+                        Unduh
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} text-center py-4`}>
+            Belum ada riwayat backup
+          </p>
+        )}
+      </div>
+    </main>
   );
 }

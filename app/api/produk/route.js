@@ -407,7 +407,6 @@ export async function PUT(request) {
       include: {
         category: true,
         supplier: true,
-        priceTiers: true,
       },
     });
 
@@ -592,7 +591,6 @@ export async function DELETE(request) {
       include: {
         category: true,
         supplier: true,
-        priceTiers: true,
       },
     });
 

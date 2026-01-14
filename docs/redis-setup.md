@@ -1,157 +1,82 @@
-# Setup Redis untuk Caching di Toko Sakinah
+# Panduan Setup Redis Cache
 
-## Instalasi Redis
+## Overview
+Aplikasi Toko Sakinah menggunakan Redis sebagai sistem caching untuk meningkatkan performa. Jika Redis tidak tersedia, sistem akan menggunakan mock Redis sebagai fallback.
 
-### Di Lokal (Development)
+## Konfigurasi Environment Variable
 
-1. **Instalasi Redis**:
-   - Windows: Gunakan Chocolatey `choco install redis`
-   - Mac: Gunakan Homebrew `brew install redis`
-   - Linux: `sudo apt-get install redis-server`
-
-2. **Jalankan Redis**:
-   - Secara manual: `redis-server`
-   - Atau gunakan service manager sistem Anda
-
-3. **Verifikasi instalasi**:
-   ```bash
-   redis-cli ping
-   ```
-   Harus mengembalikan `PONG`
-
-### Di Produksi
-
-1. **Pilihan Hosting**:
-   - Redis lokal di server aplikasi
-   - Redis Cloud (Redis Labs, AWS ElastiCache, Google Cloud Memorystore)
-   - Docker container
-
-2. **Konfigurasi Aman**:
-   - Gunakan otentikasi dengan `requirepass` di redis.conf
-   - Nonaktifkan perintah berbahaya
-   - Batasi akses jaringan
-
-## Konfigurasi Aplikasi
-
-### Variabel Lingkungan
-
-Tambahkan ke file `.env.local`:
+Untuk menggunakan Redis secara penuh, tambahkan variabel berikut ke file `.env.local`:
 
 ```env
 REDIS_URL=redis://localhost:6379
-# Atau untuk produksi:
-# REDIS_URL=redis://:password@host:port
 ```
 
-### Pola Caching
+## Instalasi Redis
 
-Sistem ini menerapkan caching untuk endpoint berikut:
+### Di Local Development
 
-1. **Produk** (`/api/produk`):
-   - Key pattern: `products:storeId:page:limit:search:categoryId:productCode:supplierId`
-   - TTL: 5 menit
-   - Invalidasi: Saat produk dibuat/diperbarui/dihapus
+#### Windows
+1. Unduh Redis dari: https://github.com/redis-windows/redis-windows
+2. Ekstrak dan jalankan `redis-server.exe`
+3. Pastikan Redis berjalan di port 6379 (default)
 
-2. **Kategori** (`/api/kategori`):
-   - Key pattern: `categories:storeId:page:limit:search` atau `categories:export:storeId:search`
-   - TTL: 10 menit
-   - Invalidasi: Saat kategori dibuat/diperbarui/dihapus
+#### Alternatif untuk Windows (menggunakan WSL)
+1. Install WSL2
+2. Install Redis di WSL: `sudo apt-get install redis-server`
+3. Jalankan Redis: `sudo service redis-server start`
 
-3. **Supplier** (`/api/supplier`):
-   - Key pattern: `suppliers:storeId:page:limit:search`
-   - TTL: 10 menit
-   - Invalidasi: Saat supplier dibuat/diperbarui/dihapus
+#### macOS
+1. Install Homebrew jika belum: `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
+2. Install Redis: `brew install redis`
+3. Jalankan Redis: `brew services start redis`
 
-## Arsitektur Caching
+#### Linux
+1. Install Redis: `sudo apt-get install redis-server`
+2. Jalankan Redis: `sudo systemctl start redis-server`
+3. Enable auto-start: `sudo systemctl enable redis-server`
 
-### Struktur File
+## Fallback System
 
+Jika `REDIS_URL` tidak ditemukan:
+- Sistem akan menggunakan mock Redis berbasis memory
+- Data cache akan disimpan sementara di memory server
+- Cache akan hilang saat server restart
+- Tetap menyediakan fungsionalitas caching dasar
+
+## Kelebihan Menggunakan Redis Asli
+
+1. **Performa Lebih Baik**: Redis berjalan di dedicated process
+2. **Persistence**: Data cache bisa bertahan saat restart server
+3. **Scalability**: Bisa digunakan bersama multiple server instances
+4. **Memory Management**: Lebih efisien dalam penggunaan memory
+
+## Troubleshooting
+
+### Jika muncul pesan "REDIS_URL not found in environment variables"
+- Pastikan file `.env.local` sudah dibuat
+- Pastikan variabel `REDIS_URL` sudah diisi dengan benar
+- Restart development server setelah mengubah file environment
+
+### Jika Redis tidak bisa terkoneksi
+- Pastikan Redis server sedang berjalan
+- Cek apakah port yang digunakan benar
+- Pastikan tidak ada firewall yang memblokir koneksi
+
+## Production Deployment
+
+Untuk deployment ke production:
+1. Gunakan Redis instance yang terpisah
+2. Gunakan Redis Cloud Service (seperti AWS ElastiCache, Google Cloud Memorystore, atau Redis Labs)
+3. Pastikan koneksi Redis diamankan dengan password jika diperlukan
+
+Contoh konfigurasi production:
 ```
-lib/
-├── redis.js          # Konfigurasi dan utilitas Redis
-api/
-├── produk/route.js   # Implementasi caching endpoint produk
-├── kategori/route.js # Implementasi caching endpoint kategori
-└── supplier/route.js # Implementasi caching endpoint supplier
-```
-
-### Fungsi Utama
-
-1. **Caching Data**:
-   - Mengurangi beban database
-   - Mempercepat waktu respons API
-   - Mengurangi jumlah query ke database
-
-2. **Invalidasi Cache**:
-   - Otomatis saat data diubah
-   - Berbasis toko (multi-tenant)
-   - Mencegah data tidak konsisten
-
-### Implementasi Pagination
-
-- Pagination dilakukan di sisi server
-- Menggunakan parameter `page` dan `limit`
-- Menyediakan metadata paginasi lengkap
-- Menggabungkan pengambilan data dan hitung total dalam satu operasi
-
-### Implementasi Optimasi Query Prisma
-
-- Menggunakan `select` untuk mengambil field spesifik
-- Menghindari N+1 query problem
-- Menggunakan `_count` untuk menghitung jumlah tanpa mengambil item sebenarnya
-- Eager loading efisien untuk relasi
-
-## Best Practices
-
-### Untuk Developer
-
-1. **Validasi Parameter**:
-   - Selalu validasi parameter pagination
-   - Batasi jumlah data per permintaan (maksimal 100)
-
-2. **Pola Penamaan Key**:
-   - Gunakan format konsisten: `{entity}:{storeId}:{params}`
-   - Termasuk parameter yang mempengaruhi hasil
-
-3. **TTL Cache**:
-   - Gunakan TTL sesuai kebutuhan data
-   - Data yang sering berubah: TTL pendek
-   - Data statis: TTL lebih panjang
-
-4. **Fallback**:
-   - Sistem tetap berfungsi jika Redis tidak tersedia
-   - Logging error cache untuk debugging
-
-## Monitoring dan Troubleshooting
-
-### Perintah Redis Umum
-
-```bash
-# Lihat semua key
-redis-cli keys "*"
-
-# Lihat ukuran database
-redis-cli dbsize
-
-# Lihat info server
-redis-cli info
-
-# Flush semua cache (dengan hati-hati!)
-redis-cli flushall
+REDIS_URL=redis://:password@redis-host:port
 ```
 
-### Pengujian
+## Monitoring
 
-1. **Cek Cache Bekerja**:
-   - Lakukan permintaan pertama (cek log database)
-   - Lakukan permintaan kedua (cek log cache hit)
-
-2. **Cek Invalidasi**:
-   - Ubah data
-   - Pastikan permintaan berikutnya mengambil dari database
-
-### Error Handling
-
-- Sistem memiliki fallback jika Redis tidak tersedia
-- Error cache hanya di-log, tidak menggagalkan operasi utama
-- Monitoring error untuk mendeteksi masalah Redis
+Sistem caching akan mencatat log saat:
+- Menggunakan mock Redis (saat Redis tidak tersedia)
+- Terjadi error pada koneksi Redis
+- Melakukan operasi cache (get/set/del)

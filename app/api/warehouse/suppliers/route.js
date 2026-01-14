@@ -1,127 +1,75 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
+// app/api/warehouse/suppliers/route.js
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
-import globalPrisma from '@/lib/prisma';
-import { ROLES, WAREHOUSE_STORE_ID } from '@/lib/constants';
-
-// Helper to get or create the master store
-async function getMasterStore() {
-    // First, try to find the store using the official constant
-    let masterStore = await globalPrisma.store.findUnique({
-        where: { code: WAREHOUSE_STORE_ID },
-    });
-
-    // If not found, try to find the old 'WHS-MASTER' store
-    if (!masterStore) {
-        masterStore = await globalPrisma.store.findUnique({
-            where: { code: 'WHS-MASTER' },
-        });
-
-        // If found, update its code to the official one for consistency
-        if (masterStore) {
-            masterStore = await globalPrisma.store.update({
-                where: { id: masterStore.id },
-                data: { code: WAREHOUSE_STORE_ID }
-            });
-        }
-    }
-    
-    // If still not found, create a new one
-    if (!masterStore) {
-        masterStore = await globalPrisma.store.create({
-            data: {
-                code: WAREHOUSE_STORE_ID,
-                name: 'Gudang Master',
-                description: 'Store virtual untuk menampung master produk gudang',
-                status: 'SYSTEM'
-            }
-        });
-    }
-    return masterStore;
-}
+import prisma from '@/lib/prisma';
+import { ROLES } from '@/lib/constants';
+import { logActivity } from '@/lib/auditTrail';
 
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || ![ROLES.WAREHOUSE, ROLES.MANAGER].includes(session.user.role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const masterStore = await getMasterStore();
-    if (!masterStore) {
-        return NextResponse.json({ error: 'Master store could not be configured.' }, { status: 500 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const exportParam = searchParams.get('export');
-
-    if (exportParam === 'true') {
-      const suppliers = await globalPrisma.supplier.findMany({
-        where: { storeId: masterStore.id },
-        orderBy: { name: 'asc' },
+    if (!session || session.user.role !== ROLES.WAREHOUSE) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
       });
+    }
 
-      const suppliersWithProductCount = suppliers && Array.isArray(suppliers) ? await Promise.all(
-        suppliers.map(async (supplier) => {
-          const productCount = await globalPrisma.product.count({
-            where: { supplierId: supplier.id, storeId: masterStore.id }
-          });
-          return { ...supplier, productCount };
-        })
-      ) : [];
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page')) || 1;
+    const limit = parseInt(url.searchParams.get('limit')) || 10;
+    const search = url.searchParams.get('search') || '';
 
-      return NextResponse.json({ suppliers: suppliersWithProductCount });
-    } else {
-      const page = parseInt(searchParams.get('page') || '1');
-      const limit = parseInt(searchParams.get('limit') || '10');
-      const search = searchParams.get('search') || '';
-      const offset = (page - 1) * limit;
+    // Validasi input
+    if (page < 1 || limit < 1 || limit > 100) {
+      return new Response(JSON.stringify({ error: 'Parameter halaman atau batas tidak valid' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
-      let whereClause = { storeId: masterStore.id };
+    // Bangun where clause
+    const whereClause = {};
+    
+    if (search) {
+      whereClause.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { contactPerson: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } }
+      ];
+    }
 
-      if (search) {
-        whereClause.OR = [
-          { name: { contains: search, mode: 'insensitive' } },
-          { code: { contains: search, mode: 'insensitive' } },
-          { contactPerson: { contains: search, mode: 'insensitive' } },
-          { phone: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-        ];
-      }
-
-      const suppliers = await globalPrisma.supplier.findMany({
+    const [suppliers, total] = await Promise.all([
+      prisma.supplier.findMany({
         where: whereClause,
-        orderBy: { name: 'asc' },
-        skip: offset,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
         take: limit,
-      });
+      }),
+      prisma.supplier.count({ where: whereClause })
+    ]);
 
-      const totalCount = await globalPrisma.supplier.count({ where: whereClause });
-
-      const suppliersWithProductCount = suppliers && Array.isArray(suppliers) ? await Promise.all(
-        suppliers.map(async (supplier) => {
-          const productCount = await globalPrisma.product.count({
-            where: { supplierId: supplier.id, storeId: masterStore.id }
-          });
-          return { ...supplier, productCount };
-        })
-      ) : [];
-
-      return NextResponse.json({
-        suppliers: suppliersWithProductCount,
-        pagination: {
-          currentPage: page,
-          totalPages: Math.ceil(totalCount / limit),
-          total: totalCount,
-          limit: limit
-        }
-      });
-    }
+    return new Response(JSON.stringify({ 
+      suppliers, 
+      total,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (error) {
-    console.error('Error fetching suppliers for warehouse:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Error fetching suppliers:', error);
+    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
 
@@ -129,50 +77,214 @@ export async function POST(request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || ![ROLES.WAREHOUSE, ROLES.MANAGER].includes(session.user.role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session || session.user.role !== ROLES.WAREHOUSE) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    const masterStore = await getMasterStore();
-    if (!masterStore) {
-        return NextResponse.json({ error: 'Master store could not be configured.' }, { status: 500 });
+    const data = await request.json();
+
+    // Validasi input
+    if (!data.name) {
+      return new Response(JSON.stringify({ error: 'Nama supplier wajib diisi' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    const body = await request.json();
-    const { code, name, contactPerson, address, phone, email } = body;
-
-    if (!code || !name) {
-      return NextResponse.json({ error: 'Kode dan nama supplier wajib diisi' }, { status: 400 });
-    }
-
-    const existingSupplier = await globalPrisma.supplier.findUnique({
-      where: { code_storeId: { code, storeId: masterStore.id } }
-    });
-
-    if (existingSupplier) {
-      return NextResponse.json({ error: 'Supplier dengan kode yang sama sudah ada' }, { status: 400 });
-    }
-
-    const newSupplier = await globalPrisma.supplier.create({
+    // Buat supplier baru
+    const newSupplier = await prisma.supplier.create({
       data: {
-        code,
-        name,
-        contactPerson: contactPerson || null,
-        address: address || null,
-        phone: phone || null,
-        email: email || null,
-        storeId: masterStore.id
+        name: data.name,
+        contactPerson: data.contactPerson || null,
+        position: data.position || null,
+        phone: data.phone || null,
+        email: data.email || null,
+        address: data.address || null,
+        notes: data.notes || null
       }
     });
 
-    return NextResponse.json({ supplier: newSupplier }, { status: 201 });
-  } catch (error) {
-    console.error('Error creating supplier for warehouse:', error);
+    // Catat aktivitas
+    await logActivity(
+      session.user.id,
+      'CREATE',
+      'SUPPLIER',
+      newSupplier.id,
+      `Supplier "${newSupplier.name}" ditambahkan`,
+      null,
+      { ...newSupplier }
+    );
 
-    if (error.code === 'P2003' || error.code === 'P2025') {
-      return NextResponse.json({ error: 'Store tidak ditemukan' }, { status: 400 });
+    return new Response(JSON.stringify(newSupplier), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error creating supplier:', error);
+    
+    if (error.code === 'P2002') {
+      // Unique constraint violation
+      return new Response(JSON.stringify({ error: 'Email supplier sudah digunakan' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    
+    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+export async function PUT(request) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session || session.user.role !== ROLES.WAREHOUSE) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const url = new URL(request.url);
+    const supplierId = url.pathname.split('/').pop(); // Ambil ID dari path
+
+    // Validasi ID
+    if (!supplierId) {
+      return new Response(JSON.stringify({ error: 'ID supplier tidak valid' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const data = await request.json();
+
+    // Ambil data supplier sebelum update
+    const existingSupplier = await prisma.supplier.findUnique({
+      where: { id: supplierId }
+    });
+
+    if (!existingSupplier) {
+      return new Response(JSON.stringify({ error: 'Supplier tidak ditemukan' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Update supplier
+    const updatedSupplier = await prisma.supplier.update({
+      where: { id: supplierId },
+      data: {
+        name: data.name,
+        contactPerson: data.contactPerson,
+        position: data.position,
+        phone: data.phone,
+        email: data.email,
+        address: data.address,
+        notes: data.notes
+      }
+    });
+
+    // Catat aktivitas
+    await logActivity(
+      session.user.id,
+      'UPDATE',
+      'SUPPLIER',
+      updatedSupplier.id,
+      `Data supplier "${updatedSupplier.name}" diperbarui`,
+      { ...existingSupplier },
+      { ...updatedSupplier }
+    );
+
+    return new Response(JSON.stringify(updatedSupplier), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error updating supplier:', error);
+    
+    if (error.code === 'P2002') {
+      // Unique constraint violation
+      return new Response(JSON.stringify({ error: 'Email supplier sudah digunakan' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    
+    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+export async function DELETE(request) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session || session.user.role !== ROLES.WAREHOUSE) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const url = new URL(request.url);
+    const supplierId = url.pathname.split('/').pop(); // Ambil ID dari path
+
+    // Validasi ID
+    if (!supplierId) {
+      return new Response(JSON.stringify({ error: 'ID supplier tidak valid' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Ambil data supplier sebelum dihapus
+    const supplierToDelete = await prisma.supplier.findUnique({
+      where: { id: supplierId }
+    });
+
+    if (!supplierToDelete) {
+      return new Response(JSON.stringify({ error: 'Supplier tidak ditemukan' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Hapus supplier
+    await prisma.supplier.delete({
+      where: { id: supplierId }
+    });
+
+    // Catat aktivitas
+    await logActivity(
+      session.user.id,
+      'DELETE',
+      'SUPPLIER',
+      supplierToDelete.id,
+      `Supplier "${supplierToDelete.name}" dihapus`,
+      { ...supplierToDelete },
+      null
+    );
+
+    return new Response(JSON.stringify({ 
+      message: 'Supplier berhasil dihapus',
+      id: supplierId 
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error deleting supplier:', error);
+    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }

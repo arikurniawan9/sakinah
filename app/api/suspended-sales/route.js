@@ -15,6 +15,15 @@ export async function GET(request) {
       where: {
         storeId: session.user.storeId, // Filter by store of the current user
       },
+      include: {
+        member: { // Include the related Member model
+          select: {
+            name: true,
+            membershipType: true,
+            code: true,
+          },
+        },
+      },
       orderBy: {
         createdAt: 'desc',
       },
@@ -52,6 +61,11 @@ export async function GET(request) {
         additionalDiscount: sale.additionalDiscount || 0, // Tambahkan diskon tambahan
         selectedAttendantId: sale.selectedAttendantId, // Tambahkan ID pelayan yang dipilih
         attendantName, // Tambahkan nama pelayan
+        memberDetails: sale.member ? { // Add member details if available
+          name: sale.member.name,
+          membershipType: sale.member.membershipType,
+          code: sale.member.code,
+        } : null,
       });
     }
 
@@ -71,6 +85,9 @@ export async function POST(request) {
 
   try {
     const { name, cartItems, memberId, notes, additionalDiscount, selectedAttendantId, items, note, attendantId } = await request.json();
+    console.log('POST /api/suspended-sales: Received memberId:', memberId);
+    console.log('POST /api/suspended-sales: Received items (from attendant):', items);
+    console.log('POST /api/suspended-sales: Received cartItems (from cashier):', cartItems);
 
     // Gunakan items (dari pelayan) jika tersedia, jika tidak gunakan cartItems (dari kasir)
     const itemsToUse = items || cartItems;

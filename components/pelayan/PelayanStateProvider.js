@@ -436,6 +436,12 @@ export const PelayanStateProvider = ({ children }) => {
     }
     setIsSubmitting(true);
     showNotification('Mengirim daftar belanja ke daftar tangguhkan...', 'info');
+    
+    const finalCustomerId = customerIdToUse || selectedCustomer?.id || null;
+    console.log('sendToCashier: Attendant selectedCustomer.id:', selectedCustomer?.id);
+    console.log('sendToCashier: Attendant customerIdToUse:', customerIdToUse);
+    console.log('sendToCashier: Final customerId being sent:', finalCustomerId);
+
     try {
       // Kirim ke suspended sales API alih-alih temp-cart
       const response = await fetch('/api/suspended-sales', {

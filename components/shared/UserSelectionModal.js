@@ -7,19 +7,24 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Search, X, User } from 'lucide-react';
+import { Search, X, User, Plus } from 'lucide-react';
+import AddUserModal from './AddUserModal';
 
-export default function UserSelectionModal({ isOpen, onClose, users, onSelectUser, darkMode }) {
+export default function UserSelectionModal({ isOpen, onClose, users, onSelectUser, darkMode, onUserAdded }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [lastKeyTime, setLastKeyTime] = useState(0);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
   // State untuk mendeteksi input dari barcode scanner
   // Scanner menginput karakter sangat cepat, berbeda dengan input keyboard manual
 
   const filteredUsers = useMemo(() => {
+    // Filter hanya pengguna dengan role ATTENDANT
+    const attendantUsers = users.filter(user => user.role === 'ATTENDANT');
+
     if (!searchTerm) {
-      return users;
+      return attendantUsers;
     }
-    return users.filter(user =>
+    return attendantUsers.filter(user =>
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.code && user.code.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -51,15 +56,60 @@ export default function UserSelectionModal({ isOpen, onClose, users, onSelectUse
     onClose();
   };
 
+  const handleAddUser = async (userData) => {
+    try {
+      // Kirim data pengguna baru ke API dengan role ATTENDANT secara otomatis
+      const response = await fetch('/api/warehouse/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('token') || '' : ''}`
+        },
+        body: JSON.stringify({
+          ...userData,
+          role: 'ATTENDANT', // Pastikan role adalah ATTENDANT
+          storeId: null // Pengguna gudang tidak terikat ke toko tertentu
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Gagal menambahkan pengguna');
+      }
+
+      const newUser = await response.json();
+
+      // Panggil callback untuk memberi tahu bahwa pengguna baru telah ditambahkan
+      if (onUserAdded) {
+        onUserAdded(newUser);
+      }
+
+      // Pilih pengguna yang baru saja ditambahkan
+      onSelectUser(newUser);
+    } catch (error) {
+      console.error('Error adding user:', error);
+      alert('Gagal menambahkan pengguna: ' + error.message);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
       <div className={`rounded-xl shadow-2xl w-full max-w-md flex flex-col ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
         {/* Header */}
         <div className={`flex justify-between items-center p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
           <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Pilih Pelayan</h2>
-          <button onClick={onClose} className={`p-1 rounded-full ${darkMode ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-200'}`}>
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setShowAddUserModal(true)}
+              className={`p-2 rounded-full ${darkMode ? 'text-blue-400 hover:bg-gray-700' : 'text-blue-600 hover:bg-gray-200'} transition-colors`}
+              title="Tambah Pelayan Baru"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+            <button onClick={onClose} className={`p-2 rounded-full ${darkMode ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-500 hover:bg-gray-200'} transition-colors`}>
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Search - can search by name or code */}
@@ -125,7 +175,7 @@ export default function UserSelectionModal({ isOpen, onClose, users, onSelectUse
             </div>
           </div>
         </div>
-        
+
         {/* User List */}
         <div className="overflow-y-auto max-h-[60vh]">
           {filteredUsers.length > 0 ? (
@@ -161,6 +211,14 @@ export default function UserSelectionModal({ isOpen, onClose, users, onSelectUse
           )}
         </div>
       </div>
+
+      {/* Add User Modal */}
+      <AddUserModal
+        isOpen={showAddUserModal}
+        onClose={() => setShowAddUserModal(false)}
+        onSave={handleAddUser}
+        darkMode={darkMode}
+      />
     </div>
   );
 }

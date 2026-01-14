@@ -581,12 +581,16 @@ export default function KasirTransaksiPage() {
 
     // Ambil detail member dari API jika ada memberId
     let memberToSelect = null;
+    console.log('handleResumeSale: suspendedSale.memberId:', suspendedSale.memberId);
     if (suspendedSale.memberId) {
       try {
         const response = await fetch(`/api/member/${suspendedSale.memberId}`);
+        console.log('handleResumeSale: API response for member:', response.ok);
         if (response.ok) {
           const memberData = await response.json();
           memberToSelect = memberData.member || null;
+          console.log('handleResumeSale: Fetched memberData:', memberData);
+          console.log('handleResumeSale: memberToSelect after fetch:', memberToSelect);
         }
       } catch (error) {
         console.error('Error fetching member for suspended sale:', error);
@@ -594,6 +598,7 @@ export default function KasirTransaksiPage() {
         memberToSelect = null;
       }
     }
+    console.log('handleResumeSale: Final memberToSelect before setSelectedMember:', memberToSelect);
 
     // Cari pelayan yang dipilih sebelumnya
     let attendantToSelect = null;

@@ -15,6 +15,8 @@ export default function ProductModal({
   formData,
   handleInputChange,
   handleSave,
+  onRefresh,
+  onResetPagination,
   darkMode,
   categories,
   suppliers,
@@ -226,9 +228,22 @@ export default function ProductModal({
             </div>
             <div className={`px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
               <Tooltip content={editingProduct ? 'Perbarui produk' : 'Simpan produk baru'}>
-                <button 
-                  type="button" 
-                  onClick={() => handleSave(onSuccess || null)} 
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await handleSave(onSuccess || null);
+                    if (onRefresh) {
+                      onRefresh(true); // Panggil fungsi refresh setelah produk disimpan dengan force refresh
+                    }
+                    // Panggil onResetPagination jika tersedia
+                    try {
+                      if (onResetPagination) {
+                        onResetPagination(); // Reset pagination untuk memastikan produk baru terlihat
+                      }
+                    } catch (error) {
+                      console.error('Error calling onResetPagination:', error);
+                    }
+                  }}
                   className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm flex items-center ${
                     darkMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-600 hover:bg-purple-700'
                   }`}

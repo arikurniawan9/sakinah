@@ -42,7 +42,8 @@ export default function DataTable({
   filterOptions = [], // ADDED: Filter options
   filterValues = {}, // ADDED: Current filter values
   onFilterChange = null, // ADDED: Filter change handler
-  onToggleFilters = null // ADDED: Toggle filters handler
+  onToggleFilters = null, // ADDED: Toggle filters handler
+  deleteMultipleLoading = false // ADDED: Loading state for delete multiple
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobile, setIsMobile] = useState(false);
@@ -184,10 +185,22 @@ export default function DataTable({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={onDeleteMultiple}
-                      className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                      title={`Hapus (${selectedRowsCount})`}
+                      disabled={deleteMultipleLoading}
+                      className={`p-2 rounded-lg transition-colors ${
+                        deleteMultipleLoading
+                          ? 'bg-gray-400 cursor-not-allowed'
+                          : 'bg-red-600 text-white hover:bg-red-700'
+                      }`}
+                      title={deleteMultipleLoading ? 'Menghapus...' : `Hapus (${selectedRowsCount})`}
                     >
-                      <MinusCircle className="h-4 w-4" />
+                      {deleteMultipleLoading ? (
+                        <div className="flex items-center">
+                          <div className="w-4 h-4 border-t-2 border-r-2 border-white rounded-full animate-spin"></div>
+                          <span className="ml-1">...</span>
+                        </div>
+                      ) : (
+                        <MinusCircle className="h-4 w-4" />
+                      )}
                     </button>
                   </div>
                 )}
@@ -198,7 +211,7 @@ export default function DataTable({
                   <div className="flex items-center gap-2">
                     <span className="text-sm">Tampil:</span>
                     <select
-                      value={pagination?.itemsPerPage || 10}
+                      value={pagination?.itemsPerPage || 30}
                       onChange={handleItemsPerPageChange}
                       className={`px-2 py-1 border rounded text-sm ${
                         darkMode
@@ -206,10 +219,11 @@ export default function DataTable({
                           : 'bg-white border-gray-300 text-gray-900'
                       }`}
                     >
-                      <option value={5}>5</option>
-                      <option value={10}>10</option>
-                      <option value={20}>20</option>
+                      <option value={30}>30</option>
                       <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value={200}>200</option>
+                      <option value={500}>500</option>
                     </select>
                   </div>
                 )}

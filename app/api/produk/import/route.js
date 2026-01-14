@@ -7,6 +7,97 @@ import { getSession } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
+// Helper function to find or create a category
+async function findOrCreateCategory(categoryName, storeId) {
+  if (!categoryName) return null;
+
+  let category = await prisma.category.findFirst({
+    where: {
+      name: categoryName,
+      storeId: storeId
+    }
+  });
+
+  if (!category) {
+    category = await prisma.category.create({
+      data: {
+        name: categoryName,
+        store: { connect: { id: storeId } }
+      }
+    });
+  }
+  return category.id;
+}
+
+// Helper function to find or create a supplier
+async function findOrCreateSupplier(supplierName, storeId) {
+  if (!supplierName) {
+    // Create or find a default supplier for "Tidak Ada"
+    let defaultSupplier = await prisma.supplier.findFirst({
+      where: {
+        name: "Tidak Ada",
+        storeId: storeId
+      }
+    });
+
+    if (!defaultSupplier) {
+      const baseCode = "NO-SUP";
+      let uniqueCode = baseCode;
+      let counter = 1;
+      while(await prisma.supplier.findFirst({
+        where: {
+          code: uniqueCode,
+          storeId: storeId
+        }
+      })) {
+        uniqueCode = `${baseCode}-${counter}`;
+        counter++;
+      }
+      defaultSupplier = await prisma.supplier.create({
+        data: {
+          name: "Tidak Ada",
+          code: uniqueCode,
+          store: { connect: { id: storeId } }
+        }
+      });
+    }
+    return defaultSupplier.id;
+  }
+
+  let supplier = await prisma.supplier.findFirst({
+    where: {
+      name: supplierName,
+      storeId: storeId
+    }
+  });
+
+  if (!supplier) {
+    let baseCode = supplierName.substring(0, 5).toUpperCase();
+    let uniqueCode = baseCode;
+    let counter = 1;
+
+    while(await prisma.supplier.findFirst({
+      where: {
+        code: uniqueCode,
+        storeId: storeId
+      }
+    })) {
+      uniqueCode = `${baseCode}-${counter}`;
+      counter++;
+    }
+
+    supplier = await prisma.supplier.create({
+      data: {
+        name: supplierName,
+        store: { connect: { id: storeId } },
+        code: uniqueCode
+      }
+    });
+  }
+  return supplier.id;
+}
+
+
 export async function POST(request) {
   const session = await getSession();
   if (!session || session.user.role !== 'ADMIN') {
@@ -71,18 +162,34 @@ export async function POST(request) {
           createdAt: currentDate,
           updatedAt: currentDate,
           purchaseData: currentDate, // Store original creation date
-          purchasePrice: !isNaN(parseInt(record['Harga Beli'] || record['purchase_price'] || record['purchasePrice'])) ? parseInt(record['Harga Beli'] || record['purchase_price'] || record['purchasePrice']) : 0,
-          retailPrice: !isNaN(parseInt(record['Harga Eceran'] || record['retailPrice'] || record['hargaEceran'])) ? parseInt(record['Harga Eceran'] || record['retailPrice'] || record['hargaEceran']) : 0,
-          silverPrice: !isNaN(parseInt(record['Harga Silver'] || record['silverPrice'] || record['hargaSilver'])) ? parseInt(record['Harga Silver'] || record['silverPrice'] || record['hargaSilver']) : 0,
-          goldPrice: !isNaN(parseInt(record['Harga Gold'] || record['goldPrice'] || record['hargaGold'])) ? parseInt(record['Harga Gold'] || record['goldPrice'] || record['hargaGold']) : 0,
-          platinumPrice: !isNaN(parseInt(record['Harga Platinum'] || record['platinumPrice'] || record['hargaPlatinum'])) ? parseInt(record['Harga Platinum'] || record['platinumPrice'] || record['hargaPlatinum']) : 0,
+          purchasePrice: (() => {
+            const value = record['Harga Beli'] || record['purchase_price'] || record['purchasePrice'] || record['harga_beli'];
+            return !isNaN(parseInt(value)) ? parseInt(value) : 0;
+          })(),
+          retailPrice: (() => {
+            const value = record['Harga Jual/Eceran'] || record['Harga Eceran'] || record['retailPrice'] || record['hargaEceran'] || record['harga_jual'];
+            return !isNaN(parseInt(value)) ? parseInt(value) : 0;
+          })(),
+          silverPrice: (() => {
+            const value = record['Harga Member Silver'] || record['Harga Silver'] || record['silverPrice'] || record['hargaSilver'] || record['harga_silver'];
+            return !isNaN(parseInt(value)) ? parseInt(value) : 0;
+          })(),
+          goldPrice: (() => {
+            const value = record['Harga Member Gold'] || record['Harga Gold'] || record['goldPrice'] || record['hargaGold'] || record['harga_gold'];
+            return !isNaN(parseInt(value)) ? parseInt(value) : 0;
+          })(),
+          platinumPrice: (() => {
+            const value = record['Harga Member Platinum (Partai)'] || record['Harga Platinum'] || record['platinumPrice'] || record['hargaPlatinum'] || record['harga_platinum'];
+            return !isNaN(parseInt(value)) ? parseInt(value) : 0;
+          })(),
         };
       }
     }
 
-    // Check for existing products before importing if not forced
-    const force = formData.get('force') === 'true';
-    if (!force) {
+    const updateMode = formData.get('updateMode'); // 'overwrite' or 'add_stock'
+
+    // If no updateMode is specified, this is a preliminary check.
+    if (!updateMode) {
       const existingProducts = [];
       for (const [productCode, productData] of Object.entries(groupedRecords)) {
         const existingProduct = await prisma.product.findUnique({
@@ -103,13 +210,12 @@ export async function POST(request) {
         }
       }
 
-      // Jika ada produk yang sudah ada, kembalikan daftar produk yang konflik
       if (existingProducts.length > 0) {
         return NextResponse.json({
           duplicateProducts: existingProducts,
-          message: `Terdapat ${existingProducts.length} produk yang sudah ada. Silakan konfirmasi untuk menimpa produk yang sudah ada.`,
+          message: `Terdapat ${existingProducts.length} produk yang sudah ada. Silakan konfirmasi untuk melanjutkan.`,
           needConfirmation: true
-        }, { status: 200 }); // Gunakan status 200 agar bisa menangani di frontend
+        }, { status: 200 });
       }
     }
 
@@ -119,88 +225,6 @@ export async function POST(request) {
     // Process each unique product
     for (const [productCode, productData] of Object.entries(groupedRecords)) {
       try {
-
-        // Find or create category
-        let categoryId = null;
-        if (productData.category) {
-          let category = await prisma.category.findFirst({
-            where: {
-              name: productData.category,
-              storeId: session.user.storeId
-            }
-          });
-
-          if (!category) {
-            // Create category if doesn't exist
-            category = await prisma.category.create({
-              data: {
-                name: productData.category,
-                store: { connect: { id: session.user.storeId } }
-              }
-            });
-          }
-          categoryId = category.id;
-        }
-
-        // Find or create supplier - create default if not provided
-        let supplierId = null;
-        if (productData.supplier) {
-          let supplier = await prisma.supplier.findFirst({
-            where: {
-              name: productData.supplier,
-              storeId: session.user.storeId
-            }
-          });
-
-          if (!supplier) {
-            // Create supplier if doesn't exist
-            supplier = await prisma.supplier.create({
-              data: {
-                name: productData.supplier,
-                store: { connect: { id: session.user.storeId } },
-                code: productData.supplier.substring(0, 5).toUpperCase() // Generate default code
-              }
-            });
-          }
-          supplierId = supplier.id;
-        } else {
-          // Create or find a default supplier for "No Supplier"
-          let defaultSupplier = await prisma.supplier.findFirst({
-            where: {
-              name: "Tidak Ada",
-              storeId: session.user.storeId
-            }
-          });
-
-          if (!defaultSupplier) {
-            // Generate a unique code for the default supplier
-            const baseCode = "NO-SUP";
-            let uniqueCode = baseCode;
-            let counter = 1;
-
-            // Check if base code exists, increment if needed
-            while(await prisma.supplier.findFirst({
-              where: {
-                code: uniqueCode,
-                storeId: session.user.storeId
-              }
-            })) {
-              uniqueCode = `${baseCode}-${counter}`;
-              counter++;
-            }
-
-            defaultSupplier = await prisma.supplier.create({
-              data: {
-                name: "Tidak Ada",
-                code: uniqueCode,
-                store: { connect: { id: session.user.storeId } }
-              }
-            });
-          }
-          supplierId = defaultSupplier.id;
-        }
-
-        // Check if product already exists in the store
         const existingProduct = await prisma.product.findUnique({
           where: {
             productCode_storeId: {
@@ -211,62 +235,69 @@ export async function POST(request) {
         });
 
         if (existingProduct) {
-          // Update existing product
-          const updatedProduct = await prisma.$transaction(async (tx) => {
-            await tx.product.update({
-              where: {
-                id: existingProduct.id,
-                storeId: session.user.storeId // Tambahkan storeId ke kondisi update
-              },
+          if (updateMode === 'add_stock') {
+            await prisma.product.update({
+              where: { id: existingProduct.id },
               data: {
-                name: productData.name,
-                stock: productData.stock,
-                category: { connect: { id: categoryId } },
-                supplier: { connect: { id: supplierId } },
-                description: productData.description,
-                purchasePrice: productData.purchasePrice,
-                retailPrice: productData.retailPrice || 0,
-                silverPrice: productData.silverPrice || 0,
-                goldPrice: productData.goldPrice || 0,
-                platinumPrice: productData.platinumPrice || 0,
+                stock: {
+                  increment: productData.stock || 0
+                },
                 updatedAt: new Date()
               }
             });
+          } else if (updateMode === 'overwrite') {
+            const categoryId = await findOrCreateCategory(productData.category, session.user.storeId);
+            const supplierId = await findOrCreateSupplier(productData.supplier, session.user.storeId);
 
-            return product;
-          });
-        } else {
-          // Create new product
-          const createdProduct = await prisma.$transaction(async (tx) => {
-            const product = await tx.product.create({
+            await prisma.product.update({
+              where: { id: existingProduct.id },
               data: {
                 name: productData.name,
-                productCode: productCode,
-                store: { connect: { id: session.user.storeId } },
                 stock: productData.stock,
                 category: { connect: { id: categoryId } },
                 supplier: { connect: { id: supplierId } },
                 description: productData.description,
                 purchasePrice: productData.purchasePrice,
-                retailPrice: productData.retailPrice || 0,
-                silverPrice: productData.silverPrice || 0,
-                goldPrice: productData.goldPrice || 0,
-                platinumPrice: productData.platinumPrice || 0,
-                createdAt: new Date(productData.createdAt),
-                updatedAt: new Date(productData.updatedAt),
+                retailPrice: productData.retailPrice,
+                silverPrice: productData.silverPrice,
+                goldPrice: productData.goldPrice,
+                platinumPrice: productData.platinumPrice,
+                updatedAt: new Date()
               }
             });
+          }
+        } else {
+          // Create new product if it doesn't exist, regardless of updateMode
+          const categoryId = await findOrCreateCategory(productData.category, session.user.storeId);
+          const supplierId = await findOrCreateSupplier(productData.supplier, session.user.storeId);
 
-            return product;
+          await prisma.product.create({
+            data: {
+              name: productData.name,
+              productCode: productCode,
+              store: { connect: { id: session.user.storeId } },
+              stock: productData.stock,
+              category: { connect: { id: categoryId } },
+              supplier: { connect: { id: supplierId } },
+              description: productData.description,
+              purchasePrice: productData.purchasePrice,
+              retailPrice: productData.retailPrice,
+              silverPrice: productData.silverPrice,
+              goldPrice: productData.goldPrice,
+              platinumPrice: productData.platinumPrice,
+              createdAt: new Date(productData.createdAt),
+              updatedAt: new Date(productData.updatedAt),
+            }
           });
         }
 
         importedCount++;
       } catch (productError) {
         console.error(`Error importing product with code ${productCode}:`, productError);
-        errors.push(`Gagal mengimpor produk dengan kode ${productCode}: ${productError.message}`);
+        errors.push({ row: productCode, error: `Gagal memproses: ${productError.message}` });
       }
     }
+
 
     return NextResponse.json({
       message: `Berhasil mengimpor ${importedCount} produk`,

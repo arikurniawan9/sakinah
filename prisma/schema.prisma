@@ -113,6 +113,7 @@ model Member {
   store          Store        @relation(fields: [storeId], references: [id])
   receivables    Receivable[]
   sales          Sale[]
+  suspendedSales SuspendedSale[]
 
   @@unique([phone, storeId])
   @@unique([code, storeId])
@@ -254,6 +255,7 @@ model SuspendedSale {
   selectedAttendantId  String?
   createdAt            DateTime @default(now())
   store                Store    @relation(fields: [storeId], references: [id])
+  member               Member?  @relation(fields: [memberId], references: [id])
 
   @@index([storeId])
 }

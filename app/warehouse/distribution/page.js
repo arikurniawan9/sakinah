@@ -349,6 +349,10 @@ export default function WarehouseDistributionPage() {
         users={warehouseUsers}
         onSelectUser={setSelectedWarehouseUser}
         darkMode={darkMode}
+        onUserAdded={(newUser) => {
+          // Tambahkan pengguna baru ke daftar pengguna gudang
+          mutateUsers();
+        }}
       />
 
       <ConfirmationModal

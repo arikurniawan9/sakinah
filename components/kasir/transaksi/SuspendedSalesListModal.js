@@ -160,6 +160,16 @@ const SuspendedSalesListModal = ({ isOpen, onClose, onResume, darkMode }) => {
                         Dibuat oleh: {sale.attendantName}
                       </p>
                     )}
+                    {sale.memberDetails && (
+                      <p
+                        className={`text-sm mt-1 ${
+                          darkMode ? "text-purple-300" : "text-purple-600"
+                        }`}
+                      >
+                        Untuk Member: {sale.memberDetails.name} ({sale.memberDetails.membershipType})
+                        {sale.memberDetails.code && ` - ${sale.memberDetails.code}`}
+                      </p>
+                    )}
                     <p
                       className={`text-xs mt-2 flex items-center ${
                         darkMode ? "text-gray-400" : "text-gray-500"

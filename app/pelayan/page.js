@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import { Search, ShoppingCart, Users, Send, Camera, Sun, Moon, LogOut, AlertCircle, Trash2, X, History, Bell, Package, TrendingUp, ShoppingCartIcon, User, Star, Edit3, BarChart3, Scan, CameraOff, Camera as CameraIcon } from 'lucide-react';
+import { Search, ShoppingCart, Users, Send, Camera, Sun, Moon, LogOut, AlertCircle, Trash2, X, History, Bell, Package, TrendingUp, ShoppingCartIcon, User, Star, Edit3, BarChart3, Scan, CameraOff, Camera as CameraIcon, Check } from 'lucide-react';
 import BarcodeScanner from '../../components/BarcodeScanner';
 import { useNotification } from '../../components/notifications/NotificationProvider';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -198,6 +198,12 @@ function AttendantDashboard() {
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
+  // State for customer search in modal
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const debouncedCustomerSearchTerm = useDebounce(customerSearchTerm, 300);
+  const [foundCustomers, setFoundCustomers] = useState([]);
+  const [isSearchingMembers, setIsSearchingMembers] = useState(false);
+
   // Global state from context
   const {
     products,
@@ -253,6 +259,27 @@ function AttendantDashboard() {
       fetchProducts(debouncedSearchTerm);
     }
   }, [debouncedSearchTerm, status, session, fetchProducts]);
+
+  // Effect for customer search in modal
+  useEffect(() => {
+    const fetchMembers = async () => {
+      if (debouncedCustomerSearchTerm.trim() === '') {
+        setFoundCustomers([]);
+        return;
+      }
+      setIsSearchingMembers(true);
+      try {
+        const result = await searchCustomers(debouncedCustomerSearchTerm);
+        setFoundCustomers(result);
+      } catch (err) {
+        showNotification(`Gagal mencari member: ${err.message}`, 'error');
+      } finally {
+        setIsSearchingMembers(false);
+      }
+    };
+
+    fetchMembers();
+  }, [debouncedCustomerSearchTerm, searchCustomers, showNotification]);
 
 
   const handleBarcodeScan = useCallback(async (decodedText) => {
@@ -544,19 +571,50 @@ function AttendantDashboard() {
                   <label className={`block text-sm font-medium mb-2 ${
                     darkMode ? 'text-gray-300' : 'text-gray-700'
                   }`}>
-                    Cari Pelanggan
+                    Cari Member
                   </label>
                   <input
                     type="text"
-                    placeholder="Cari nama atau nomor telepon..."
+                    placeholder="Cari nama, kode atau nomor telepon member..."
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
                       darkMode
                         ? 'border-gray-600 bg-gray-700 text-white'
                         : 'border-gray-300 bg-white text-gray-900'
                     }`}
-                    value=""
-                    onChange={(e) => {}} // Akan ditangani dengan useEffect dan debounce
+                    value={customerSearchTerm}
+                    onChange={(e) => setCustomerSearchTerm(e.target.value)}
                   />
+                  {isSearchingMembers && <p className="text-sm text-gray-500 mt-1">Mencari...</p>}
+                </div>
+
+                <div className="mb-6 max-h-48 overflow-y-auto styled-scrollbar">
+                  {foundCustomers.length > 0 ? (
+                    <ul className="space-y-2">
+                      {foundCustomers.map(customer => (
+                        <li key={customer.id}
+                            className={`p-3 rounded-lg cursor-pointer ${
+                              selectedCustomerForSend?.id === customer.id
+                                ? 'bg-purple-100 dark:bg-purple-900/30 border border-purple-500'
+                                : (darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-50 hover:bg-gray-100')
+                            } flex justify-between items-center transition-colors`}
+                            onClick={() => setSelectedCustomerForSend(customer)}>
+                          <div>
+                            <p className="font-medium">{customer.name}</p>
+                            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                              {customer.phone} {customer.code && `• Kode: ${customer.code}`}
+                            </p>
+                          </div>
+                          {selectedCustomerForSend?.id === customer.id && (
+                            <Check className="h-5 w-5 text-purple-600" />
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    debouncedCustomerSearchTerm.trim() !== '' && !isSearchingMembers && (
+                      <p className={`text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Tidak ada member ditemukan.</p>
+                    )
+                  )}
                 </div>
 
                 <div className="mb-6">

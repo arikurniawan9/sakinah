@@ -30,7 +30,8 @@ export default function LazyDataTable({
   filterOptions = [],
   filterValues = {},
   onFilterChange = null,
-  onToggleFilters = null
+  onToggleFilters = null,
+  refreshTrigger = null
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobile, setIsMobile] = useState(false);
@@ -67,7 +68,7 @@ export default function LazyDataTable({
     };
   }, []);
 
-  // Reset data when search, filter, or sort changes
+  // Reset data when search, filter, sort, or refresh trigger changes
   useEffect(() => {
     const loadData = async () => {
       setIsInitialLoading(true);
@@ -79,7 +80,7 @@ export default function LazyDataTable({
     };
 
     loadData();
-  }, [searchTerm, currentSort, filterValues, fetchData, itemsPerPage]);
+  }, [searchTerm, currentSort, filterValues, fetchData, itemsPerPage, refreshTrigger]);
 
   // Load more data when scrolling to bottom
   const loadMore = useCallback(async () => {
@@ -193,7 +194,7 @@ export default function LazyDataTable({
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-grow">
                 {showSearch && (
                   <div className="relative flex-grow sm:w-64">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" aria-hidden="true" />
                     <input
                       type="text"
                       placeholder="Cari..."
@@ -204,6 +205,7 @@ export default function LazyDataTable({
                           ? 'bg-gray-700 border-gray-600 text-white'
                           : 'bg-white border-gray-300 text-gray-900'
                       }`}
+                      aria-label="Cari data toko"
                     />
                   </div>
                 )}
@@ -214,8 +216,9 @@ export default function LazyDataTable({
                       onClick={onDeleteMultiple}
                       className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                       title={`Hapus (${selectedRowsCount})`}
+                      aria-label={`Hapus ${selectedRowsCount} toko yang dipilih`}
                     >
-                      <MinusCircle className="h-4 w-4" />
+                      <MinusCircle className="h-4 w-4" aria-hidden="true" />
                     </button>
                   </div>
                 )}
@@ -233,6 +236,7 @@ export default function LazyDataTable({
                           ? 'bg-gray-700 border-gray-600 text-white'
                           : 'bg-white border-gray-300 text-gray-900'
                       }`}
+                      aria-label="Jumlah item per halaman"
                     >
                       <option value={5}>5</option>
                       <option value={10}>10</option>
@@ -251,8 +255,9 @@ export default function LazyDataTable({
                         onClick={action.onClick}
                         className={`p-2 rounded-lg hover:opacity-90 transition-colors ${action.className}`}
                         title={action.label}
+                        aria-label={action.label}
                       >
-                        {IconComponent && <IconComponent className="h-4 w-4" />}
+                        {IconComponent && <IconComponent className="h-4 w-4" aria-hidden="true" />}
                       </button>
                     );
                   })}
@@ -261,8 +266,9 @@ export default function LazyDataTable({
                       onClick={onAdd}
                       className="p-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
                       title="Tambah"
+                      aria-label="Tambah toko baru"
                     >
-                      <Plus className="h-4 w-4" />
+                      <Plus className="h-4 w-4" aria-hidden="true" />
                     </button>
                   )}
                   {showExport && (
@@ -288,8 +294,9 @@ export default function LazyDataTable({
                       }}
                       className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                       title="Ekspor"
+                      aria-label="Ekspor data"
                     >
-                      <Download className="h-4 w-4" />
+                      <Download className="h-4 w-4" aria-hidden="true" />
                     </button>
                   )}
                 </div>
@@ -306,8 +313,9 @@ export default function LazyDataTable({
                       ? 'bg-gray-700 hover:bg-gray-600 text-white'
                       : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
                   }`}
+                  aria-label="Toggle filter"
                 >
-                  <Filter className="h-4 w-4" />
+                  <Filter className="h-4 w-4" aria-hidden="true" />
                   <span>Filter</span>
                 </button>
                 <div className="flex gap-2">
@@ -321,6 +329,7 @@ export default function LazyDataTable({
                           ? 'bg-gray-700 border-gray-600 text-white'
                           : 'bg-white border-gray-300 text-gray-900'
                       }`}
+                      aria-label={filter.label}
                     >
                       {filter.options.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -340,7 +349,7 @@ export default function LazyDataTable({
       {isMobile && (
         <div className="p-4">
           {isInitialLoading ? (
-            <div className="flex justify-center items-center py-8 h-32">
+            <div className="flex justify-center items-center py-8 h-32" role="alert" aria-busy="true">
               <LoadingSpinner />
             </div>
           ) : data && data.length > 0 ? (
@@ -353,6 +362,8 @@ export default function LazyDataTable({
                     ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}
                     ${selectedRows.includes(row.id) ? (darkMode ? 'ring-2 ring-cyan-500' : 'ring-2 ring-cyan-500') : ''}
                   `.trim().replace(/\s+/g, ' ')}
+                  role="listitem"
+                  aria-label={`Toko ${row.name || 'tidak diketahui'}`}
                 >
                   {/* Mobile Row Header */}
                   <div className="flex justify-between items-start mb-2">
@@ -362,6 +373,7 @@ export default function LazyDataTable({
                         checked={selectedRows.includes(row.id)}
                         onChange={() => onSelectRow(row.id)}
                         className="mt-1 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                        aria-label={`Pilih toko ${row.name || 'tidak diketahui'}`}
                       />
                     )}
                     <div className="flex gap-1 ml-2">
@@ -390,20 +402,20 @@ export default function LazyDataTable({
                 </div>
               ))}
               {isLoadingMore && (
-                <div className="flex justify-center items-center py-4">
+                <div className="flex justify-center items-center py-4" role="alert" aria-busy="true">
                   <LoadingSpinner />
                 </div>
               )}
               {!hasMore && data.length > 0 && (
-                <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                <div className="text-center py-4 text-gray-500 dark:text-gray-400" role="status" aria-live="polite">
                   Tidak ada data tambahan
                 </div>
               )}
               {/* Ref element for intersection observer */}
-              <div ref={lastElementRef} className="h-1" />
+              <div ref={lastElementRef} className="h-1" role="separator" aria-hidden="true" />
             </>
           ) : (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400" role="status" aria-live="polite">
               Tidak ada data ditemukan
             </div>
           )}
@@ -413,25 +425,29 @@ export default function LazyDataTable({
       {/* Desktop View (Table) */}
       {!isMobile && (
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700" role="table" aria-label="Tabel data toko">
             <thead className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-              <tr>
+              <tr role="row">
                 {onSelectAll && (
-                  <th className="w-12 px-6 py-3">
+                  <th scope="col" className="w-12 px-6 py-3">
                     <input
                       type="checkbox"
                       onChange={onSelectAll}
                       className="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                      aria-label="Pilih semua baris"
                     />
                   </th>
                 )}
                 {columns.map((column) => (
                   <th
                     key={column.key}
+                    scope="col"
                     className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer ${
                       darkMode ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'
                     } ${column.sortable ? 'hover:bg-gray-100 dark:hover:bg-gray-600' : ''} ${column.className || ''}`}
                     onClick={() => column.sortable && handleSort(column.key)}
+                    role="columnheader"
+                    aria-sort={column.sortable && currentSort?.key === column.key ? (currentSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
                   >
                     <div className={column.className?.includes('text-center') ? 'flex justify-center items-center' : 'flex items-center'}>
                       {column.title}
@@ -444,7 +460,7 @@ export default function LazyDataTable({
                   </th>
                 ))}
                 {actions && (
-                  <th className={`px-6 py-3 text-right text-xs font-medium uppercase tracking-wider ${
+                  <th scope="col" className={`px-6 py-3 text-right text-xs font-medium uppercase tracking-wider ${
                     darkMode ? 'text-gray-300' : 'text-gray-500'
                   }`}>
                     Aksi
@@ -452,10 +468,10 @@ export default function LazyDataTable({
                 )}
               </tr>
             </thead>
-            <tbody className={`divide-y ${darkMode ? 'divide-gray-700 bg-gray-800' : 'divide-gray-200 bg-white'}`}>
+            <tbody className={`divide-y ${darkMode ? 'divide-gray-700 bg-gray-800' : 'divide-gray-200 bg-white'}`} role="rowgroup">
               {isInitialLoading ? (
-                <tr>
-                  <td colSpan={columns.length + (actions ? 2 : (onSelectAll ? 1 : 0))} className="px-6 py-4 text-center">
+                <tr role="row">
+                  <td colSpan={columns.length + (actions ? 2 : (onSelectAll ? 1 : 0))} className="px-6 py-4 text-center" role="cell">
                     <div className="flex justify-center items-center py-8 h-32">
                       <LoadingSpinner />
                     </div>
@@ -474,17 +490,20 @@ export default function LazyDataTable({
                     return (
                       <tr
                         key={rowId}
+                        role="row"
                         className={`group ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} ${
                           selectedRows.includes(rowId) ? (darkMode ? 'bg-gray-700' : 'bg-blue-50') : ''
                         } transition-colors`}
+                        aria-selected={selectedRows.includes(rowId)}
                       >
                         {onSelectRow && (
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-6 py-4 whitespace-nowrap" role="cell">
                             <input
                               type="checkbox"
                               checked={selectedRows.includes(rowId)}
                               onChange={() => onSelectRow(rowId)}
                               className="rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                              aria-label={`Pilih baris untuk toko ${row.name || 'tidak diketahui'}`}
                             />
                           </td>
                         )}
@@ -500,6 +519,7 @@ export default function LazyDataTable({
                               className={`px-6 py-4 whitespace-nowrap text-sm ${
                                 darkMode ? 'text-gray-300' : 'text-gray-900'
                               }`}
+                              role="cell"
                             >
                               {column.render
                                 ? (typeof column.render === 'function'
@@ -510,7 +530,7 @@ export default function LazyDataTable({
                           );
                         }).filter(Boolean)}
                         {actions && (
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" role="cell">
                             <div className="flex justify-end space-x-2">
                               {rowActions && typeof rowActions === 'function' && (
                                 <>
@@ -524,8 +544,8 @@ export default function LazyDataTable({
                     );
                   }).filter(Boolean)}
                   {isLoadingMore && (
-                    <tr>
-                      <td colSpan={columns.length + (actions ? 2 : (onSelectAll ? 1 : 0))} className="px-6 py-4 text-center">
+                    <tr role="row">
+                      <td colSpan={columns.length + (actions ? 2 : (onSelectAll ? 1 : 0))} className="px-6 py-4 text-center" role="cell">
                         <div className="flex justify-center items-center py-4">
                           <LoadingSpinner />
                         </div>
@@ -533,22 +553,23 @@ export default function LazyDataTable({
                     </tr>
                   )}
                   {!hasMore && data.length > 0 && (
-                    <tr>
-                      <td colSpan={columns.length + (actions ? 2 : (onSelectAll ? 1 : 0))} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                    <tr role="row">
+                      <td colSpan={columns.length + (actions ? 2 : (onSelectAll ? 1 : 0))} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400" role="cell">
                         Tidak ada data tambahan
                       </td>
                     </tr>
                   )}
                   {/* Ref element for intersection observer */}
-                  <tr ref={lastElementRef} className="h-1">
-                    <td colSpan={columns.length + (actions ? 2 : (onSelectAll ? 1 : 0))}></td>
+                  <tr ref={lastElementRef} className="h-1" role="row">
+                    <td colSpan={columns.length + (actions ? 2 : (onSelectAll ? 1 : 0))} role="cell"></td>
                   </tr>
                 </>
               ) : (
-                <tr>
+                <tr role="row">
                   <td
                     colSpan={columns.length + (actions ? 2 : (onSelectAll ? 1 : 0))}
                     className="px-6 py-4 text-center text-gray-500 dark:text-gray-400"
+                    role="cell"
                   >
                     Tidak ada data ditemukan
                   </td>

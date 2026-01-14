@@ -23,7 +23,7 @@ export async function POST(request) {
     const filename = formData.get('filename');
 
     // Validasi input
-    if (!file || !Buffer.isBuffer(file)) {
+    if (!file || typeof file === 'string') {
       return new Response(JSON.stringify({ error: 'File tidak valid' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
@@ -64,7 +64,7 @@ export async function POST(request) {
 
     // Validasi ukuran file (maksimal 100MB)
     const maxFileSize = 100 * 1024 * 1024; // 100MB
-    if (file.length > maxFileSize) {
+    if (file.size > maxFileSize) {
       return new Response(JSON.stringify({ error: 'Ukuran file terlalu besar (maksimal 100MB)' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
@@ -81,8 +81,9 @@ export async function POST(request) {
     const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
     const filePath = path.join(backupDir, sanitizedFilename);
 
-    // Simpan file
-    fs.writeFileSync(filePath, file);
+    // Konversi file ke buffer untuk disimpan
+    const buffer = Buffer.from(await file.arrayBuffer());
+    fs.writeFileSync(filePath, buffer);
 
     return new Response(JSON.stringify({ 
       message: 'File berhasil diupload', 

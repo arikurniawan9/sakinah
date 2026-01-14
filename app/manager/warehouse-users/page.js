@@ -1,61 +1,194 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import { useUserTheme } from '@/components/UserThemeContext';
 import { useSession } from 'next-auth/react';
-import { useUserForm } from '@/lib/hooks/useUserForm';
-import { useUserTable } from '@/lib/hooks/useUserTable';
-import UserModal from '@/components/admin/UserModal';
-import ConfirmationModal from '@/components/ConfirmationModal';
-import { AlertTriangle, CheckCircle, Edit, Trash2, RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ROLES } from '@/lib/constants';
+import { useUserTheme } from '@/components/UserThemeContext';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import DataTable from '@/components/DataTable';
 import Breadcrumb from '@/components/Breadcrumb';
+import UserModal from '@/components/admin/UserModal';
+import ConfirmationModal from '@/components/ConfirmationModal';
+import { Search, Plus, Edit, Trash2, Filter, Download, Upload } from 'lucide-react';
 
 export default function ManagerWarehouseUserManagement() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const { userTheme } = useUserTheme();
   const darkMode = userTheme.darkMode;
-  const { data: session } = useSession();
-  const canManageUsers = session?.user?.role === 'MANAGER';
-
-  const {
-    users,
-    loading,
-    error: tableError,
-    searchTerm,
-    setSearchTerm,
-    itemsPerPage,
-    setItemsPerPage,
-    currentPage,
-    setCurrentPage,
-    totalPages,
-    totalUsers,
-    fetchUsers,
-    setError: setTableError,
-  } = useUserTable('WAREHOUSE', '/api/manager/users'); // Filter for WAREHOUSE role, using the correct manager API
-
-  const {
-    showModal,
-    editingUser,
-    formData,
-    handleInputChange,
-    openModalForEdit,
-    openModalForCreate,
-    closeModal,
-    handleSave: originalHandleSave,
-    error: formError,
-    setError: setFormError,
-  } = useUserForm(fetchUsers, {
-    defaultRole: 'WAREHOUSE',
-    apiEndpoint: '/api/manager/users'
-  }); // API endpoint for global users
-
+  
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [showModal, setShowModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [itemsToDelete, setItemsToDelete] = useState([]);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
   const [selectedRows, setSelectedRows] = useState([]);
   const [successMessage, setSuccessMessage] = useState('');
+  const [stores, setStores] = useState([]);
 
+  // Cek apakah pengguna adalah MANAGER
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (status !== 'authenticated' || session.user.role !== ROLES.MANAGER) {
+      router.push('/unauthorized');
+      return;
+    }
+    
+    fetchUsers();
+    fetchStores();
+  }, [status, session, currentPage, itemsPerPage, searchTerm, router]);
+
+  // Fetch users
+  const fetchUsers = async () => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        role: 'WAREHOUSE' // Hanya ambil pengguna dengan role WAREHOUSE
+      });
+
+      const response = await fetch(`/api/manager/users?${params.toString()}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.user?.token || ''}`
+        }
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          router.push('/login');
+          return;
+        } else if (response.status === 403) {
+          router.push('/unauthorized');
+          return;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setUsers(data.users || []);
+      setTotalUsers(data.total || 0);
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      setError('Gagal mengambil data pengguna: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch stores
+  const fetchStores = async () => {
+    try {
+      const response = await fetch('/api/stores', {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.user?.token || ''}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setStores(data.stores || []);
+    } catch (err) {
+      console.error('Error fetching stores:', err);
+      // Jangan tampilkan error karena ini hanya untuk referensi
+    }
+  };
+
+  // Handlers
+  const handleAddUser = () => {
+    setEditingUser(null);
+    setShowModal(true);
+  };
+
+  const handleEditUser = (user) => {
+    setEditingUser(user);
+    setShowModal(true);
+  };
+
+  const handleDeleteUser = (user) => {
+    setUserToDelete(user);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
+    
+    try {
+      const response = await fetch(`/api/manager/users/${userToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.user?.token || ''}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      setSuccessMessage('Pengguna berhasil dihapus');
+      setShowDeleteModal(false);
+      setUserToDelete(null);
+      fetchUsers(); // Refresh data
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      setError('Gagal menghapus pengguna: ' + err.message);
+      setShowDeleteModal(false);
+      setUserToDelete(null);
+    }
+  };
+
+  const handleSaveUser = async (userData) => {
+    try {
+      const url = editingUser ? `/api/manager/users/${editingUser.id}` : '/api/manager/users';
+      const method = editingUser ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.user?.token || ''}`
+        },
+        body: JSON.stringify({
+          ...userData,
+          role: 'WAREHOUSE' // Pastikan role tetap WAREHOUSE
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      setSuccessMessage(editingUser ? 'Pengguna berhasil diperbarui' : 'Pengguna berhasil ditambahkan');
+      setShowModal(false);
+      fetchUsers(); // Refresh data
+      return result;
+    } catch (err) {
+      console.error('Error saving user:', err);
+      setError('Gagal menyimpan pengguna: ' + err.message);
+      throw err;
+    }
+  };
+
+  // Select handlers
   const handleSelectRow = (id) => {
     setSelectedRows(prev =>
       prev.includes(id) ? prev.filter(rowId => rowId !== id) : [...prev, id]
@@ -64,72 +197,44 @@ export default function ManagerWarehouseUserManagement() {
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      const allRowIds = users.map(u => u.id);
-      setSelectedRows(allRowIds);
+      setSelectedRows(users.map(u => u.id));
     } else {
       setSelectedRows([]);
     }
   };
 
-  const handleSave = async () => {
-    await originalHandleSave();
-    setSuccessMessage(editingUser ? 'User berhasil diperbarui.' : 'User berhasil dibuat.');
-  };
-
-  const handleDelete = (ids) => {
-    if (!canManageUsers) return;
-    setItemsToDelete(ids);
-    setShowDeleteModal(true);
-  };
-  
-  const handleReplaceUser = (user) => {
-    console.log("Placeholder for replacing user:", user.name);
-    // Here we would open a new modal to select/create a new user
-    // and then call an API to handle the succession logic.
-    alert(`Fitur "Ganti Pengguna" untuk ${user.name} belum diimplementasikan.`);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (itemsToDelete.length === 0 || !canManageUsers) return;
-    setIsDeleting(true);
-    setTableError('');
-
+  const handleDeleteMultiple = async () => {
+    if (selectedRows.length === 0) return;
+    
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus ${selectedRows.length} pengguna?`)) {
+      return;
+    }
+    
     try {
-      const response = await fetch(`/api/manager/users`, {
+      const response = await fetch('/api/manager/users/bulk-delete', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: itemsToDelete }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.user?.token || ''}`
+        },
+        body: JSON.stringify({ ids: selectedRows })
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Gagal menghapus user');
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
 
-      setSuccessMessage(`Berhasil menghapus ${result.deletedCount} user.`);
+      setSuccessMessage(`Berhasil menghapus ${selectedRows.length} pengguna`);
       setSelectedRows([]);
       fetchUsers(); // Refresh data
     } catch (err) {
-      setTableError(err.message);
-    } finally {
-      setIsDeleting(false);
-      setShowDeleteModal(false);
-      setItemsToDelete([]);
+      console.error('Error deleting multiple users:', err);
+      setError('Gagal menghapus pengguna: ' + err.message);
     }
   };
-  
-  useEffect(() => {
-    if (tableError || successMessage) {
-      const timer = setTimeout(() => {
-        setTableError('');
-        setSuccessMessage('');
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [tableError, successMessage]);
 
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [itemsPerPage]);
-
+  // Columns configuration
   const columns = [
     {
       key: 'no',
@@ -137,12 +242,20 @@ export default function ManagerWarehouseUserManagement() {
       render: (_, __, index) => (currentPage - 1) * itemsPerPage + index + 1,
     },
     { key: 'employeeNumber', title: 'Kode Karyawan', sortable: true },
-    { key: 'name', title: 'Nama Lengkap', sortable: true },
+    { key: 'name', title: 'Nama', sortable: true },
     { key: 'username', title: 'Username', sortable: true },
+    {
+      key: 'role',
+      title: 'Role',
+      render: (value) => (
+        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+          {value}
+        </span>
+      )
+    },
     {
       key: 'status',
       title: 'Status',
-      sortable: true,
       render: (value) => (
         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
           value === 'AKTIF' || value === 'ACTIVE'
@@ -152,125 +265,124 @@ export default function ManagerWarehouseUserManagement() {
           {value}
         </span>
       )
-    },
-    {
-      key: 'createdAt',
-      title: 'Tanggal Dibuat',
-      render: (value) => new Date(value).toLocaleDateString('id-ID'),
-      sortable: true
-    },
+    }
   ];
 
-  const renderRowActions = (row) => (
-    <div className="flex items-center space-x-2">
-      <button
-        onClick={() => handleReplaceUser(row)}
-        className="p-1 text-green-500 hover:text-green-700"
-        title="Ganti Pengguna"
-      >
-        <RefreshCw size={18} />
-      </button>
-      <button
-        onClick={() => openModalForEdit(row)}
-        className="p-1 text-blue-500 hover:text-blue-700"
-        title="Edit"
-      >
-        <Edit size={18} />
-      </button>
-      <button
-        onClick={() => handleDelete([row.id])}
-        className="p-1 text-red-500 hover:text-red-700"
-        title="Hapus"
-      >
-        <Trash2 size={18} />
-      </button>
-    </div>
-  );
+  // Hydration-safe loading and authentication checks
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (status !== 'authenticated' || session.user.role !== ROLES.MANAGER) {
+    router.push('/unauthorized');
+    return null;
+  }
 
   const paginationData = {
     currentPage,
-    totalPages,
+    totalPages: Math.ceil(totalUsers / itemsPerPage),
     totalItems: totalUsers,
-    startIndex: (currentPage - 1) * itemsPerPage + 1,
-    endIndex: Math.min(currentPage * itemsPerPage, totalUsers),
     onPageChange: setCurrentPage,
-    itemsPerPage: itemsPerPage
   };
 
   return (
     <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
       <Breadcrumb
         items={[
-            { title: 'Manajemen Pengguna', href: '/manager/users' },
-            { title: 'Akun Gudang', href: '/manager/warehouse-users' }
+          { title: 'Dashboard', href: '/manager' },
+          { title: 'Manajemen Pengguna', href: '/manager/users' },
+          { title: 'Pengguna Gudang', href: '/manager/warehouse-users' },
         ]}
         darkMode={darkMode}
       />
-
-      <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-        Manajemen Akun Gudang
-      </h1>
       
+      <div className="mb-8">
+        <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+          Manajemen Pengguna Gudang
+        </h1>
+        <p className={`mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+          Kelola pengguna dengan role gudang
+        </p>
+      </div>
+
+      {(error || successMessage) && (
+        <div className={`mb-6 p-4 rounded-lg ${
+          error 
+            ? (darkMode ? 'bg-red-900/30 text-red-400' : 'bg-red-100 text-red-700') 
+            : (darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700')
+        }`}>
+          {error || successMessage}
+        </div>
+      )}
+
       <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
         <DataTable
           data={users}
           columns={columns}
           loading={loading}
-          selectedRows={selectedRows}
-          onSelectAll={handleSelectAll}
-          onSelectRow={handleSelectRow}
-          onAdd={canManageUsers ? openModalForCreate : undefined}
+          onAdd={handleAddUser}
           onSearch={setSearchTerm}
-          onItemsPerPageChange={setItemsPerPage}
           darkMode={darkMode}
-          actions={canManageUsers}
-          showAdd={canManageUsers}
+          showAdd={true}
           pagination={paginationData}
-          mobileColumns={['employeeNumber', 'name', 'status']}
-          rowActions={renderRowActions}
-          onDeleteMultiple={() => handleDelete(selectedRows)}
+          mobileColumns={['name', 'role', 'status']}
+          selectedRows={selectedRows}
+          onSelectRow={handleSelectRow}
+          onSelectAll={handleSelectAll}
+          isAllSelected={users.length > 0 && users.every(u => selectedRows.includes(u.id))}
+          onDeleteMultiple={selectedRows.length > 0 ? handleDeleteMultiple : undefined}
           selectedRowsCount={selectedRows.length}
+          itemsPerPage={itemsPerPage}
+          onItemsPerPageChange={setItemsPerPage}
+          rowActions={(user) => (
+            <div className="flex space-x-2">
+              <button
+                onClick={() => handleEditUser(user)}
+                className="p-1 text-blue-500 hover:text-blue-700"
+                title="Edit"
+              >
+                <Edit size={18} />
+              </button>
+              <button
+                onClick={() => handleDeleteUser(user)}
+                className="p-1 text-red-500 hover:text-red-700"
+                title="Hapus"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
+          )}
         />
       </div>
 
-      {(tableError || formError) && (
-        <div className="fixed bottom-4 right-4 z-50 flex items-center p-4 rounded-lg bg-red-500/10 text-red-400 shadow-lg">
-          <AlertTriangle className="h-5 w-5 mr-3" />
-          <p className="text-sm font-medium">{tableError || formError}</p>
-        </div>
-      )}
-      
-      {successMessage && (
-          <div className="fixed bottom-4 right-4 z-50 flex items-center p-4 rounded-lg bg-green-500/10 text-green-400 shadow-lg">
-              <CheckCircle className="h-5 w-5 mr-3" />
-              <p className="text-sm font-medium">{successMessage}</p>
-          </div>
-      )}
+      {/* User Modal */}
+      <UserModal
+        showModal={showModal}
+        closeModal={() => setShowModal(false)}
+        handleSave={handleSaveUser}
+        formData={editingUser || {}}
+        handleInputChange={() => {}} // Tidak digunakan karena kita menggunakan form bawaan
+        editingUser={editingUser}
+        error={error}
+        setFormError={setError}
+        darkMode={darkMode}
+        stores={stores}
+        isManagerContext={true}
+        defaultRole="WAREHOUSE"
+      />
 
-      {canManageUsers && (
-        <>
-          <UserModal
-            showModal={showModal}
-            closeModal={closeModal}
-            handleSave={handleSave}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            editingUser={editingUser}
-            error={formError}
-            setFormError={setFormError}
-            darkMode={darkMode}
-            allowedRoles={['WAREHOUSE']} // Only allow creating WAREHOUSE users
-          />
-          <ConfirmationModal
-            isOpen={showDeleteModal}
-            onClose={() => setShowDeleteModal(false)}
-            onConfirm={handleConfirmDelete}
-            title={`Konfirmasi Hapus ${itemsToDelete.length} User`}
-            message="Apakah Anda yakin ingin menghapus user yang dipilih? Tindakan ini tidak dapat dibatalkan."
-            isLoading={isDeleting}
-          />
-        </>
-      )}
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleConfirmDelete}
+        title="Konfirmasi Hapus Pengguna"
+        message={`Apakah Anda yakin ingin menghapus pengguna "${userToDelete?.name}"? Tindakan ini tidak dapat dibatalkan.`}
+      />
     </main>
   );
 }

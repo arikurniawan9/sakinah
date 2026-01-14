@@ -69,6 +69,7 @@ export default function StoreManagementPage() {
   const [storeToDelete, setStoreToDelete] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Ref untuk state untuk mencegah perubahan fungsi fetch saat state berubah
   const stateRef = useRef();
@@ -95,7 +96,13 @@ export default function StoreManagementPage() {
         status: filters?.status || ''
       });
 
-      const response = await fetch(`/api/manager/stores?${params.toString()}`);
+      const response = await fetch(`/api/manager/stores?${params.toString()}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.user?.token || ''}`
+        },
+        credentials: 'include'
+      });
 
       if (!response.ok) {
         // Handle different status codes appropriately
@@ -109,9 +116,9 @@ export default function StoreManagementPage() {
           return { data: [], hasMore: false };
         } else {
           // Other errors - display error message
-          const errorData = await response.text();
+          const errorData = await response.json().catch(() => ({}));
           console.error('Error response from API:', errorData);
-          throw new Error(`HTTP error! status: ${response.status}`);
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
       }
 
@@ -129,11 +136,11 @@ export default function StoreManagementPage() {
       if (error.message.includes('401') || error.message.includes('403')) {
         router.push('/login');
       } else {
-        toast.error(`Error mengambil data toko: ${error.message}`);
+        toast.error(`Error mengambil data toko: ${error.message || 'Terjadi kesalahan jaringan'}`);
       }
       return { data: [], hasMore: false };
     }
-  }, [router]);
+  }, [router, session]);
 
   // Fetch function using useRef to prevent unnecessary re-creation (for traditional pagination)
   const fetchStores = useCallback(async () => {
@@ -149,7 +156,13 @@ export default function StoreManagementPage() {
         status: currentState.filters.status
       });
 
-      const response = await fetch(`/api/manager/stores?${params.toString()}`);
+      const response = await fetch(`/api/manager/stores?${params.toString()}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.user?.token || ''}`
+        },
+        credentials: 'include'
+      });
 
       if (!response.ok) {
         // Handle different status codes appropriately
@@ -163,9 +176,9 @@ export default function StoreManagementPage() {
           return;
         } else {
           // Other errors - display error message
-          const errorData = await response.text();
+          const errorData = await response.json().catch(() => ({}));
           console.error('Error response from API:', errorData);
-          throw new Error(`HTTP error! status: ${response.status}`);
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
       }
 
@@ -178,12 +191,12 @@ export default function StoreManagementPage() {
       if (error.message.includes('401') || error.message.includes('403')) {
         router.push('/login');
       } else {
-        toast.error(`Error mengambil data toko: ${error.message}`);
+        toast.error(`Error mengambil data toko: ${error.message || 'Terjadi kesalahan jaringan'}`);
       }
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }, [dispatch, router]);
+  }, [dispatch, router, session]);
 
   // Memoized handler functions
   const handleSearch = useCallback((term) => {
@@ -206,7 +219,7 @@ export default function StoreManagementPage() {
     dispatch({ type: 'SET_FILTERS', payload: filters });
   }, []);
 
-  // Effect to fetch data when search, pagination, or sort parameters change
+  // Effect to fetch data when search, pagination, or sort parameters change (but not refreshTrigger)
   useEffect(() => {
     fetchStores();
   }, [state.searchTerm, state.currentPage, state.itemsPerPage, state.sortConfig.key, state.sortConfig.direction, state.filters.status]);
@@ -241,10 +254,15 @@ export default function StoreManagementPage() {
     <span className={`${baseStatusClasses} ${statusColors[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100'}`}>
       {status}
     </span>
-  ), [baseStatusClasses]);
+  ), [baseStatusClasses, statusColors]);
 
   // Handler untuk menghapus toko (mengubah status menjadi INACTIVE)
   const handleDeleteStore = useCallback(async (storeId, password) => {
+    // Konfirmasi sebelum menghapus
+    if (!window.confirm('Apakah Anda yakin ingin menonaktifkan toko ini? Tindakan ini tidak dapat dibatalkan.')) {
+      return;
+    }
+
     try {
       // Ambil data toko yang sekarang
       const storeResponse = await fetch(`/api/manager/stores/${storeId}`);
@@ -278,7 +296,7 @@ export default function StoreManagementPage() {
 
       if (response.ok) {
         // Jika berhasil diubah statusnya, refresh data
-        fetchStores();
+        setRefreshTrigger(prev => prev + 1);
         toast.success('Toko berhasil dinonaktifkan');
       } else {
         toast.error(result.error || 'Gagal menonaktifkan toko');
@@ -287,7 +305,7 @@ export default function StoreManagementPage() {
       console.error('Error updating store status:', error);
       toast.error('Terjadi kesalahan saat menonaktifkan toko');
     }
-  }, [fetchStores]); // Tambahkan fetchStores sebagai dependency
+  }, [setRefreshTrigger]); // Ganti fetchStores dengan setRefreshTrigger sebagai dependency
 
   // Handler untuk multiple selection
   const handleSelectAll = useCallback(() => {
@@ -350,7 +368,7 @@ export default function StoreManagementPage() {
 
         toast.success(`${selectedRows.length} toko berhasil dinonaktifkan!`);
         setSelectedRows([]); // Clear selection
-        fetchStores(); // Refresh data
+        setRefreshTrigger(prev => prev + 1); // Refresh data
       } catch (error) {
         console.error('Error deleting stores:', error);
         toast.error('Terjadi kesalahan saat menonaktifkan toko');
@@ -556,8 +574,8 @@ export default function StoreManagementPage() {
   };
 
   const handleStoreCreated = () => {
-    // Refresh data setelah membuat toko baru
-    fetchStores();
+    // Refresh data setelah membuat toko baru dengan memperbarui refreshTrigger
+    setRefreshTrigger(prev => prev + 1);
     toast.success('Toko berhasil dibuat');
   };
 
@@ -596,6 +614,7 @@ export default function StoreManagementPage() {
         // Delete multiple
         onDeleteMultiple={handleDeleteMultiple}
         selectedRowsCount={selectedRows.length}
+        refreshTrigger={refreshTrigger}
       />
 
       {/* Create Store Modal */}

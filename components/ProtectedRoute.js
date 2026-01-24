@@ -22,18 +22,20 @@ const ProtectedRoute = ({ children, requiredRole }) => {
       // Check if user has the required role
       // If requiredRole is an array, check if user's role is included
       let hasAccess = false;
-      if (Array.isArray(requiredRole)) {
-        // Check if user's role is in the required roles
-        hasAccess = requiredRole.includes(session.user.role);
-        // For ADMIN role, also allow access if the user has store context (store admin)
-        if (!hasAccess && requiredRole.includes('ADMIN') && session.user.role === 'ADMIN' && session.user.storeId) {
-          hasAccess = true;
-        }
-      } else {
-        hasAccess = !requiredRole || session.user.role === requiredRole;
-        // Special handling for ADMIN role - allow store admins who have store context
-        if (!hasAccess && requiredRole === 'ADMIN' && session.user.role === 'ADMIN' && session.user.storeId) {
-          hasAccess = true;
+      if (session?.user) { // Add null check for session.user
+        if (Array.isArray(requiredRole)) {
+          // Check if user's role is in the required roles
+          hasAccess = requiredRole.includes(session.user.role);
+          // For ADMIN role, also allow access if the user has store context (store admin)
+          if (!hasAccess && requiredRole.includes('ADMIN') && session.user.role === 'ADMIN' && session.user.storeId) {
+            hasAccess = true;
+          }
+        } else {
+          hasAccess = !requiredRole || session.user.role === requiredRole;
+          // Special handling for ADMIN role - allow store admins who have store context
+          if (!hasAccess && requiredRole === 'ADMIN' && session.user.role === 'ADMIN' && session.user.storeId) {
+            hasAccess = true;
+          }
         }
       }
 
@@ -54,17 +56,19 @@ const ProtectedRoute = ({ children, requiredRole }) => {
 
   // Check if user has access
   let hasAccess = false;
-  if (Array.isArray(requiredRole)) {
-    hasAccess = requiredRole.includes(session.user.role);
-    // For ADMIN role, also allow access if the user has store context (store admin)
-    if (!hasAccess && requiredRole.includes('ADMIN') && session.user.role === 'ADMIN' && session.user.storeId) {
-      hasAccess = true;
-    }
-  } else {
-    hasAccess = !requiredRole || session.user.role === requiredRole;
-    // Special handling for ADMIN role - allow store admins who have store context
-    if (!hasAccess && requiredRole === 'ADMIN' && session.user.role === 'ADMIN' && session.user.storeId) {
-      hasAccess = true;
+  if (session?.user) { // Add null check for session.user
+    if (Array.isArray(requiredRole)) {
+      hasAccess = requiredRole.includes(session.user.role);
+      // For ADMIN role, also allow access if the user has store context (store admin)
+      if (!hasAccess && requiredRole.includes('ADMIN') && session.user.role === 'ADMIN' && session.user.storeId) {
+        hasAccess = true;
+      }
+    } else {
+      hasAccess = !requiredRole || session.user.role === requiredRole;
+      // Special handling for ADMIN role - allow store admins who have store context
+      if (!hasAccess && requiredRole === 'ADMIN' && session.user.role === 'ADMIN' && session.user.storeId) {
+        hasAccess = true;
+      }
     }
   }
 

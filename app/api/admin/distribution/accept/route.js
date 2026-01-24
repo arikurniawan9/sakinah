@@ -201,7 +201,7 @@ export async function PUT(request) {
       userId: session.user.id,
       action: AUDIT_ACTIONS.WAREHOUSE_DISTRIBUTION_UPDATE,
       entity: 'WarehouseDistributionBatch', // New entity type for batch
-      recordId: `${date}-${distributedByUserId}-${storeId}`, // Use batch ID as recordId
+      entityId: `${date}-${distributedByUserId}-${storeId}`, // Use batch ID as entityId
       newValue: { status: 'ACCEPTED', totalItemsAccepted: updatedDistributions.length, reason: reason },
       storeId: session.user.storeId,
       ipAddress,
@@ -296,7 +296,7 @@ export async function PATCH(request) {
       userId: session.user.id,
       action: AUDIT_ACTIONS.WAREHOUSE_DISTRIBUTION_UPDATE,
       entity: 'WarehouseDistributionBatch', // New entity type for batch
-      recordId: `${date}-${distributedByUserId}-${storeId}`, // Use batch ID as recordId
+      entityId: `${date}-${distributedByUserId}-${storeId}`, // Use batch ID as entityId
       newValue: { status: 'REJECTED', totalItemsRejected: updatedDistributions.length, reason: reason },
       storeId: session.user.storeId,
       ipAddress,

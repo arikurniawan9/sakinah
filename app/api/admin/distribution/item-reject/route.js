@@ -68,7 +68,7 @@ export async function PUT(request) {
       userId: session.user.id,
       action: AUDIT_ACTIONS.WAREHOUSE_DISTRIBUTION_UPDATE,
       entity: 'WarehouseDistribution',
-      recordId: distributionItem.id,
+      entityId: distributionItem.id,
       newValue: { status: 'REJECTED', reason: reason || 'No reason provided' },
       storeId: session.user.storeId,
       ipAddress,

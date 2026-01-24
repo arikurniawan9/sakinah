@@ -90,7 +90,7 @@ const CategoryProductsModal = ({
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50"
       onClick={handleOverlayClick}
     >
-      <div className={`relative w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-xl shadow-lg transform transition-all ${darkMode ? 'bg-gray-800' : 'bg-white'}`} style={{minWidth: '800px'}}>
+      <div className={`relative w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-xl shadow-lg transform transition-all ${darkMode ? 'bg-gray-800' : 'bg-white'}`} style={{minWidth: '800px'}}>
         {/* Header */}
         <div className={`flex items-center justify-between p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-750' : 'border-gray-200 bg-gray-50'}`}>
           <div>

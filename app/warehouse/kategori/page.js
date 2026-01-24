@@ -63,8 +63,6 @@ export default function CategoryManagementPage() {
   const [showImportModal, setShowImportModal] = useState(false); // ADDED: State for import modal
   const [showCategoryProductsModal, setShowCategoryProductsModal] = useState(false); // State for category products modal
   const [selectedCategory, setSelectedCategory] = useState(null); // Selected category for products modal
-  const [categoryProducts, setCategoryProducts] = useState([]); // Products for the selected category
-  const [loadingProducts, setLoadingProducts] = useState(false); // Loading state for products
 
   // ESC key to close modals
   useEffect(() => {
@@ -203,25 +201,9 @@ export default function CategoryManagementPage() {
   const handleImport = () => setShowImportModal(true); // ADDED: handleImport function
 
   // Fungsi untuk menampilkan produk dalam kategori
-  const handleViewCategoryProducts = async (category) => {
+  const handleViewCategoryProducts = (category) => {
     setSelectedCategory(category);
-    setLoadingProducts(true);
-
-    try {
-      const response = await fetch(`/api/warehouse/products?categoryId=${category.id}`);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Gagal mengambil produk dalam kategori');
-      }
-
-      setCategoryProducts(data.products || []);
-      setShowCategoryProductsModal(true);
-    } catch (error) {
-      setTableError(error.message);
-    } finally {
-      setLoadingProducts(false);
-    }
+    setShowCategoryProductsModal(true);
   };
 
   // Fungsi untuk export PDF
@@ -422,7 +404,6 @@ export default function CategoryManagementPage() {
               isOpen={showCategoryProductsModal}
               onClose={() => setShowCategoryProductsModal(false)}
               category={selectedCategory}
-              products={categoryProducts}
               darkMode={darkMode}
             />
           </>

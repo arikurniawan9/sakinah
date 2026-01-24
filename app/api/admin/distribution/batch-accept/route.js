@@ -247,7 +247,7 @@ export async function PUT(request) {
       userId: session.user.id,
       action: AUDIT_ACTIONS.WAREHOUSE_DISTRIBUTION_UPDATE,
       entity: 'WarehouseDistributionBatch',
-      recordId: `${new Date(referenceDistribution.distributedAt).toISOString().split('T')[0]}-${referenceDistribution.distributedBy}-${referenceDistribution.storeId}`,
+      entityId: `${new Date(referenceDistribution.distributedAt).toISOString().split('T')[0]}-${referenceDistribution.distributedBy}-${referenceDistribution.storeId}`,
       newValue: { status: 'ACCEPTED', totalItemsAccepted: updatedDistributions.length, reason: 'Batch accept from detail modal' },
       storeId: session.user.storeId,
       ipAddress,

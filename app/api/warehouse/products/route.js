@@ -411,7 +411,7 @@ export async function DELETE(request) {
     const userAgent = requestHeaders.get('user-agent') || '';
 
     for (const product of productsToDelete) {
-      await logProductDeletion(session.user.id, product.id, product, masterStore.id, ipAddress, userAgent);
+      await logProductDeletion(session.user.id, product, masterStore.id, ipAddress, userAgent);
     }
 
     return NextResponse.json({

@@ -1,10 +1,10 @@
 // components/DataTable.js
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef } from 'react';
 import { Search, Plus, Download, Trash2, Edit, Eye, Filter, SortAsc, SortDesc, MinusCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Upload, FileText } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner'; // Import LoadingSpinner
 import AdvancedFilter from '@/components/AdvancedFilter'; // Import AdvancedFilter
 
-export default function DataTable({
+const DataTable = forwardRef(function DataTable({
   data,
   columns,
   onAdd,
@@ -44,7 +44,7 @@ export default function DataTable({
   onFilterChange = null, // ADDED: Filter change handler
   onToggleFilters = null, // ADDED: Toggle filters handler
   deleteMultipleLoading = false // ADDED: Loading state for delete multiple
-}) {
+}, forwardedRef) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false); // New state to track if component is mounted
@@ -77,6 +77,27 @@ export default function DataTable({
       }
     };
   }, []);
+
+  // Create a ref for the search input
+  const searchInputRef = useRef(null);
+
+  // Expose focusSearch function to parent component via ref
+  useEffect(() => {
+    if (forwardedRef && typeof forwardedRef === 'object' && forwardedRef.current) {
+      forwardedRef.current.focusSearch = () => {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+      };
+    }
+
+    // Cleanup function when component unmounts
+    return () => {
+      if (forwardedRef && typeof forwardedRef === 'object' && forwardedRef.current) {
+        forwardedRef.current.focusSearch = null;
+      }
+    };
+  }, [forwardedRef]);
 
   // Fallback to false if not mounted to prevent hydration mismatch
   const renderMobileView = mounted && isMobile;
@@ -127,6 +148,7 @@ export default function DataTable({
                 <div className="relative flex-grow sm:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
+                    ref={searchInputRef}
                     type="text"
                     placeholder="Cari..."
                     value=""
@@ -168,6 +190,7 @@ export default function DataTable({
                   <div className="relative flex-grow sm:w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
+                      ref={searchInputRef}
                       type="text"
                       placeholder="Cari..."
                       value={searchTerm}
@@ -223,7 +246,7 @@ export default function DataTable({
                       <option value={50}>50</option>
                       <option value={100}>100</option>
                       <option value={200}>200</option>
-                      <option value={500}>500</option>
+                      <option value={300}>300</option>
                     </select>
                   </div>
                 )}
@@ -551,4 +574,6 @@ export default function DataTable({
       )}
     </div>
   );
-}
+});
+
+export default DataTable;

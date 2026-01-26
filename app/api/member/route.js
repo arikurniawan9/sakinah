@@ -110,18 +110,29 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { name, phone, address, membershipType } = body;
+    const { name, phone, address, membershipType, code, global } = body;
+
+    // Special handling for "Pelanggan Umum" which doesn't need a valid phone number
+    const isPelangganUmum = (name === 'Pelanggan Umum' && code === 'UMUM');
 
     // 1. Validasi input dasar
-    if (!name || !phone) {
+    if (!name) {
       return NextResponse.json(
-        { error: 'Nama dan nomor telepon wajib diisi' }, 
+        { error: 'Nama wajib diisi' }, 
+        { status: 400 }
+      );
+    }
+    // Only validate phone if it's not the special "Pelanggan Umum"
+    if (!isPelangganUmum && !phone) {
+      return NextResponse.json(
+        { error: 'Nomor telepon wajib diisi' }, 
         { status: 400 }
       );
     }
     
     // 2. Validasi format nomor telepon
-    if (!/^\d{10,15}$/.test(phone)) {
+    // Only validate phone format if it's not the special "Pelanggan Umum"
+    if (!isPelangganUmum && !/^\d{10,15}$/.test(phone)) {
       return NextResponse.json(
         { error: 'Format nomor telepon tidak valid' }, 
         { status: 400 }

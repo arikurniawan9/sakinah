@@ -104,6 +104,14 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  console.log('Session user:', session.user); // Logging session user
+
+  // Pastikan storeId tersedia
+  if (!session.user.storeId) {
+    console.error('Store ID is missing from session');
+    return NextResponse.json({ error: 'Store ID tidak ditemukan dalam sesi. Harap pastikan Anda login dengan akun yang terkait dengan toko.' }, { status: 400 });
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get('file');
@@ -153,34 +161,49 @@ export async function POST(request) {
         const currentDate = new Date();
 
         groupedRecords[productKey] = {
-          name: record['Nama'] || record['name'] || record['nama'] || '',
+          name: record['Nama'] || record['name'] || record['nama'] || record['product_name'] || record['productName'] || '',
           productCode: productKey,
-          stock: !isNaN(parseInt(record['Stok'] || record['stock'])) ? parseInt(record['Stok'] || record['stock']) : 0, // Default to 0 if not specified
-          category: record['Kategori'] || record['category'] || record['kategori'] || '',
-          supplier: record['Supplier'] || record['supplier'] || record['supplier'] || '', // Could be empty as per requirement
-          description: record['Deskripsi'] || record['description'] || record['deskripsi'] || '',
+          stock: (() => {
+            const value = record['Stok'] || record['stock'] || record['jumlah_stok'] || record['jumlahStok'];
+            // Clean the value by removing any spaces or commas
+            const cleanedValue = String(value).replace(/[,.\s]/g, '');
+            return !isNaN(parseInt(cleanedValue)) ? parseInt(cleanedValue) : 0;
+          })(), // Default to 0 if not specified
+          category: record['Kategori'] || record['category'] || record['kategori'] || record['product_category'] || record['productCategory'] || '',
+          supplier: record['Supplier'] || record['supplier'] || record['product_supplier'] || record['productSupplier'] || '', // Could be empty as per requirement
+          description: record['Deskripsi'] || record['description'] || record['deskripsi'] || record['product_description'] || record['productDescription'] || '',
           createdAt: currentDate,
           updatedAt: currentDate,
           purchaseData: currentDate, // Store original creation date
           purchasePrice: (() => {
-            const value = record['Harga Beli'] || record['purchase_price'] || record['purchasePrice'] || record['harga_beli'];
-            return !isNaN(parseInt(value)) ? parseInt(value) : 0;
+            const value = record['Harga Beli'] || record['purchase_price'] || record['purchasePrice'] || record['harga_beli'] || record['Harga Beli (Rp)'] || record['Harga Beli(Rp)'];
+            // Clean the value by removing "Rp" and any spaces
+            const cleanedValue = String(value).replace(/[Rp\s.,]/g, '');
+            return !isNaN(parseInt(cleanedValue)) ? parseInt(cleanedValue) : 0;
           })(),
           retailPrice: (() => {
-            const value = record['Harga Jual/Eceran'] || record['Harga Eceran'] || record['retailPrice'] || record['hargaEceran'] || record['harga_jual'];
-            return !isNaN(parseInt(value)) ? parseInt(value) : 0;
+            const value = record['Harga Jual/Eceran'] || record['Harga Eceran'] || record['retailPrice'] || record['hargaEceran'] || record['harga_jual'] || record['Harga Jual'] || record['Harga Jual (Rp)'] || record['Harga Jual(Rp)'];
+            // Clean the value by removing "Rp" and any spaces
+            const cleanedValue = String(value).replace(/[Rp\s.,]/g, '');
+            return !isNaN(parseInt(cleanedValue)) ? parseInt(cleanedValue) : 0;
           })(),
           silverPrice: (() => {
-            const value = record['Harga Member Silver'] || record['Harga Silver'] || record['silverPrice'] || record['hargaSilver'] || record['harga_silver'];
-            return !isNaN(parseInt(value)) ? parseInt(value) : 0;
+            const value = record['Harga Member Silver'] || record['Harga Silver'] || record['silverPrice'] || record['hargaSilver'] || record['harga_silver'] || record['Harga Silver (Rp)'] || record['Harga Silver(Rp)'];
+            // Clean the value by removing "Rp" and any spaces
+            const cleanedValue = String(value).replace(/[Rp\s.,]/g, '');
+            return !isNaN(parseInt(cleanedValue)) ? parseInt(cleanedValue) : 0;
           })(),
           goldPrice: (() => {
-            const value = record['Harga Member Gold'] || record['Harga Gold'] || record['goldPrice'] || record['hargaGold'] || record['harga_gold'];
-            return !isNaN(parseInt(value)) ? parseInt(value) : 0;
+            const value = record['Harga Member Gold'] || record['Harga Gold'] || record['goldPrice'] || record['hargaGold'] || record['harga_gold'] || record['Harga Gold (Rp)'] || record['Harga Gold(Rp)'];
+            // Clean the value by removing "Rp" and any spaces
+            const cleanedValue = String(value).replace(/[Rp\s.,]/g, '');
+            return !isNaN(parseInt(cleanedValue)) ? parseInt(cleanedValue) : 0;
           })(),
           platinumPrice: (() => {
-            const value = record['Harga Member Platinum (Partai)'] || record['Harga Platinum'] || record['platinumPrice'] || record['hargaPlatinum'] || record['harga_platinum'];
-            return !isNaN(parseInt(value)) ? parseInt(value) : 0;
+            const value = record['Harga Member Platinum (Partai)'] || record['Harga Platinum'] || record['platinumPrice'] || record['hargaPlatinum'] || record['harga_platinum'] || record['Harga Platinum (Rp)'] || record['Harga Platinum(Rp)'];
+            // Clean the value by removing "Rp" and any spaces
+            const cleanedValue = String(value).replace(/[Rp\s.,]/g, '');
+            return !isNaN(parseInt(cleanedValue)) ? parseInt(cleanedValue) : 0;
           })(),
         };
       }
@@ -188,42 +211,21 @@ export async function POST(request) {
 
     const updateMode = formData.get('updateMode'); // 'overwrite' or 'add_stock'
 
-    // If no updateMode is specified, this is a preliminary check.
-    if (!updateMode) {
-      const existingProducts = [];
-      for (const [productCode, productData] of Object.entries(groupedRecords)) {
-        const existingProduct = await prisma.product.findUnique({
-          where: {
-            productCode_storeId: {
-              productCode: productCode,
-              storeId: session.user.storeId
-            }
-          }
-        });
+    // If no updateMode is specified, default to 'add_stock' behavior for duplicates
+    // This means if a product already exists, we'll add the stock instead of overwriting
+    const effectiveUpdateMode = updateMode || 'add_stock';
 
-        if (existingProduct) {
-          existingProducts.push({
-            productCode: productCode,
-            name: productData.name,
-            existingProduct: existingProduct
-          });
-        }
-      }
-
-      if (existingProducts.length > 0) {
-        return NextResponse.json({
-          duplicateProducts: existingProducts,
-          message: `Terdapat ${existingProducts.length} produk yang sudah ada. Silakan konfirmasi untuk melanjutkan.`,
-          needConfirmation: true
-        }, { status: 200 });
-      }
-    }
+    console.log('Update mode:', updateMode); // Logging update mode
+    console.log('Session user storeId:', session.user.storeId); // Logging storeId
+    console.log('Number of grouped records:', Object.keys(groupedRecords).length); // Logging jumlah produk
 
     let importedCount = 0;
     const errors = [];
 
     // Process each unique product
     for (const [productCode, productData] of Object.entries(groupedRecords)) {
+      console.log('Processing product:', productCode, productData); // Logging produk yang diproses
+
       try {
         const existingProduct = await prisma.product.findUnique({
           where: {
@@ -234,8 +236,10 @@ export async function POST(request) {
           }
         });
 
+        console.log('Existing product:', existingProduct); // Logging produk yang sudah ada
+
         if (existingProduct) {
-          if (updateMode === 'add_stock') {
+          if (effectiveUpdateMode === 'add_stock') {
             await prisma.product.update({
               where: { id: existingProduct.id },
               data: {
@@ -245,7 +249,7 @@ export async function POST(request) {
                 updatedAt: new Date()
               }
             });
-          } else if (updateMode === 'overwrite') {
+          } else if (effectiveUpdateMode === 'overwrite') {
             const categoryId = await findOrCreateCategory(productData.category, session.user.storeId);
             const supplierId = await findOrCreateSupplier(productData.supplier, session.user.storeId);
 
@@ -292,12 +296,19 @@ export async function POST(request) {
         }
 
         importedCount++;
+        console.log('Successfully processed product:', productCode); // Logging produk berhasil diproses
       } catch (productError) {
         console.error(`Error importing product with code ${productCode}:`, productError);
         errors.push({ row: productCode, error: `Gagal memproses: ${productError.message}` });
       }
     }
 
+
+    // Hitung jumlah produk yang ditambahkan stoknya
+    const addedStockCount = importedCount; // Kita tetap menggunakan importedCount karena setiap produk diproses
+
+    // Log total imported products
+    console.log(`Successfully processed ${importedCount} products`);
 
     return NextResponse.json({
       message: `Berhasil mengimpor ${importedCount} produk`,
@@ -307,5 +318,7 @@ export async function POST(request) {
   } catch (error) {
     console.error('Error importing products:', error);
     return NextResponse.json({ error: `Gagal mengimpor produk: ${error.message}` }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
   }
 }

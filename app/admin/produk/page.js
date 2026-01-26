@@ -37,6 +37,7 @@ export default function ProductManagement() {
 
   const searchInputRef = useRef(null);
   const importInputRef = useRef(null);
+  const dataTableRef = useRef(null);
   
   const {
     products,
@@ -673,19 +674,15 @@ export default function ProductManagement() {
         setImportErrors(result.errors);
         setImportStatus('success_with_errors');
         toast.warn(`Berhasil mengimpor ${importedCount} produk, tetapi ${result.errors.length} baris gagal.`);
-      } else if (result.needConfirmation && result.duplicateProducts) {
-        setDuplicateProducts(result.duplicateProducts);
-        setImportStatus('confirmation_needed');
-        setShowImportConfirmModal(true);
       } else {
         setImportStatus('success');
         toast.success(result.message || `Berhasil mengimport ${importedCount} produk.`);
-      }
 
-      // Refresh data produk setelah import selesai
-      await fetchProducts(true);
-      // Reset pagination untuk memastikan produk baru terlihat
-      setCurrentPage(1);
+        // Refresh data produk setelah import selesai
+        await fetchProducts(true);
+        // Reset pagination untuk memastikan produk baru terlihat
+        setCurrentPage(1);
+      }
 
     } catch (err) {
       clearInterval(progressInterval);
@@ -693,6 +690,15 @@ export default function ProductManagement() {
       setImportErrors([{ row: 'General', error: err.message }]);
       toast.error('Terjadi kesalahan saat import: ' + err.message);
     } finally {
+      // Refresh data produk setelah import selesai (baik sukses maupun gagal)
+      await fetchProducts(true);
+      setCurrentPage(1);
+
+      // Tunggu sebentar sebelum menutup modal untuk memberi pengguna waktu melihat hasil
+      setTimeout(() => {
+        resetImportState();
+      }, 2000);
+
       clearInterval(progressInterval);
       setImportLoading(false);
     }
@@ -751,12 +757,20 @@ export default function ProductManagement() {
         console.warn('Import errors:', result.errors);
         toast.warn(`Beberapa produk gagal diimpor: ${result.errors.length} error(s)`);
       }
-      resetImportState();
     } catch (err) {
       setImportStatus('error');
       saveImportStatusRef.current('error', fileToImportRef.current, importProgress);
       toast.error('Terjadi kesalahan saat import: ' + err.message);
     } finally {
+      // Refresh data produk setelah import selesai (baik sukses maupun gagal)
+      await fetchProducts(true);
+      setCurrentPage(1);
+
+      // Tunggu sebentar sebelum menutup modal untuk memberi pengguna waktu melihat hasil
+      setTimeout(() => {
+        resetImportState();
+      }, 2000);
+
       setImportLoading(false);
       setTimeout(() => {
         setImportProgress({ current: 0, total: 0, status: '', show: false });
@@ -787,7 +801,11 @@ export default function ProductManagement() {
     setImportStatus('idle');
     setImportErrors([]);
     clearImportStatusRef.current();
-  }, []);
+
+    // Refresh data produk dan reset pagination setelah reset state import
+    fetchProducts(true);
+    setCurrentPage(1);
+  }, [fetchProducts, setCurrentPage]);
 
   const [isFileChecked, setIsFileChecked] = useState(false);
 
@@ -813,8 +831,10 @@ export default function ProductManagement() {
     // Membuat template CSV dengan format yang sesuai dengan API import
     const csvContent = [
       'Nama,Kode,Stok,Kategori,Supplier,Deskripsi,Harga Beli,Harga Jual/Eceran,Harga Member Silver,Harga Member Gold,Harga Member Platinum (Partai)',
-      'Contoh Produk,001,100,Umum,Supplier A,"Deskripsi produk",10000,15000,14000,13000,12000',
-      'Produk Contoh 2,002,50,Kategori B,Supplier B,"Deskripsi produk 2",20000,25000,24000,23000,22000'
+      '"Smartphone A","SPH001",50,"Elektronik","Supplier Elektronik","Smartphone terbaru",3000000,3500000,3400000,3300000,3200000',
+      '"Kemeja B","KMB002",30,"Pakaian","Supplier Pakaian","Kemeja lengan panjang",150000,200000,190000,180000,170000',
+      '"Jam Tangan C","JMT003",100,"Aksesoris","Supplier Aksesoris","Jam tangan elegan",500000,600000,580000,560000,540000',
+      '"Produk Duplikat","PRD001",20,"Elektronik","Supplier ABC","Produk yang sudah ada di sistem, stok akan ditambahkan",2500000,3000000,2900000,2800000,2700000'
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -835,8 +855,14 @@ export default function ProductManagement() {
   }, []);
   
   const handleFocusSearch = useCallback(() => {
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
+    if (dataTableRef.current && dataTableRef.current.focusSearch) {
+      dataTableRef.current.focusSearch();
+    } else {
+      // Fallback jika ref tidak tersedia
+      const searchInput = document.querySelector('input[placeholder="Cari..."]');
+      if (searchInput) {
+        searchInput.focus();
+      }
     }
   }, []);
   
@@ -852,12 +878,12 @@ export default function ProductManagement() {
   useKeyboardShortcut(shortcuts);
 
   const shortcutList = [
-    { key: 'Alt + N', description: 'Tambah Produk Baru' },
-    { key: 'Alt + F', description: 'Cari Produk' },
-    { key: 'Alt + I', description: 'Import Produk' },
-    { key: 'Alt + E', description: 'Export Produk' },
+    { key: 'Alt + N', description: 'Tambah Baru' },
+    { key: 'Alt + F', description: 'Cari' },
+    { key: 'Alt + I', description: 'Import' },
+    { key: 'Alt + E', description: 'Export' },
     { key: 'Alt + B', description: 'Cetak Barcode' },
-    { key: 'Delete', description: 'Hapus Produk Terpilih' },
+    { key: 'Delete', description: 'Hapus Terpilih' },
   ];
 
   useEffect(() => {
@@ -907,56 +933,6 @@ export default function ProductManagement() {
         <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Manajemen Produk</h1>
 
         <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-theme-purple-700' : 'bg-white border-gray-200'} border`}>
-          <div className={`p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-grow">
-                <div className="relative flex-grow sm:w-64">
-                  <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-                  <input ref={searchInputRef} type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Cari produk..." className={`w-full pl-10 pr-4 py-2 border rounded-md shadow-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-theme-purple-500`} />
-                </div>
-                <div className="w-full sm:w-auto">
-                  <label htmlFor="itemsPerPage" className="sr-only">Items per page</label>
-                  <select id="itemsPerPage" value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))} className={`w-full px-3 py-2 border rounded-md shadow-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-theme-purple-500`}>
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                    <option value={50}>50</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-start md:justify-end flex-wrap gap-2">
-                {selectedRows.length > 0 && (
-                  <Tooltip content={`Hapus ${selectedRows.length} produk terpilih (Delete)`}>
-                    <button onClick={handleDeleteMultiple} className="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"><Trash2 className="h-4 w-4" /><span className="ml-2">{selectedRows.length}</span></button>
-                  </Tooltip>
-                )}
-                <Tooltip content="Import produk dari file (Alt+I)">
-                  <button onClick={handleImport} className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`} disabled={importLoading}>
-                    <Upload className="h-4 w-4" />
-                  </button>
-                </Tooltip>
-                <Tooltip content="Cetak barcode produk (Alt+B)">
-                  <button onClick={handlePrintBarcode} className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}><Hash className="h-4 w-4" /></button>
-                </Tooltip>
-                <Tooltip content="Export data ke file (Alt+E)">
-                  <button onClick={handleExport} disabled={exportLoading} className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${darkMode ? 'text-gray-200 bg-gray-800 hover:bg-gray-700' : 'text-gray-700 bg-gray-100 hover:bg-gray-200'}`}>
-                    {exportLoading ? <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : <Download className="h-4 w-4" />}
-                  </button>
-                </Tooltip>
-                {isAdmin && <Tooltip content="Tambah produk baru (Alt+N)"><button onClick={openModalForCreate} className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"><Plus className="h-4 w-4 mr-2" /><span>Baru</span></button></Tooltip>}
-              </div>
-
-              {/* Hidden file input for import shortcut */}
-              <input
-                id="hidden-import-file-input"
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                style={{ display: 'none' }}
-                onChange={handleImport}
-              />
-            </div>
-          </div>
-
           {hasActiveFilters && (
             <div className={`p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
               <div className="flex flex-col sm:flex-row gap-2 items-center justify-between">
@@ -973,8 +949,8 @@ export default function ProductManagement() {
               </div>
             </div>
           )}
-
           <DataTable
+            ref={dataTableRef}
             data={enhancedProducts}
             columns={columns}
             loading={loading}
@@ -985,16 +961,18 @@ export default function ProductManagement() {
             onSearch={setSearchTerm}
             onExport={handleExport}
             onImport={handleImport}
+            onTemplateDownload={handleDownloadTemplate}
             onItemsPerPageChange={setItemsPerPage}
             onDeleteMultiple={handleDeleteMultiple}
             selectedRowsCount={selectedRows.length}
             darkMode={darkMode}
             actions={isAdmin}
             rowActions={rowActions}
-            showToolbar={false}
+            showToolbar={true}
             showAdd={isAdmin}
             showExport={true}
             showImport={true}
+            showTemplate={true}
             showItemsPerPage={true}
             pagination={paginationData}
             mobileColumns={['productCode', 'name', 'price', 'stock']}
@@ -1041,34 +1019,6 @@ export default function ProductManagement() {
           darkMode={darkMode}
         />
 
-        {showImportConfirmModal && (
-          <ConfirmationModal
-            isOpen={showImportConfirmModal}
-            onClose={() => {
-              setShowImportConfirmModal(false);
-              setFileToImport(null);
-              setDuplicateProducts([]);
-            }}
-            onConfirm={() => handleImportWithConfirmation('overwrite')}
-            onConfirmSecondary={() => handleImportWithConfirmation('add_stock')}
-            title="Produk yang Sama Ditemukan"
-            message={`Ditemukan ${duplicateProducts.length} produk yang sudah ada di sistem. Apa yang ingin Anda lakukan?`}
-            primaryActionText="Timpa Produk"
-            secondaryActionText="Tambah Stok Saja"
-            hasSecondaryAction={true}
-            darkMode={darkMode}
-          >
-            <div className="mt-4 max-h-40 overflow-y-auto">
-              <ul className={`list-disc pl-5 space-y-1 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
-                {duplicateProducts.map((product, index) => (
-                  <li key={index}>
-                    <span className="font-medium">{product.productCode}</span> - {product.name}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </ConfirmationModal>
-        )}
 
         <ExportFormatSelector isOpen={showExportFormatModal} onClose={() => setShowExportFormatModal(false)} onConfirm={handleExportWithFormat} title="Produk" darkMode={darkMode} />
         <PDFPreviewModal isOpen={showPDFPreviewModal} onClose={() => setShowPDFPreviewModal(false)} data={pdfPreviewData?.data} title={pdfPreviewData?.title} darkMode={darkMode} />
@@ -1266,7 +1216,20 @@ export default function ProductManagement() {
                   {/* --- Close Button --- */}
                   <button
                     type="button"
-                    onClick={() => resetImportState()}
+                    onClick={() => {
+                      // Jika sedang dalam proses import (processing), jangan tutup modal
+                      if (importStatus === 'processing') {
+                        // Tidak melakukan apa-apa saat sedang proses
+                        return;
+                      }
+                      // Untuk status success/error, biarkan setTimeout menangani reset state
+                      if (importStatus === 'success' || importStatus === 'error' || importStatus === 'success_with_errors') {
+                        // Hanya tutup modal, reset state akan dilakukan oleh setTimeout
+                        setShowImportModal(false);
+                      } else {
+                        resetImportState();
+                      }
+                    }}
                     className={`mt-3 w-full inline-flex justify-center rounded-md border shadow-sm px-4 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-sm ${darkMode ? 'bg-gray-600 text-white hover:bg-gray-500 border-gray-500' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
                   >
                     {importStatus === 'idle' || importStatus === 'processing' ? 'Batal' : 'Tutup'}

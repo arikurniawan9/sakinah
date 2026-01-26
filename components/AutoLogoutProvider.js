@@ -30,7 +30,8 @@ const AutoLogoutProvider = ({ children }) => {
         // Set new timeout only if NOT on the kasir/transaksi page
         if (pathname !== '/kasir/transaksi') {
           timeoutRef.current = setTimeout(() => {
-            signOut({ callbackUrl: '/login' });
+            // Defer signOut to the next event loop tick to avoid "Cannot transition to a new state" errors
+            setTimeout(() => signOut({ callbackUrl: '/login' }), 0);
           }, AUTO_LOGOUT_DURATION);
         }
       };

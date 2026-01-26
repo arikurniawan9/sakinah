@@ -89,7 +89,7 @@ export async function PUT(request) {
       groupedDistributions[productCode].individualDistributions.push(distribution);
     }
 
-    // Update distribution status in a separate transaction (this is the critical part that must be atomic)
+    // Update distribution status in a separate transaction (first atomic operation)
     const updatedDistributions = await prisma.$transaction(async (tx) => {
       const results = [];
 
@@ -115,125 +115,129 @@ export async function PUT(request) {
       timeout: 10000, // 10 seconds for the critical status update
     });
 
-    // Process the remaining operations outside the main transaction
+    // Process the remaining operations in a separate transaction
     // These operations are important but not as critical for atomicity as status updates
     for (const productCode in groupedDistributions) {
       const groupedDist = groupedDistributions[productCode];
       const distribution = groupedDist.individualDistributions[0]; // Use the first distribution as reference
 
-      // First, ensure the supplier exists in the target store (create if doesn't exist)
-      const supplierInStore = await prisma.supplier.findFirst({
-        where: {
-          code: distribution.product.supplier.code, // Use supplier code to identify
-          storeId: session.user.storeId
-        }
-      });
-
-      let targetSupplierId = supplierInStore?.id;
-      if (!supplierInStore) {
-        // Create the supplier in the target store
-        const newSupplier = await prisma.supplier.create({
-          data: {
-            storeId: session.user.storeId,
-            code: distribution.product.supplier.code,
-            name: distribution.product.supplier.name,
-            contactPerson: distribution.product.supplier.contactPerson,
-            address: distribution.product.supplier.address,
-            phone: distribution.product.supplier.phone,
-            email: distribution.product.supplier.email,
-          }
-        });
-        targetSupplierId = newSupplier.id;
-      } else {
-        targetSupplierId = supplierInStore.id;
-      }
-
-      // Create a purchase record for the store to represent this accepted product in the batch
-      await prisma.purchase.create({
-        data: {
-          storeId: session.user.storeId,
-          supplierId: targetSupplierId,
-          userId: session.user.id,
-          purchaseDate: new Date(distribution.distributedAt),
-          totalAmount: groupedDist.totalAmount, // Use total amount for all items of this product
-          status: 'COMPLETED',
-          items: {
-            create: {
-              storeId: session.user.storeId,
-              productId: distribution.productId,
-              quantity: groupedDist.totalQuantity, // Use total quantity for all items of this product
-              purchasePrice: distribution.unitPrice,
-              subtotal: groupedDist.totalAmount,
-            }
-          }
-        },
-      });
-
-      // First, ensure the category exists in the target store (create if doesn't exist)
-      const categoryInStore = await prisma.category.findFirst({
-        where: {
-          name: distribution.product.category.name, // Use category name to identify
-          storeId: session.user.storeId
-        }
-      });
-
-      let targetCategoryId = categoryInStore?.id;
-      if (!categoryInStore) {
-        // Create the category in the target store
-        const newCategory = await prisma.category.create({
-          data: {
-            storeId: session.user.storeId,
-            name: distribution.product.category.name,
-            description: distribution.product.category.description,
-            icon: distribution.product.category.icon, // Also copy the icon
-          }
-        });
-        targetCategoryId = newCategory.id;
-      } else {
-        targetCategoryId = categoryInStore.id;
-      }
-
-      // Update product stock in the store using upsert to handle cases where product doesn't exist yet
-      // Use the total quantity for all items of this product in the batch
-      await prisma.product.upsert({
-        where: {
-          productCode_storeId: {
-            productCode: distribution.product.productCode,
+      await prisma.$transaction(async (tx) => {
+        // First, ensure the supplier exists in the target store (create if doesn't exist)
+        const supplierInStore = await tx.supplier.findFirst({
+          where: {
+            code: distribution.product.supplier.code, // Use supplier code to identify
             storeId: session.user.storeId
           }
-        },
-        update: {
-          stock: {
-            increment: groupedDist.totalQuantity // Use total quantity for all items of this product
-          },
-          // Update other product fields if needed
-          name: distribution.product.name,
-          description: distribution.product.description,
-          purchasePrice: distribution.product.purchasePrice,
-          retailPrice: distribution.product.retailPrice,
-          silverPrice: distribution.product.silverPrice,
-          goldPrice: distribution.product.goldPrice,
-          platinumPrice: distribution.product.platinumPrice,
-          categoryId: targetCategoryId,
-          supplierId: targetSupplierId,
-        },
-        create: {
-          // Create new product record for this store
-          // Use the productCode and storeId as the unique identifier instead of sharing IDs
-          storeId: session.user.storeId,
-          categoryId: targetCategoryId,
-          name: distribution.product.name,
-          productCode: distribution.product.productCode,
-          stock: groupedDist.totalQuantity, // Set initial stock to the total distributed quantity for this product
-          purchasePrice: distribution.product.purchasePrice,
-          retailPrice: distribution.product.retailPrice,
-          silverPrice: distribution.product.silverPrice,
-          goldPrice: distribution.product.goldPrice,
-          platinumPrice: distribution.product.platinumPrice,
-          supplierId: targetSupplierId,
-          description: distribution.product.description,
-          image: distribution.product.image,
+        });
+
+        let targetSupplierId = supplierInStore?.id;
+        if (!supplierInStore) {
+          // Create the supplier in the target store
+          const newSupplier = await tx.supplier.create({
+            data: {
+              storeId: session.user.storeId,
+              code: distribution.product.supplier.code,
+              name: distribution.product.supplier.name,
+              contactPerson: distribution.product.supplier.contactPerson,
+              address: distribution.product.supplier.address,
+              phone: distribution.product.supplier.phone,
+              email: distribution.product.supplier.email,
+            }
+          });
+          targetSupplierId = newSupplier.id;
+        } else {
+          targetSupplierId = supplierInStore.id;
         }
+
+        // Create a purchase record for the store to represent this accepted product in the batch
+        await tx.purchase.create({
+          data: {
+            storeId: session.user.storeId,
+            supplierId: targetSupplierId,
+            userId: session.user.id,
+            purchaseDate: new Date(distribution.distributedAt),
+            totalAmount: groupedDist.totalAmount, // Use total amount for all items of this product
+            status: 'COMPLETED',
+            items: {
+              create: {
+                storeId: session.user.storeId,
+                productId: distribution.productId,
+                quantity: groupedDist.totalQuantity, // Use total quantity for all items of this product
+                purchasePrice: distribution.unitPrice,
+                subtotal: groupedDist.totalAmount,
+              }
+            }
+          }
+        });
+
+        // First, ensure the category exists in the target store (create if doesn't exist)
+        const categoryInStore = await tx.category.findFirst({
+          where: {
+            name: distribution.product.category.name, // Use category name to identify
+            storeId: session.user.storeId
+          }
+        });
+
+        let targetCategoryId = categoryInStore?.id;
+        if (!categoryInStore) {
+          // Create the category in the target store
+          const newCategory = await tx.category.create({
+            data: {
+              storeId: session.user.storeId,
+              name: distribution.product.category.name,
+              description: distribution.product.category.description,
+              icon: distribution.product.category.icon, // Also copy the icon
+            }
+          });
+          targetCategoryId = newCategory.id;
+        } else {
+          targetCategoryId = categoryInStore.id;
+        }
+
+        // Update product stock in the store using upsert to handle cases where product doesn't exist yet
+        // Use the total quantity for all items of this product in the batch
+        await tx.product.upsert({
+          where: {
+            productCode_storeId: {
+              productCode: distribution.product.productCode,
+              storeId: session.user.storeId
+            }
+          },
+          update: {
+            stock: {
+              increment: groupedDist.totalQuantity // Use total quantity for all items of this product
+            },
+            // Update other product fields if needed
+            name: distribution.product.name,
+            description: distribution.product.description,
+            purchasePrice: distribution.product.purchasePrice,
+            retailPrice: distribution.product.retailPrice,
+            silverPrice: distribution.product.silverPrice,
+            goldPrice: distribution.product.goldPrice,
+            platinumPrice: distribution.product.platinumPrice,
+            categoryId: targetCategoryId,
+            supplierId: targetSupplierId,
+          },
+          create: {
+            // Create new product record for this store
+            // Use the productCode and storeId as the unique identifier instead of sharing IDs
+            storeId: session.user.storeId,
+            categoryId: targetCategoryId,
+            name: distribution.product.name,
+            productCode: distribution.product.productCode,
+            stock: groupedDist.totalQuantity, // Set initial stock to the total distributed quantity for this product
+            purchasePrice: distribution.product.purchasePrice,
+            retailPrice: distribution.product.retailPrice,
+            silverPrice: distribution.product.silverPrice,
+            goldPrice: distribution.product.goldPrice,
+            platinumPrice: distribution.product.platinumPrice,
+            supplierId: targetSupplierId,
+            description: distribution.product.description,
+            image: distribution.product.image,
+          }
+        });
+      }, {
+        timeout: 10000, // 10 seconds for each product processing transaction
       });
     }
 
@@ -257,12 +261,33 @@ export async function PUT(request) {
 
     return NextResponse.json({
       success: true,
-      message: `${updatedDistributions.length} distribution(s) in the batch accepted successfully`,
+      message: `Berhasil menerima ${updatedDistributions.length} item distribusi dalam batch. Produk telah ditambahkan ke stok toko.`,
       batchId: `${new Date(referenceDistribution.distributedAt).toISOString().split('T')[0]}-${referenceDistribution.distributedBy}`,
       distributions: updatedDistributions
     });
   } catch (error) {
     console.error('Error accepting warehouse distribution batch:', error);
+
+    // Log audit for failed acceptance
+    const requestHeaders = new Headers(request.headers);
+    const ipAddress = requestHeaders.get('x-forwarded-for') || requestHeaders.get('x-real-ip') || '127.0.0.1';
+    const userAgent = requestHeaders.get('user-agent') || '';
+
+    if (session) {
+      await logAudit({
+        userId: session.user.id,
+        action: AUDIT_ACTIONS.WAREHOUSE_DISTRIBUTION_UPDATE,
+        entity: 'WarehouseDistributionBatch',
+        entityId: distributionId || 'unknown',
+        oldValue: { status: 'PENDING_ACCEPTANCE' },
+        newValue: { status: 'FAILED_ACCEPTANCE', error: error.message },
+        storeId: session.user.storeId,
+        ipAddress,
+        userAgent,
+        additionalData: { message: 'Distribution batch acceptance failed', error: error.message }
+      });
+    }
+
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }

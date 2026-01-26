@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useUserTheme } from '@/components/UserThemeContext';
 import { X, Package, User, Calendar, Hash, DollarSign, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import DataTable from '@/components/DataTable'; // Assuming a generic DataTable component exists
+import CustomNotification from '@/components/CustomNotification';
 
 export default function DistributionDetailModal({
   isOpen,
@@ -16,6 +17,7 @@ export default function DistributionDetailModal({
   const [batchDetails, setBatchDetails] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [notification, setNotification] = useState({ show: false, message: '', type: '' });
 
   // Handle ESC key press to close modal
   useEffect(() => {
@@ -265,15 +267,15 @@ export default function DistributionDetailModal({
                             });
 
                             if (response.ok) {
-                              alert('Item distribusi berhasil diterima');
+                              setNotification({ show: true, message: 'Item distribusi berhasil diterima', type: 'success' });
                               // Refresh the details to update status
                               fetchDistributionDetails();
                             } else {
                               const result = await response.json();
-                              alert(`Gagal menerima item distribusi: ${result.error || 'Unknown error'}`);
+                              setNotification({ show: true, message: `Gagal menerima item distribusi: ${result.error || 'Unknown error'}`, type: 'error' });
                             }
                           } catch (error) {
-                            alert(`Error saat menerima item distribusi: ${error.message}`);
+                            setNotification({ show: true, message: `Error saat menerima item distribusi: ${error.message}`, type: 'error' });
                           }
                         }}
                         disabled={row.status === 'ACCEPTED'}
@@ -300,15 +302,15 @@ export default function DistributionDetailModal({
                             });
 
                             if (response.ok) {
-                              alert('Item distribusi berhasil ditolak');
+                              setNotification({ show: true, message: 'Item distribusi berhasil ditolak', type: 'success' });
                               // Refresh the details to update status
                               fetchDistributionDetails();
                             } else {
                               const result = await response.json();
-                              alert(`Gagal menolak item distribusi: ${result.error || 'Unknown error'}`);
+                              setNotification({ show: true, message: `Gagal menolak item distribusi: ${result.error || 'Unknown error'}`, type: 'error' });
                             }
                           } catch (error) {
-                            alert(`Error saat menolak item distribusi: ${error.message}`);
+                            setNotification({ show: true, message: `Error saat menolak item distribusi: ${error.message}`, type: 'error' });
                           }
                         }}
                         disabled={row.status === 'REJECTED'}
@@ -348,14 +350,14 @@ export default function DistributionDetailModal({
 
                   if (response.ok) {
                     const result = await response.json();
-                    alert(`${result.message}`);
+                    setNotification({ show: true, message: result.message, type: 'success' });
                     onClose(); // Close the modal after rejection
                   } else {
                     const result = await response.json();
-                    alert(`Gagal menolak batch distribusi: ${result.error || 'Unknown error'}`);
+                    setNotification({ show: true, message: `Gagal menolak batch distribusi: ${result.error || 'Unknown error'}`, type: 'error' });
                   }
                 } catch (error) {
-                  alert(`Error saat menolak batch distribusi: ${error.message}`);
+                  setNotification({ show: true, message: `Error saat menolak batch distribusi: ${error.message}`, type: 'error' });
                 }
               }}
               className={`px-4 py-2 rounded-lg ${
@@ -378,14 +380,14 @@ export default function DistributionDetailModal({
 
                   if (response.ok) {
                     const result = await response.json();
-                    alert(`${result.message}`);
+                    setNotification({ show: true, message: result.message, type: 'success' });
                     onClose(); // Close the modal after acceptance
                   } else {
                     const result = await response.json();
-                    alert(`Gagal menerima batch distribusi: ${result.error || 'Unknown error'}`);
+                    setNotification({ show: true, message: `Gagal menerima batch distribusi: ${result.error || 'Unknown error'}`, type: 'error' });
                   }
                 } catch (error) {
-                  alert(`Error saat menerima batch distribusi: ${error.message}`);
+                  setNotification({ show: true, message: `Error saat menerima batch distribusi: ${error.message}`, type: 'error' });
                 }
               }}
               className={`px-4 py-2 rounded-lg ${
@@ -404,6 +406,15 @@ export default function DistributionDetailModal({
             </button>
           </div>
         </div>
+
+        {/* Notification */}
+        {notification.show && (
+          <CustomNotification
+            message={notification.message}
+            type={notification.type}
+            onClose={() => setNotification({ show: false, message: '', type: '' })}
+          />
+        )}
       </div>
     </div>
   );

@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useUserTheme } from '../../../../components/UserThemeContext';
 import { useSession } from 'next-auth/react';
+import { useNotification } from '../../../../components/notifications/NotificationProvider';
 import DataTable from '../../../../components/DataTable';
 import Breadcrumb from '../../../../components/Breadcrumb';
 import ConfirmationModal from '../../../../components/ConfirmationModal';
@@ -10,9 +12,11 @@ import { AlertTriangle, CheckCircle, XCircle, Eye, Search, Clock } from 'lucide-
 import DistributionDetailModal from '../../../../components/admin/DistributionDetailModal';
 
 export default function PendingDistributions() {
+  const router = useRouter();
   const { data: session } = useSession();
   const { userTheme } = useUserTheme();
   const darkMode = userTheme.darkMode;
+  const { showNotification } = useNotification();
   const [batches, setBatches] = useState([]); // Renamed from distributions to batches
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -93,12 +97,20 @@ export default function PendingDistributions() {
       if (response.ok) {
         setShowAcceptModal(false);
         setSelectedBatch(null);
-        fetchPendingBatches(); // Refresh the list
+
+        // Show success notification with improved message
+        showNotification(result.message || 'Batch distribusi berhasil diterima', 'success');
+
+        // Full page refresh to update all data and UI
+        setTimeout(() => {
+          window.location.reload(); // Refresh the entire page to reflect all changes
+        }, 1500); // Delay to allow notification to be seen
       } else {
         throw new Error(result.error || 'Failed to accept distribution');
       }
     } catch (err) {
       setError(err.message);
+      showNotification(`Gagal menerima batch distribusi: ${err.message}`, 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -124,12 +136,20 @@ export default function PendingDistributions() {
       if (response.ok) {
         setShowRejectModal(false);
         setSelectedBatch(null);
-        fetchPendingBatches(); // Refresh the list
+
+        // Show success notification for rejection
+        showNotification(result.message || 'Batch distribusi berhasil ditolak', 'success');
+
+        // Full page refresh to update all data and UI
+        setTimeout(() => {
+          window.location.reload(); // Refresh the entire page to reflect all changes
+        }, 1500); // Delay to allow notification to be seen
       } else {
         throw new Error(result.error || 'Failed to reject distribution');
       }
     } catch (err) {
       setError(err.message);
+      showNotification(`Gagal menolak batch distribusi: ${err.message}`, 'error');
     } finally {
       setIsProcessing(false);
     }

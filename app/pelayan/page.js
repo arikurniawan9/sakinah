@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { Search, ShoppingCart, Users, Send, Camera, Sun, Moon, LogOut, AlertCircle, Trash2, X, History, Bell, Package, TrendingUp, ShoppingCartIcon, User, Star, Edit3, BarChart3, Scan, CameraOff, Camera as CameraIcon, Check } from 'lucide-react';
-import BarcodeScanner from '../../components/BarcodeScanner';
+import BarcodeScanner from '../../components/BarcodeScannerOptimized';
 import { useNotification } from '../../components/notifications/NotificationProvider';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ConfirmationModal from '../../components/ConfirmationModal';
@@ -288,7 +288,7 @@ function AttendantDashboard() {
     // Prioritize product search with the new store-specific endpoint
     try {
         const productResponse = await fetch(`/api/products/by-code/${encodeURIComponent(decodedText)}`);
-        
+
         if (productResponse.ok) {
             const productData = await productResponse.json();
             // Ensure productData is a valid product object
@@ -300,7 +300,7 @@ function AttendantDashboard() {
                 return;
             }
         }
-        
+
         // If product not found by code, proceed with other checks (customer, etc.)
         // This part remains the same as the user might be scanning a member card
         if (decodedText.toLowerCase() === 'umum' || decodedText.toLowerCase() === 'pelanggan umum') {
@@ -325,6 +325,14 @@ function AttendantDashboard() {
         showNotification('Terjadi kesalahan saat memproses barcode.', 'error');
     }
   }, [addToTempCart, setSelectedCustomer, showNotification, searchCustomers, defaultCustomer]);
+
+  // Fungsi untuk menangani input dari tombol Enter di search box
+  const handleSearchKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      // Trigger search immediately without waiting for debounce
+      fetchProducts(searchTerm);
+    }
+  };
 
   const handleClearCart = () => {
     clearCartFromContext();
@@ -394,6 +402,12 @@ function AttendantDashboard() {
     setShowBarcodeScanner(false);
   };
 
+  // Fungsi untuk menambahkan produk cepat ke keranjang
+  const handleQuickAddToCart = (product) => {
+    addToTempCart(product);
+    showNotification(`Produk ${product.name} ditambahkan dari produk cepat.`, 'info');
+  };
+
   if (isInitialLoading || status === 'loading') {
     return <LoadingSpinner />;
   }
@@ -411,6 +425,49 @@ function AttendantDashboard() {
           )}
 
           <div className="space-y-8">
+            {/* Quick Products Section */}
+            {quickProducts.length > 0 && (
+              <div className={`rounded-2xl shadow-xl ${darkMode ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-br from-white to-gray-50 border-gray-200'} border overflow-hidden`}>
+                <div className="p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Produk Cepat</h2>
+                    <span className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-sm font-medium px-3 py-1 rounded-full">
+                      {quickProducts.length} produk
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                    {quickProducts.map(product => (
+                      <div
+                        key={product.id}
+                        className={`flex flex-col items-center p-3 rounded-xl border cursor-pointer transition-all duration-200 hover:shadow-md ${
+                          darkMode
+                            ? 'bg-gray-750 border-gray-600 hover:bg-gray-700'
+                            : 'bg-white border-gray-200 hover:bg-gray-50'
+                        }`}
+                        onClick={() => handleQuickAddToCart(product)}
+                      >
+                        <div className="w-16 h-16 flex items-center justify-center mb-2">
+                          {product.image ? (
+                            <img src={product.image} alt={product.name} className="h-14 w-14 object-contain rounded-lg" />
+                          ) : (
+                            <div className="h-14 w-14 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-600 dark:to-gray-700 rounded-lg flex items-center justify-center">
+                              <Package className="h-6 w-6 text-gray-400 dark:text-gray-500" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-center">
+                          <div className="font-semibold text-xs text-gray-900 dark:text-white truncate w-full">{product.name}</div>
+                          <div className="text-xs text-purple-600 dark:text-purple-400 font-bold mt-1">
+                            Rp {product.sellingPrice?.toLocaleString('id-ID') || '0'}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Search and Scanner Section */}
             <div className={`rounded-2xl shadow-xl ${darkMode ? 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700' : 'bg-gradient-to-br from-white to-gray-50 border-gray-200'} border overflow-hidden`}>
               <div className="p-6">
@@ -425,6 +482,7 @@ function AttendantDashboard() {
                     }`}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={handleSearchKeyPress}
                     disabled={!!error}
                   />
                   <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-6 w-6 text-gray-400" />

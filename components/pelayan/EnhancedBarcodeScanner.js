@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Html5Qrcode, Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
 import { X, CameraOff, RotateCcw, Camera as CameraIcon, WifiOff, RefreshCw } from 'lucide-react';
 import CameraPermissionModal from './CameraPermissionModal';
 
@@ -9,17 +9,14 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
   const scannerRef = useRef(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [requestingPermission, setRequestingPermission] = useState(false);
   const [cameraOptions, setCameraOptions] = useState([]);
   const [selectedCamera, setSelectedCamera] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
   const [currentFacingMode, setCurrentFacingMode] = useState('environment'); // default to back camera
   const [isOnline, setIsOnline] = useState(true);
-  const [offlineMode, setOfflineMode] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const html5QrCodeRef = useRef(null);
-  const retryAttempts = useRef(0);
-  const maxRetries = 3;
+  const [scanSuccess, setScanSuccess] = useState(false);
 
   // Fungsi untuk mengecek koneksi internet
   useEffect(() => {
@@ -38,7 +35,6 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
   // Get available cameras
   const getAvailableCameras = useCallback(async () => {
     if (!navigator.onLine) {
-      setOfflineMode(true);
       setError('Mode offline: Tidak dapat mengakses kamera karena tidak ada koneksi internet.');
       return;
     }
@@ -75,10 +71,7 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
       if (err.name === 'NotAllowedError' || err.message.includes('denied')) {
         setError('Izin kamera ditolak. Harap izinkan akses kamera di pengaturan browser Anda.');
         onError && onError('Izin kamera ditolak');
-        // Tampilkan modal izin kamera hanya jika belum ditampilkan
-        if (!showPermissionModal) {
-          setShowPermissionModal(true);
-        }
+        setShowPermissionModal(true);
       } else if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') {
         setError('Kamera tidak ditemukan atau tidak dapat diakses. Coba ganti kamera lain jika tersedia.');
         onError && onError('Kamera tidak ditemukan');
@@ -92,11 +85,11 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
         setCurrentFacingMode('environment');
       }
     }
-  }, [onError, showPermissionModal]);
+  }, [onError]);
 
   // Initialize scanner
   const initializeScanner = useCallback(async () => {
-    if (!scannerRef.current || !selectedCamera || offlineMode) return;
+    if (!scannerRef.current || !selectedCamera) return;
 
     try {
       if (html5QrCodeRef.current) {
@@ -135,8 +128,8 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
 
       const qrCodeSuccessCallback = (decodedText, decodedResult) => {
         onScan(decodedText, decodedResult);
+        setScanSuccess(true);
         // Jangan hentikan scanner setelah scan berhasil, biarkan terus scan
-        // handleStop();
       };
 
       const qrCodeErrorCallback = (errorMessage) => {
@@ -154,32 +147,25 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
       setIsScanning(true);
     } catch (err) {
       console.error('Error initializing scanner:', err);
-      retryAttempts.current += 1;
-
-      if (retryAttempts.current <= maxRetries) {
-        // Coba ulang setelah delay
-        setTimeout(() => {
-          initializeScanner();
-        }, 1000 * retryAttempts.current); // Delay bertambah setiap percobaan
+      if (err.name === 'NotAllowedError' || err.message.includes('denied')) {
+        setError('Izin kamera ditolak. Harap izinkan akses kamera di pengaturan browser Anda.');
+        onError && onError('Izin kamera ditolak');
+        setShowPermissionModal(true);
+      } else if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') {
+        setError('Kamera tidak ditemukan atau tidak dapat diakses. Coba ganti kamera lain jika tersedia.');
+        onError && onError('Kamera tidak ditemukan');
+      } else if (err.name === 'NotSupportedError') {
+        setError('Fitur kamera tidak didukung di browser ini. Coba gunakan browser modern seperti Chrome atau Firefox.');
+        onError && onError('Fitur kamera tidak didukung');
+      } else if (err.name === 'NotAllowedError') {
+        setError('Akses kamera ditolak oleh browser atau sistem operasi.');
+        onError && onError('Akses kamera ditolak');
       } else {
-        if (err.name === 'NotAllowedError' || err.message.includes('denied')) {
-          setError('Izin kamera ditolak. Harap izinkan akses kamera di pengaturan browser Anda.');
-          onError && onError('Izin kamera ditolak');
-          // Tampilkan modal izin kamera
-          setShowPermissionModal(true);
-        } else if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') {
-          setError('Kamera tidak ditemukan atau tidak dapat diakses. Coba ganti kamera lain jika tersedia.');
-          onError && onError('Kamera tidak ditemukan');
-        } else if (err.name === 'NotSupportedError') {
-          setError('Fitur kamera tidak didukung di browser ini. Coba gunakan browser modern seperti Chrome atau Firefox.');
-          onError && onError('Fitur kamera tidak didukung');
-        } else {
-          setError(`Tidak dapat memulai kamera. Error: ${err.message || err.name}`);
-          onError && onError(`Tidak dapat memulai kamera: ${err.message || err.name}`);
-        }
+        setError(`Tidak dapat memulai kamera. Error: ${err.message || err.name}`);
+        onError && onError(`Tidak dapat memulai kamera: ${err.message || err.name}`);
       }
     }
-  }, [selectedCamera, currentFacingMode, onScan, onError, offlineMode, setShowPermissionModal]);
+  }, [selectedCamera, currentFacingMode, onScan, onError]);
 
   // Handle camera change
   const handleCameraChange = useCallback((deviceId) => {
@@ -219,58 +205,51 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
   const handleRetry = useCallback(() => {
     setError('');
     setShowPermissionModal(false);
-    retryAttempts.current = 0;
-    // Reset semua state untuk inisialisasi ulang
-    setIsLoading(true);
-    setRequestingPermission(true);
+    setScanSuccess(false);
     getAvailableCameras();
   }, [getAvailableCameras]);
 
-  // Initialize on mount and when selectedCamera changes
+  // Initialize on mount
   useEffect(() => {
     const initialize = async () => {
       setIsLoading(true);
-      setRequestingPermission(true);
 
       try {
-        // Coba langsung akses kamera dengan permintaan izin
+        // Request camera permission first
         if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia !== 'undefined') {
-          // Coba akses kamera langsung untuk mendapatkan izin
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          // Try to get permission first
+          const permissionStream = await navigator.mediaDevices.getUserMedia({
+            video: true
+          });
 
-          // Setelah izin diberikan, hentikan stream sementara
-          stream.getTracks().forEach(track => track.stop());
+          // Stop the temporary stream immediately
+          permissionStream.getTracks().forEach(track => track.stop());
 
-          // Sekarang ambil opsi kamera yang tersedia
+          // Permission granted, now get available cameras
           await getAvailableCameras();
         } else {
           throw new Error('navigator.mediaDevices API tidak didukung di browser ini');
         }
       } catch (err) {
-        console.error('Error during camera initialization:', err);
+        console.error('Error requesting camera permission:', err);
         if (err.name === 'NotAllowedError' || err.message.includes('denied')) {
           setError('Izin kamera ditolak. Harap izinkan akses kamera di pengaturan browser Anda.');
           onError && onError('Izin kamera ditolak');
-          // Tampilkan modal izin kamera hanya jika belum ditampilkan sebelumnya
-          if (!showPermissionModal) {
-            setShowPermissionModal(true);
-          }
+          setShowPermissionModal(true);
         } else {
           setError(`Tidak dapat mengakses kamera. Error: ${err.message || err.name}`);
           onError && onError(`Tidak dapat mengakses kamera: ${err.message || err.name}`);
         }
       } finally {
-        setRequestingPermission(false);
         setIsLoading(false);
       }
     };
 
     initialize();
-  }, [getAvailableCameras, onError, showPermissionModal]);
+  }, [getAvailableCameras, onError]);
 
   useEffect(() => {
-    if (selectedCamera && !requestingPermission && !error) {
-      setIsLoading(true);
+    if (selectedCamera && !error) {
       initializeScanner();
     }
 
@@ -281,7 +260,7 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
         });
       }
     };
-  }, [selectedCamera, initializeScanner, requestingPermission, error]);
+  }, [selectedCamera, initializeScanner, error]);
 
   return (
     <>
@@ -322,26 +301,14 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
               ref={scannerRef}
               className="w-full h-full rounded-lg overflow-hidden bg-black flex items-center justify-center"
             >
-              {requestingPermission && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 z-10">
-                  <div className="animate-pulse mb-4">
-                    <CameraIcon className="h-12 w-12 mx-auto text-gray-400" />
-                  </div>
-                  <p className="text-white text-sm text-center px-4">
-                    Mohon izinkan akses kamera untuk melanjutkan pemindaian
-                  </p>
-                  <div className="mt-4 w-8 h-8 border-2 border-t-purple-500 border-r-purple-500 border-b-purple-500 border-l-transparent rounded-full animate-spin"></div>
-                </div>
-              )}
-
-              {isLoading && !requestingPermission && (
+              {isLoading && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 z-10">
                   <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mb-4"></div>
-                  <p className="text-white text-sm">Menyiapkan kamera...</p>
+                  <p className="text-white text-sm">Mengakses kamera...</p>
                 </div>
               )}
 
-              {!isLoading && !requestingPermission && error && !showPermissionModal && (
+              {!isLoading && error && !showPermissionModal && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-80 z-10">
                   <div className="flex flex-col items-center justify-center h-full p-4">
                     <CameraOff className="h-12 w-12 mx-auto text-red-500 mb-4" />
@@ -368,7 +335,7 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
               )}
 
               {/* QR Box overlay */}
-              {!isLoading && !requestingPermission && !error && (
+              {!isLoading && !error && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="relative">
                     <div className="border-2 border-transparent">
@@ -378,6 +345,12 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
                       <div className="absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 border-green-500 rounded-br-lg"></div>
                     </div>
                   </div>
+                </div>
+              )}
+              
+              {scanSuccess && (
+                <div className="absolute inset-0 flex items-center justify-center bg-green-500 bg-opacity-50 z-20">
+                  <div className="text-white text-xl font-bold">Scan Berhasil!</div>
                 </div>
               )}
             </div>

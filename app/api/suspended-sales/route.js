@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 
+import { getIo } from '@/lib/socket';
+
 // GET /api/suspended-sales - Fetch all suspended sales
 export async function GET(request) {
   const session = await getSession();
@@ -120,7 +122,48 @@ export async function POST(request) {
         cartItems: serializedCartItems, // Gunakan variabel yang sudah divalidasi
         storeId: session.user.storeId, // Tambahkan storeId dari session user
       },
+      include: {
+        member: {
+          select: {
+            name: true,
+            membershipType: true,
+            code: true,
+          },
+        },
+      }
     });
+
+    // Kirim event real-time ke kasir
+    const io = getIo();
+    if (io && newSuspendedSale.storeId) {
+      let attendantName = null;
+      if (newSuspendedSale.selectedAttendantId) {
+        try {
+          const attendant = await prisma.user.findUnique({
+            where: { id: newSuspendedSale.selectedAttendantId },
+            select: { name: true }
+          });
+          attendantName = attendant?.name;
+        } catch (error) {
+          console.error('Error fetching attendant name for socket event:', error);
+        }
+      }
+
+      const saleForEvent = {
+        ...newSuspendedSale,
+        cartItems: JSON.parse(newSuspendedSale.cartItems), // Pastikan cartItems di-parse
+        attendantName,
+        memberDetails: newSuspendedSale.member ? {
+          name: newSuspendedSale.member.name,
+          membershipType: newSuspendedSale.member.membershipType,
+          code: newSuspendedSale.member.code,
+        } : null,
+      };
+
+      const room = `cashier-store-${newSuspendedSale.storeId}`;
+      io.to(room).emit('sale:suspended:new', saleForEvent);
+      console.log(`Emitted 'sale:suspended:new' event to room ${room}`);
+    }
 
     return NextResponse.json(newSuspendedSale, { status: 201 });
   } catch (error) {

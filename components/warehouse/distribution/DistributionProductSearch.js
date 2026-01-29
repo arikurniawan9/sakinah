@@ -13,7 +13,7 @@ const formatNumber = (num) => {
   }).format(num || 0);
 };
 
-const DistributionProductSearchInner = forwardRef(({
+const DistributionProductSearchInner = forwardRef(function DistributionProductSearchInnerComponent({
   products,
   loading,
   searchTerm,
@@ -22,7 +22,7 @@ const DistributionProductSearchInner = forwardRef(({
   loadMore,
   hasMore,
   darkMode,
-}, ref) => {
+}, ref) {
   const [showResults, setShowResults] = useState(false);
   const containerRef = useRef(null);
 

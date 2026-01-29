@@ -376,7 +376,7 @@ export default function AdvancedStoreManagementPage() {
               Konfirmasi Hapus Toko
             </h3>
             <p className={`mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              Apakah Anda yakin ingin menghapus toko <strong>"{storeToDelete?.name}"</strong>? 
+              Apakah Anda yakin ingin menghapus toko <strong>&quot;{storeToDelete?.name}&quot;</strong>? 
               Tindakan ini tidak dapat dibatalkan.
             </p>
             <div className="flex justify-end space-x-3">

@@ -16,11 +16,10 @@ export default function ConfirmationModal({
   variant = 'danger', // 'danger', 'warning', 'info'
   icon = null, // Custom icon component
 }) {
-  if (!isOpen) return null;
-
   // Handle ESC key press to close modal
   useEffect(() => {
-    if (!isOpen) return;
+    // Only attach listener if modal is open
+    if (!isOpen) return; 
 
     const handleEscKey = (event) => {
       if (event.key === 'Escape') {
@@ -33,6 +32,9 @@ export default function ConfirmationModal({
       document.removeEventListener('keydown', handleEscKey);
     };
   }, [isOpen, onClose]);
+
+  // If modal is not open, return null after all hooks are called
+  if (!isOpen) return null;
 
   // Warna dan ikon berdasarkan variant
   const variantConfig = {

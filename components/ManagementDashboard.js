@@ -154,7 +154,7 @@ export default function ManagementDashboard({ initialLevel = 'executive', dashbo
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{dashboardDataByLevel.inventory?.lowStockProducts || 0}</div>
-          <p className="text-xs text-muted-foreground">Produk dengan stok < 5</p>
+          <p className="text-xs text-muted-foreground">Produk dengan stok {"<"} 5</p>
           <div className="mt-4 space-y-2 max-h-40 overflow-y-auto">
             {(dashboardDataByLevel.lowStockProducts || []).slice(0, 5).map((product, index) => (
               <div key={index} className="flex justify-between items-center text-sm">

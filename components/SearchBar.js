@@ -240,7 +240,7 @@ const SearchBar = ({ darkMode = false }) => {
                 </ul>
               ) : query ? (
                 <div className={`p-4 text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Tidak ditemukan hasil untuk "{query}"
+                  Tidak ditemukan hasil untuk &quot;{query}&quot;
                 </div>
               ) : (
                 <div className={`p-4 text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>

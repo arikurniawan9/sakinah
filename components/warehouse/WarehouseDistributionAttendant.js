@@ -256,7 +256,7 @@ const WarehouseDistributionAttendant = ({
               className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 transform hover:scale-105 ${
                 darkMode
                   ? 'border-gray-600 bg-gray-700/50 hover:bg-gray-600/70'
-                  : 'border-gray-200 bg-white hover:bg-gray-50 shadow-sm hover:shadow-md'
+                  : 'border-white hover:bg-gray-50 shadow-sm hover:shadow-md' // Changed border-gray-200 to border-white for consistency
               }`}
               onClick={() => {
                 setSelectedProduct(product);
@@ -475,11 +475,6 @@ const WarehouseDistributionAttendant = ({
         selectedAttendant={selectedAttendant} // Pass the ID for highlighting if needed in modal
         darkMode={darkMode}
       />
-    </div>
-  );
-};
-
-export default WarehouseDistributionAttendant;
     </div>
   );
 };

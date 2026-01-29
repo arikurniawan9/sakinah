@@ -3,13 +3,13 @@ import { AlertTriangle, X } from 'lucide-react';
 import { useEffect } from 'react';
 
 const LowStockModal = ({ items, isOpen, onClose, darkMode }) => {
-  if (!isOpen || !items || items.length === 0) {
-    return null;
-  }
-
+  // Handle ESC key press to close modal
   useEffect(() => {
+    // Only attach listener if modal is open
+    if (!isOpen) return;
+
     const handleEscKey = (e) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape') {
         onClose();
       }
     };
@@ -20,6 +20,11 @@ const LowStockModal = ({ items, isOpen, onClose, darkMode }) => {
       document.removeEventListener('keydown', handleEscKey);
     };
   }, [isOpen, onClose]);
+
+  // If modal is not open or no items, return null after all hooks are called
+  if (!isOpen || !items || items.length === 0) {
+    return null;
+  }
 
   // Filter produk dengan stok rendah (kurang dari 5)
   const lowStockItems = items.filter(item => item.stock < 5);

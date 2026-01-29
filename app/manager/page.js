@@ -17,7 +17,9 @@ import {
   CreditCard,
   FileText,
   Activity,
-  Database
+  Database,
+  Trash2,
+  User
 } from 'lucide-react';
 import { useUserTheme } from '@/components/UserThemeContext';
 import LoadingSpinner from '@/components/LoadingSpinner';

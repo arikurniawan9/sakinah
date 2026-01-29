@@ -2,11 +2,13 @@ import React, { useEffect } from 'react';
 import { CheckCircle } from 'lucide-react';
 
 const SuccessModal = ({ isOpen, onClose, message, details = null, darkMode = false }) => {
-  if (!isOpen) return null;
-
+  // Handle ESC key press to close modal
   useEffect(() => {
+    // Only attach listener if modal is open
+    if (!isOpen) return;
+
     const handleEscKey = (e) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape') {
         onClose();
       }
     };
@@ -17,6 +19,9 @@ const SuccessModal = ({ isOpen, onClose, message, details = null, darkMode = fal
       document.removeEventListener('keydown', handleEscKey);
     };
   }, [isOpen, onClose]);
+
+  // If modal is not open, return null after all hooks are called
+  if (!isOpen) return null;
 
   return (
     <div className="fixed z-50 inset-0 overflow-y-auto">

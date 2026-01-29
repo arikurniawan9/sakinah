@@ -147,6 +147,8 @@ async function generateInvoiceNumber(storeId) {
 }
 
 
+import { getIo } from '@/lib/socket';
+
 export async function POST(request) {
   const session = await getServerSession(authOptions);
 
@@ -264,6 +266,7 @@ export async function POST(request) {
       });
 
       // 3. Update product stock - dilakukan untuk semua transaksi karena produk telah diberikan ke pelanggan
+      const io = getIo(); // Get io instance once
       for (const item of items) {
         const updatedProduct = await tx.product.update({
           where: { id: item.productId },
@@ -274,7 +277,16 @@ export async function POST(request) {
           },
         });
 
-        // Tambahkan validasi tambahan bahwa stok tidak negatif
+        // Emit real-time stock update
+        if (io && session.user.storeId) {
+            const room = `attendant-store-${session.user.storeId}`;
+            io.to(room).emit('stock:update', { 
+                productId: updatedProduct.id, 
+                stock: updatedProduct.stock 
+            });
+            console.log(`Emitted 'stock:update' to ${room} for product ${updatedProduct.id}`);
+        }
+
         if (updatedProduct.stock < 0) {
           throw new Error(`Stok produk ${updatedProduct.name} menjadi negatif setelah transaksi.`);
         }
@@ -282,18 +294,17 @@ export async function POST(request) {
 
       // 4. Jika status UNPAID, PARTIALLY_PAID, CREDIT, atau CREDIT_PAID, buat juga entri di Receivable
       if ((status === 'UNPAID' || status === 'PARTIALLY_PAID' || status === 'CREDIT' || status === 'CREDIT_PAID') && finalMemberId) {
-        // Sisa hutang adalah total setelah diskon keseluruhan dikurangi - jumlah yang dibayar
         const finalTotal = total - additionalDiscount;
         const remainingAmount = finalTotal - (payment || 0);
         if (remainingAmount > 0) {
           await tx.receivable.create({
             data: {
-              storeId: session.user.storeId, // Tambahkan storeId dari session user
+              storeId: session.user.storeId,
               saleId: newSale.id,
               memberId: finalMemberId,
-              amountDue: finalTotal, // Jumlah setelah semua diskon diterapkan
-              amountPaid: payment || 0, // Jumlah yang sudah dibayar sebagai DP
-              status: payment > 0 ? 'PARTIALLY_PAID' : 'UNPAID', // Status tergantung pembayaran
+              amountDue: finalTotal,
+              amountPaid: payment || 0,
+              status: payment > 0 ? 'PARTIALLY_PAID' : 'UNPAID',
             }
           });
         }
@@ -302,16 +313,11 @@ export async function POST(request) {
       return newSale;
     });
 
-    // Ambil IP address dan user agent dari request
-    const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
-      'unknown';
+    const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown';
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
-    // Log audit untuk pembuatan transaksi penjualan
     await logCreate(session.user.id, 'Sale', sale, ipAddress, userAgent, session.user.storeId);
 
-    // Debug log untuk melihat invoice number yang dihasilkan
     console.log("Sale object created:", {
       id: sale.id,
       invoiceNumber: sale.invoiceNumber,
@@ -320,25 +326,19 @@ export async function POST(request) {
       status: sale.status
     });
 
-    // Return the complete sale object including invoice number, which now includes saleDetails and product info
-    // Make sure invoiceNumber is explicitly included in the response
-    // Extract and return only the fields we need to ensure they are included
     return NextResponse.json({
       ...sale,
-      // Explicitly include important fields
       invoiceNumber: sale.invoiceNumber,
     }, { status: 201 });
   } catch (error) {
     console.error('Failed to create sale:', error);
     
-    // Penanganan error yang lebih spesifik
     if (error.message && error.message.includes('stok menjadi negatif')) {
       return NextResponse.json({ 
         error: 'Gagal membuat transaksi: Stok produk tidak mencukupi karena transaksi lain sedang berlangsung.' 
       }, { status: 400 });
     }
     
-    // Check for specific Prisma error for insufficient stock
     if (error.code === 'P2025' || (error.meta && error.meta.cause === 'Record to update not found.')) {
        return NextResponse.json({ error: 'Gagal membuat transaksi: Stok produk tidak mencukupi.' }, { status: 400 });
     }

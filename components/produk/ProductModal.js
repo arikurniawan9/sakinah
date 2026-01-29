@@ -22,13 +22,15 @@ export default function ProductModal({
   suppliers,
   onSuccess
 }) {
-  if (!showModal) return null;
-
+  // Call hooks unconditionally first
   const [isCategoryPickerOpen, setIsCategoryPickerOpen] = useState(false);
   const [isSupplierPickerOpen, setIsSupplierPickerOpen] = useState(false);
 
   // Gunakan hook untuk menangani tombol ESC
   useEscapeKey(closeModal, showModal);
+
+  // Now, if the component shouldn't render, return null.
+  if (!showModal) return null;
 
   // --- Selection Handlers ---
 
@@ -47,7 +49,7 @@ export default function ProductModal({
     : 'Belum dipilih';
 
   const selectedSupplierName = formData.supplierId
-    ? suppliers.find(s => s.id === formData.supplierId)?.name
+    ? suppliers.find(s => s.id === formData.id)?.name
     : 'Belum dipilih';
 
   return (

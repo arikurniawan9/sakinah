@@ -22,10 +22,10 @@ export default function WarehouseProductModal({
   suppliers,
   onSuccess
 }) {
-  if (!showModal) return null;
-
   // Gunakan hook untuk menangani tombol ESC
   useEscapeKey(closeModal, showModal);
+
+  if (!showModal) return null;
 
   // --- Selection Handlers ---
 

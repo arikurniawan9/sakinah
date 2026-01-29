@@ -401,4 +401,6 @@ const PaymentSummary = memo(({
   );
 });
 
+PaymentSummary.displayName = 'PaymentSummary';
+
 export default PaymentSummary;

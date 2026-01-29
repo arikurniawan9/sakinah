@@ -32,7 +32,7 @@ const ExportFormatSelector = ({ isOpen, onClose, onConfirm, title, darkMode }) =
                 </h3>
                 <div className="mt-4">
                   <p className={`text-sm mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
-                    Pilih format file yang ingin Anda ekspor untuk "{title}":
+                    Pilih format file yang ingin Anda ekspor untuk &quot;{title}&quot;:
                   </p>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

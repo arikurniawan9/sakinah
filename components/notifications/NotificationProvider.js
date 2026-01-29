@@ -4,6 +4,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import EnhancedNotification from '@/components/pelayan/EnhancedNotification';
 
 const NotificationContext = createContext();
 
@@ -16,6 +17,8 @@ export const useNotification = () => {
 };
 
 export const NotificationProvider = ({ children }) => {
+  const [notifications, setNotifications] = useState([]);
+
   // Fungsi untuk menampilkan notifikasi
   const showNotification = useCallback((message, type = 'info', options = {}) => {
     const defaultOptions = {
@@ -46,6 +49,24 @@ export const NotificationProvider = ({ children }) => {
         toast.info(message, notificationOptions);
         break;
     }
+
+    // Tambahkan ke sistem notifikasi lokal juga
+    const id = Date.now() + Math.random();
+    const notification = {
+      id,
+      message,
+      type,
+      duration: notificationOptions.autoClose || 5000
+    };
+
+    setNotifications(prev => [...prev, notification]);
+
+    // Otomatis hapus notifikasi lokal setelah durasi
+    if (notificationOptions.autoClose > 0) {
+      setTimeout(() => {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+      }, notificationOptions.autoClose);
+    }
   }, []);
 
   // Fungsi untuk menampilkan notifikasi dengan durasi spesifik
@@ -53,8 +74,18 @@ export const NotificationProvider = ({ children }) => {
     showNotification(message, type, { autoClose: duration });
   }, [showNotification]);
 
+  // Fungsi untuk menghapus notifikasi
+  const removeNotification = useCallback((id) => {
+    setNotifications(prev => prev.filter(notification => notification.id !== id));
+  }, []);
+
   return (
-    <NotificationContext.Provider value={{ showNotification, showTimedNotification }}>
+    <NotificationContext.Provider value={{
+      showNotification,
+      showTimedNotification,
+      removeNotification,
+      notifications
+    }}>
       {children}
       <ToastContainer
         position="top-right"
@@ -67,6 +98,10 @@ export const NotificationProvider = ({ children }) => {
         draggable
         pauseOnHover
         theme="light"
+      />
+      <EnhancedNotification
+        notifications={notifications}
+        removeNotification={removeNotification}
       />
     </NotificationContext.Provider>
   );

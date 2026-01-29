@@ -67,4 +67,6 @@ const TotalDisplay = memo(({ total, darkMode }) => {
   );
 });
 
+TotalDisplay.displayName = 'TotalDisplay';
+
 export default TotalDisplay;

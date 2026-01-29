@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { Search, ShoppingCart, Users, Send, Camera, Sun, Moon, LogOut, AlertCircle, Trash2, X, History, Bell, Package, TrendingUp, ShoppingCartIcon, User, Star, Edit3, BarChart3, Scan, CameraOff, Camera as CameraIcon, Check } from 'lucide-react';
 import BarcodeScanner from '../../components/BarcodeScannerOptimized';
+import EnhancedBarcodeScanner from '../../components/pelayan/EnhancedBarcodeScanner';
 import { useNotification } from '../../components/notifications/NotificationProvider';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ConfirmationModal from '../../components/ConfirmationModal';
@@ -16,103 +17,10 @@ import QuickAddPanel from '../../components/pelayan/QuickAddPanel';
 import AttendantStats from '../../components/pelayan/AttendantStats';
 import CartItemNoteModal from '../../components/pelayan/CartItemNoteModal';
 import { useUserTheme } from '../../components/UserThemeContext';
-
-// Komponen untuk satu produk - menggunakan memo untuk mencegah rendering ulang yang tidak perlu
-const ProductItem = ({ product, isOutOfStock, addToCart, addQuickProduct, removeQuickProduct, quickProducts, darkMode }) => {
-  const productName = product.name || 'Produk tidak dikenal';
-  const productCode = product.productCode || 'Tidak ada kode';
-  const productSellingPrice = product.sellingPrice || 0;
-  const productStock = product.stock || 0;
-
-  const handleQuickToggle = (e) => {
-    e.stopPropagation(); // Mencegah klik ke parent (menambahkan ke keranjang)
-    const exists = quickProducts.some(p => p.id === product.id);
-    if (exists) {
-      removeQuickProduct(product.id);
-    } else {
-      addQuickProduct(product);
-    }
-  };
-
-  const handleAddToCart = (e) => {
-    e.stopPropagation(); // Mencegah event propagasi ke parent
-    addToCart(product);
-  };
-
-  const isQuick = quickProducts.some(p => p.id === product.id);
-
-  return (
-    <div
-      className={`flex items-center space-x-4 p-4 rounded-xl border transition-all duration-200 ${
-        isOutOfStock 
-          ? 'opacity-50 cursor-not-allowed' 
-          : 'hover:shadow-md cursor-pointer hover:scale-[1.02]'
-      } ${
-        darkMode 
-          ? 'bg-gray-800 border-gray-700 hover:bg-gray-750' 
-          : 'bg-white border-gray-200 hover:bg-gray-50'
-      }`}
-      onClick={() => !isOutOfStock && addToCart(product)}
-    >
-      <div className="flex-shrink-0 relative">
-        {product.image ? (
-          <img src={product.image} alt={productName} className="h-14 w-14 object-contain rounded-lg" />
-        ) : (
-          <div className="h-14 w-14 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg flex items-center justify-center">
-            <svg className="h-7 w-7 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-        )}
-        {isOutOfStock && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-md">
-            X
-          </span>
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="font-semibold text-gray-900 dark:text-white truncate">{productName}</div>
-        <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">Kode: {productCode}</div>
-        <div className="flex items-center mt-1 space-x-2">
-          <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 rounded-full">
-            Stok: {productStock}
-          </span>
-        </div>
-      </div>
-      <div className="flex flex-col items-end">
-        <div className="font-bold text-lg text-purple-600 dark:text-purple-400">
-          Rp {productSellingPrice.toLocaleString('id-ID')}
-        </div>
-        <div className="flex space-x-2 mt-2">
-          <button
-            className={`p-2 rounded-full ${
-              isQuick
-                ? (darkMode ? 'bg-yellow-500/20 text-yellow-400' : 'bg-yellow-100 text-yellow-500')
-                : (darkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500')
-            } transition-colors`}
-            onClick={handleQuickToggle}
-            title={isQuick ? "Hapus dari produk cepat" : "Tambah ke produk cepat"}
-          >
-            {isQuick ? (
-              <Star className="h-5 w-5" fill="currentColor" />
-            ) : (
-              <Star className="h-5 w-5" />
-            )}
-          </button>
-          <button
-            className={`p-2 rounded-full ${
-              darkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500'
-            } transition-colors`}
-            onClick={handleAddToCart}
-            title="Tambah langsung ke keranjang"
-          >
-            <ShoppingCart className="h-5 w-5" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+import VirtualizedProductList from '../../components/pelayan/VirtualizedProductList';
+import ProductItem from '../../components/pelayan/ProductItem';
+import EnhancedLoadingSpinner from '../../components/pelayan/EnhancedLoadingSpinner';
+import EnhancedErrorDisplay from '../../components/pelayan/EnhancedErrorDisplay';
 
 // Komponen untuk satu item di keranjang - menggunakan memo untuk mencegah rendering ulang yang tidak perlu
 const CartItem = ({ item, updateQuantity, removeFromCart, darkMode, onEditNote }) => {
@@ -207,6 +115,7 @@ function AttendantDashboard() {
   // Global state from context
   const {
     products,
+    allProducts,
     tempCart,
     selectedCustomer,
     setSelectedCustomer,
@@ -218,6 +127,7 @@ function AttendantDashboard() {
     error,
     setError,
     fetchProducts,
+    loadMoreProducts, // Tambahkan fungsi loadMoreProducts
     fetchProductsByCategory,
     fetchCategories,
     fetchDefaultCustomer,
@@ -230,6 +140,8 @@ function AttendantDashboard() {
     addQuickProduct,
     removeQuickProduct,
     addNoteToCartItem,
+    hasMoreProducts, // Tambahkan state hasMoreProducts
+    currentPage, // Tambahkan state currentPage
   } = usePelayanState();
 
   // Memoisasi total belanja di keranjang
@@ -256,7 +168,8 @@ function AttendantDashboard() {
   // Effect for product search
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.storeId) {
-      fetchProducts(debouncedSearchTerm);
+      // Reset pagination when search term changes
+      fetchProducts(debouncedSearchTerm, 1);
     }
   }, [debouncedSearchTerm, status, session, fetchProducts]);
 
@@ -326,13 +239,17 @@ function AttendantDashboard() {
     }
   }, [addToTempCart, setSelectedCustomer, showNotification, searchCustomers, defaultCustomer]);
 
+  const handleError = useCallback((errorMsg) => {
+    showNotification(errorMsg, 'error');
+  }, [showNotification]);
+
   // Fungsi untuk menangani input dari tombol Enter di search box
-  const handleSearchKeyPress = (e) => {
+  const handleSearchKeyPress = useCallback((e) => {
     if (e.key === 'Enter') {
       // Trigger search immediately without waiting for debounce
-      fetchProducts(searchTerm);
+      fetchProducts(searchTerm, 1); // Reset ke halaman pertama saat pencarian baru
     }
-  };
+  }, [fetchProducts, searchTerm]);
 
   const handleClearCart = () => {
     clearCartFromContext();
@@ -364,7 +281,7 @@ function AttendantDashboard() {
   };
 
   // Fungsi untuk mendapatkan warna kategori
-  const getCategoryColor = (categoryName) => {
+  const getCategoryColor = useCallback((categoryName) => {
     if (!categoryName) return 'bg-gray-100 dark:bg-gray-700';
 
     const lowerCategoryName = categoryName.toLowerCase();
@@ -383,10 +300,10 @@ function AttendantDashboard() {
     } else {
       return 'bg-gray-100 dark:bg-gray-700';
     }
-  };
+  }, []);
 
   // Fungsi untuk mendapatkan warna border berdasarkan stok
-  const getBorderColor = (product) => {
+  const getBorderColor = useCallback((product) => {
     const stock = product.stock || 0;
     if (stock === 0) {
       return 'border-red-500 dark:border-red-500';
@@ -395,7 +312,7 @@ function AttendantDashboard() {
     } else {
       return 'border-gray-200 dark:border-gray-700';
     }
-  };
+  }, []);
 
 
   const handleScannerClose = () => {
@@ -408,8 +325,33 @@ function AttendantDashboard() {
     showNotification(`Produk ${product.name} ditambahkan dari produk cepat.`, 'info');
   };
 
+  // Handler untuk infinite scroll di luar komponen virtualized list
+  const handleScroll = useCallback((event) => {
+    const { scrollTop, scrollHeight, clientHeight } = event.target;
+    // Jika pengguna telah mencapai 80% dari akhir daftar dan masih ada produk lebih
+    if (
+      scrollTop + clientHeight >= scrollHeight * 0.8 &&
+      hasMoreProducts &&
+      !isSearchingProducts &&
+      loadMoreProducts
+    ) {
+      loadMoreProducts(debouncedSearchTerm);
+    }
+  }, [hasMoreProducts, isSearchingProducts, loadMoreProducts, debouncedSearchTerm]);
+
   if (isInitialLoading || status === 'loading') {
-    return <LoadingSpinner />;
+    return <EnhancedLoadingSpinner message="Memuat halaman pelayan..." />;
+  }
+
+  if (error) {
+    return (
+      <EnhancedErrorDisplay
+        error={error}
+        title="Gagal Memuat Data"
+        message="Terjadi kesalahan saat memuat data pelayan. Silakan coba muat ulang halaman."
+        onRetry={() => window.location.reload()}
+      />
+    );
   }
 
   return (
@@ -499,8 +441,10 @@ function AttendantDashboard() {
                 </div>
 
                 <div className={`rounded-xl shadow-sm overflow-hidden ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                  <div className="p-4 max-h-96 overflow-y-auto">
-                     {isSearchingProducts ? <LoadingSpinner /> : searchTerm.trim() === '' ? (
+                  <div className="p-4 max-h-96">
+                     {isSearchingProducts ? (
+                       <EnhancedLoadingSpinner message="Mencari produk..." size="sm" />
+                     ) : searchTerm.trim() === '' ? (
                       <div className="text-center py-12">
                         <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700 mb-4">
                           <Search className="h-8 w-8 text-gray-400" />
@@ -513,26 +457,22 @@ function AttendantDashboard() {
                         <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
                           <X className="h-8 w-8 text-red-500" />
                         </div>
-                        <p className="text-gray-500 dark:text-gray-400 text-lg">Tidak ada produk ditemukan untuk pencarian "{searchTerm}".</p>
+                        <p className="text-gray-500 dark:text-gray-400 text-lg">Tidak ada produk ditemukan untuk pencarian &quot;{searchTerm}&quot;.</p>
                       </div>
                     ) : (
-                      <div className="space-y-3">
-                        {products.map(product => {
-                          const isOutOfStock = product.stock <= 0;
-                          return (
-                            <ProductItem
-                              key={product.id}
-                              product={product}
-                              isOutOfStock={isOutOfStock}
-                              addToCart={addToTempCart}
-                              addQuickProduct={addQuickProduct}
-                              removeQuickProduct={removeQuickProduct}
-                              quickProducts={quickProducts}
-                              darkMode={darkMode}
-                            />
-                          );
-                        })}
-                      </div>
+                      <VirtualizedProductList
+                        products={products}
+                        addToCart={addToTempCart}
+                        addQuickProduct={addQuickProduct}
+                        removeQuickProduct={removeQuickProduct}
+                        quickProducts={quickProducts}
+                        darkMode={darkMode}
+                        height={384} // max-h-96 = 384px (96 * 4px)
+                        loadMoreProducts={loadMoreProducts}
+                        hasMoreProducts={hasMoreProducts}
+                        searchTerm={searchTerm}
+                        isSearchingProducts={isSearchingProducts}
+                      />
                     )}
                   </div>
                 </div>
@@ -603,7 +543,7 @@ function AttendantDashboard() {
         </div>
 
 
-        {showBarcodeScanner && <BarcodeScanner onScan={handleBarcodeScan} onClose={handleScannerClose} />}
+        {showBarcodeScanner && <EnhancedBarcodeScanner onScan={handleBarcodeScan} onClose={handleScannerClose} onError={handleError} />}
 
         {/* Modal Pemilihan Pelanggan */}
         {showCustomerSelectionModal && (

@@ -2,7 +2,7 @@
 import { memo, useEffect } from 'react';
 import { X } from 'lucide-react';
 
-const ReferenceModal = memo(({ 
+const ReferenceModalContent = ({ 
   isOpen, 
   onClose, 
   onSubmit, 
@@ -12,19 +12,21 @@ const ReferenceModal = memo(({
   setReferenceNumber,
   loading = false
 }) => {
-  if (!isOpen) return null;
-
   useEffect(() => {
     const handleEscKey = (e) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape') {
         onClose();
       }
     };
 
-    document.addEventListener('keydown', handleEscKey);
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscKey);
+    }
 
     return () => {
-      document.removeEventListener('keydown', handleEscKey);
+      if (isOpen) {
+        document.removeEventListener('keydown', handleEscKey);
+      }
     };
   }, [isOpen, onClose]);
 
@@ -32,6 +34,8 @@ const ReferenceModal = memo(({
     e.preventDefault();
     onSubmit(referenceNumber);
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
@@ -139,6 +143,9 @@ const ReferenceModal = memo(({
       </div>
     </div>
   );
-});
+};
+
+const ReferenceModal = memo(ReferenceModalContent);
+ReferenceModal.displayName = 'ReferenceModal';
 
 export default ReferenceModal;

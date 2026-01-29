@@ -44,6 +44,8 @@ export default function Home() {
     }
   };
 
+  const { showNotification } = useNotification();
+
   // Jika sedang loading, tampilkan loading
   if (status === 'loading' || !isClient || (status === 'authenticated' && loading)) {
     return (
@@ -55,8 +57,6 @@ export default function Home() {
       </div>
     );
   }
-
-  const { showNotification } = useNotification();
 
   // Fungsi untuk format angka menjadi format Rupiah
   const formatRupiah = (number) => {

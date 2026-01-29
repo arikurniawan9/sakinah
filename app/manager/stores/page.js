@@ -76,11 +76,11 @@ export default function StoreManagementPage() {
   stateRef.current = state;
 
   // CSS class constants untuk status
-  const statusColors = {
+  const statusColors = useMemo(() => ({
     'ACTIVE': 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100',
     'INACTIVE': 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100',
     'SUSPENDED': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
-  };
+  }), []);
 
   const baseStatusClasses = 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full';
 

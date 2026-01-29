@@ -75,8 +75,10 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
       if (err.name === 'NotAllowedError' || err.message.includes('denied')) {
         setError('Izin kamera ditolak. Harap izinkan akses kamera di pengaturan browser Anda.');
         onError && onError('Izin kamera ditolak');
-        // Tampilkan modal izin kamera
-        setShowPermissionModal(true);
+        // Tampilkan modal izin kamera hanya jika belum ditampilkan
+        if (!showPermissionModal) {
+          setShowPermissionModal(true);
+        }
       } else if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') {
         setError('Kamera tidak ditemukan atau tidak dapat diakses. Coba ganti kamera lain jika tersedia.');
         onError && onError('Kamera tidak ditemukan');
@@ -90,7 +92,7 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
         setCurrentFacingMode('environment');
       }
     }
-  }, [onError]);
+  }, [onError, showPermissionModal]);
 
   // Initialize scanner
   const initializeScanner = useCallback(async () => {
@@ -152,7 +154,7 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
     } catch (err) {
       console.error('Error initializing scanner:', err);
       retryAttempts.current += 1;
-      
+
       if (retryAttempts.current <= maxRetries) {
         // Coba ulang setelah delay
         setTimeout(() => {
@@ -216,9 +218,24 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
   // Retry initialization
   const handleRetry = useCallback(() => {
     setError('');
+    setShowPermissionModal(false);
     retryAttempts.current = 0;
     getAvailableCameras();
   }, [getAvailableCameras]);
+
+  // Function to check camera permission status
+  const checkCameraPermission = useCallback(async () => {
+    if (typeof navigator.permissions !== 'undefined') {
+      try {
+        const permissionStatus = await navigator.permissions.query({ name: 'camera' });
+        return permissionStatus.state;
+      } catch (err) {
+        console.warn('Could not check camera permission status:', err);
+        return 'prompt'; // Default to prompt if we can't check
+      }
+    }
+    return 'prompt'; // Default to prompt if permissions API is not available
+  }, []);
 
   // Initialize on mount and when selectedCamera changes
   useEffect(() => {
@@ -227,22 +244,35 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
       setRequestingPermission(true);
 
       try {
-        // Request camera permission first
-        if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia !== 'undefined') {
-          const permissionStream = await navigator.mediaDevices.getUserMedia({
-            video: true
-          });
+        // Check if camera permission is already granted
+        const permissionStatus = await checkCameraPermission();
 
-          // Stop the temporary stream immediately
-          permissionStream.getTracks().forEach(track => track.stop());
-
-          // Permission granted, now get available cameras
+        if (permissionStatus === 'granted') {
+          // Permission already granted, get available cameras
           await getAvailableCameras();
+        } else if (permissionStatus === 'denied') {
+          // Permission explicitly denied, show modal
+          setError('Izin kamera ditolak. Harap izinkan akses kamera di pengaturan browser Anda.');
+          onError && onError('Izin kamera ditolak');
+          setShowPermissionModal(true);
         } else {
-          throw new Error('navigator.mediaDevices API tidak didukung di browser ini');
+          // Permission not granted yet, request it
+          if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia !== 'undefined') {
+            const permissionStream = await navigator.mediaDevices.getUserMedia({
+              video: true
+            });
+
+            // Stop the temporary stream immediately
+            permissionStream.getTracks().forEach(track => track.stop());
+
+            // Permission granted, now get available cameras
+            await getAvailableCameras();
+          } else {
+            throw new Error('navigator.mediaDevices API tidak didukung di browser ini');
+          }
         }
       } catch (err) {
-        console.error('Error requesting camera permission:', err);
+        console.error('Error during camera initialization:', err);
         if (err.name === 'NotAllowedError' || err.message.includes('denied')) {
           setError('Izin kamera ditolak. Harap izinkan akses kamera di pengaturan browser Anda.');
           onError && onError('Izin kamera ditolak');
@@ -259,7 +289,7 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
     };
 
     initialize();
-  }, [getAvailableCameras, onError]);
+  }, [getAvailableCameras, onError, checkCameraPermission]);
 
   useEffect(() => {
     if (selectedCamera && !requestingPermission && !error) {

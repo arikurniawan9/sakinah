@@ -165,6 +165,8 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
         if (err.name === 'NotAllowedError' || err.message.includes('denied')) {
           setError('Izin kamera ditolak. Harap izinkan akses kamera di pengaturan browser Anda.');
           onError && onError('Izin kamera ditolak');
+          // Tampilkan modal izin kamera
+          setShowPermissionModal(true);
         } else if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') {
           setError('Kamera tidak ditemukan atau tidak dapat diakses. Coba ganti kamera lain jika tersedia.');
           onError && onError('Kamera tidak ditemukan');
@@ -180,7 +182,7 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
         }
       }
     }
-  }, [selectedCamera, currentFacingMode, onScan, onError, offlineMode]);
+  }, [selectedCamera, currentFacingMode, onScan, onError, offlineMode, setShowPermissionModal]);
 
   // Handle camera change
   const handleCameraChange = useCallback((deviceId) => {
@@ -231,9 +233,15 @@ const EnhancedBarcodeScanner = ({ onScan, onClose, onError }) => {
       setRequestingPermission(true);
 
       try {
-        // Langsung coba akses kamera tanpa mengecek izin terlebih dahulu
+        // Coba langsung akses kamera dengan permintaan izin
         if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia !== 'undefined') {
-          // Coba langsung akses kamera
+          // Coba akses kamera langsung untuk mendapatkan izin
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+
+          // Setelah izin diberikan, hentikan stream sementara
+          stream.getTracks().forEach(track => track.stop());
+
+          // Sekarang ambil opsi kamera yang tersedia
           await getAvailableCameras();
         } else {
           throw new Error('navigator.mediaDevices API tidak didukung di browser ini');

@@ -1,7 +1,10 @@
-// middleware-multi-tenant.js (complete multi-tenant system)
+// proxy.js (main proxy file for multi-tenant system)
 import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
 import { ROLES } from './lib/constants';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/authOptions';
+import prisma from '@/lib/prisma';
 
 // Definisikan role mana yang termasuk global role (bisa mengakses semua toko)
 const GLOBAL_ROLES = [ROLES.MANAGER, ROLES.WAREHOUSE];
@@ -15,8 +18,23 @@ const rolePermissions = {
   '/pelayan': [ROLES.ATTENDANT],
 };
 
-// Fungsi middleware untuk proteksi route
-function authMiddleware(req) {
+// Fungsi untuk mengecek apakah sudah ada manager
+async function checkManagerExists() {
+  try {
+    const managerCount = await prisma.user.count({
+      where: {
+        role: 'MANAGER',
+      },
+    });
+    return managerCount > 0;
+  } catch (error) {
+    // Jika terjadi error karena tabel belum ada, anggap belum ada manager
+    return false;
+  }
+}
+
+// Fungsi proxy untuk proteksi route
+function authProxy(req) {
   const { pathname } = req.nextUrl;
   const { token } = req.nextauth;
 
@@ -143,16 +161,33 @@ function authMiddleware(req) {
   return NextResponse.next();
 }
 
-// Middleware wrapper yang menangani proteksi berdasarkan path
-export default function multiTenantMiddleware(req) {
-  // Untuk halaman utama, gunakan proteksi otentikasi
-  return withAuth(authMiddleware, {
+// Proxy wrapper yang menangani proteksi berdasarkan path
+export default async function mainProxy(req) {
+  const { pathname } = req.nextUrl;
+
+  // Tangani register manager terlebih dahulu
+  if (pathname === '/register-manager' || pathname.startsWith('/register-manager')) {
+    const managerExists = await checkManagerExists();
+
+    // Jika sudah ada manager, redirect ke login
+    if (managerExists) {
+      const url = req.nextUrl.clone();
+      url.pathname = '/login';
+      return NextResponse.redirect(url);
+    }
+
+    return NextResponse.next();
+  }
+
+  // Untuk path lainnya, gunakan proteksi otentikasi
+  return withAuth(authProxy, {
     pages: {
       signIn: '/login',
     },
   })(req);
 }
 
+// Konfigurasi matcher digabungkan dari semua proxy
 export const config = {
   matcher: [
     /*
@@ -166,5 +201,6 @@ export const config = {
      * - Other public files
      */
     '/((?!api|_next/static|_next/image|favicon.ico|login|unauthorized|register-manager|register|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.gif$|.*\\.svg$).*)',
+    '/register-manager',
   ],
 };

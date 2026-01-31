@@ -13,6 +13,7 @@ import LazyDataTable from '@/components/LazyDataTable';
 import CreateStoreModal from '@/components/CreateStoreModal';
 import StoreDetailModal from '@/components/StoreDetailModal';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
+import SuccessModal from '@/components/SuccessModal';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -71,6 +72,8 @@ function AuthenticatedStoreManagementPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Ref untuk state untuk mencegah perubahan fungsi fetch saat state berubah
   const stateRef = useRef();
@@ -585,7 +588,13 @@ function AuthenticatedStoreManagementPage() {
         onStoreCreated={() => {
           // Refresh data setelah membuat toko baru dengan memperbarui refreshTrigger
           setRefreshTrigger(prev => prev + 1);
-          toast.success('Toko berhasil dibuat');
+          setSuccessMessage('Toko berhasil dibuat');
+          setShowSuccessModal(true);
+
+          // Otomatis tutup modal setelah 3 detik
+          setTimeout(() => {
+            setShowSuccessModal(false);
+          }, 3000);
         }}
       />
 
@@ -617,6 +626,14 @@ function AuthenticatedStoreManagementPage() {
           storeName={storeToDelete.name}
         />
       )}
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        message={successMessage}
+        darkMode={userTheme.darkMode}
+      />
 
       {/* Toast Container */}
       <ToastContainer

@@ -93,8 +93,6 @@ export default function ProductManagement() {
 
   const { selectedRows, handleSelectAll, handleSelectRow, clearSelection, setSelectedRows } = useTableSelection(products);
 
-  const [categories, setCategories] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
   const [importLoading, setImportLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -114,14 +112,6 @@ export default function ProductManagement() {
 
   const { categories: cachedCategories, loading: categoriesLoading, error: categoriesError } = useCachedCategories();
   const { suppliers: cachedSuppliers, loading: suppliersLoading, error: suppliersError } = useCachedSuppliers();
-
-  useEffect(() => {
-    setCategories(cachedCategories);
-  }, [cachedCategories]);
-
-  useEffect(() => {
-    setSuppliers(cachedSuppliers);
-  }, [cachedSuppliers]);
 
   useEffect(() => {
     if (categoriesError) {
@@ -244,8 +234,8 @@ export default function ProductManagement() {
       const data = await response.json();
 
       const exportData = data.products.map(product => {
-        const category = categories.find(cat => cat.id === product.categoryId);
-        const supplier = suppliers.find(supp => supp.id === product.supplierId);
+        const category = cachedCategories.find(cat => cat.id === product.categoryId);
+        const supplier = cachedSuppliers.find(supp => supp.id === product.supplierId);
 
         return {
           'Nama': product.name,
@@ -995,8 +985,8 @@ export default function ProductManagement() {
             onRefresh={refreshProducts}
             onResetPagination={() => resetPaginationRef.current && resetPaginationRef.current()}
             darkMode={darkMode}
-            categories={categories}
-            suppliers={suppliers}
+            categories={cachedCategories}
+            suppliers={cachedSuppliers}
           />
         )}
 
@@ -1217,18 +1207,11 @@ export default function ProductManagement() {
                   <button
                     type="button"
                     onClick={() => {
-                      // Jika sedang dalam proses import (processing), jangan tutup modal
                       if (importStatus === 'processing') {
-                        // Tidak melakukan apa-apa saat sedang proses
                         return;
                       }
-                      // Untuk status success/error, biarkan setTimeout menangani reset state
-                      if (importStatus === 'success' || importStatus === 'error' || importStatus === 'success_with_errors') {
-                        // Hanya tutup modal, reset state akan dilakukan oleh setTimeout
-                        setShowImportModal(false);
-                      } else {
-                        resetImportState();
-                      }
+                      // Always reset the state when closing the modal after import is finished
+                      resetImportState();
                     }}
                     className={`mt-3 w-full inline-flex justify-center rounded-md border shadow-sm px-4 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-sm ${darkMode ? 'bg-gray-600 text-white hover:bg-gray-500 border-gray-500' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
                   >

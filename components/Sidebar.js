@@ -38,7 +38,9 @@ import {
   RotateCcw,
   Activity,
   Printer,
-  TrendingUp
+  TrendingUp,
+  PackageX,
+  Bell
 } from 'lucide-react';
 import { useUserTheme } from './UserThemeContext';
 import { useSidebar } from './SidebarContext';
@@ -132,23 +134,29 @@ const Sidebar = ({ children }) => {
     { title: "Laporan", href: "/admin/laporan", icon: BarChart3, type: 'item', roles: ['ADMIN'] },
     { title: "Laporan Laba Rugi", href: "/admin/laporan/labarugi", icon: BarChart3, type: 'item', roles: ['ADMIN'] },
     { title: "Laporan Piutang", href: "/admin/laporan/piutang", icon: DollarSign, type: 'item', roles: ['ADMIN'] },
+    { title: "Retur Produk", href: "/admin/laporan/retur-produk", icon: PackageX, type: 'item', roles: ['ADMIN'] },
     { title: "Transaksi", type: 'heading', roles: ['ADMIN'] },
     { title: "Pembelian", href: "/admin/transaksi/pembelian", icon: ShoppingCart, type: 'item', roles: ['ADMIN'] },
     { title: "Riwayat Pembelian", href: "/admin/transaksi/pembelian/riwayat", icon: Package, type: 'item', roles: ['ADMIN'] },
     { title: "Penjualan", href: "/admin/transaksi", icon: Receipt, type: 'item', roles: ['ADMIN'] },
     { title: "Riwayat Penjualan", href: "/admin/transaksi/riwayat-penjualan", icon: History, type: 'item', roles: ['ADMIN'] },
     { title: "Notifikasi Distribusi", href: "/admin/distribution-notifications", icon: Package, type: 'item', roles: ['ADMIN'] },
+    { title: "Retur Produk", href: "/admin/retur-produk", icon: PackageX, type: 'item', roles: ['ADMIN'] },
+    { title: "Notifikasi Retur", href: "/admin/notifikasi-retur", icon: Bell, type: 'item', roles: ['ADMIN'] },
+    { title: "Debug Retur API", href: "/admin/debug-return-api", icon: Activity, type: 'item', roles: ['ADMIN'] },
     { title: "Keuangan", type: 'heading', roles: ['ADMIN'] },
     { title: "Pengeluaran", href: "/admin/pengeluaran", icon: DollarSign, type: 'item', roles: ['ADMIN'] },
     { title: "Kategori Pengeluaran", href: "/admin/pengeluaran/kategori", icon: Folder, type: 'item', roles: ['ADMIN'] },
     { title: "Pengaturan", type: 'heading', roles: ['ADMIN'] },
     { title: "Pengaturan", href: "/admin/pengaturan", icon: Settings, type: 'item', roles: ['ADMIN'] },
+    { title: "Kebijakan Retur", href: "/admin/pengaturan/retur", icon: PackageX, type: 'item', roles: ['ADMIN'] },
 
     // CASHIER menus
     { title: "Kasir", type: 'heading', roles: ['CASHIER'] },
     { title: "Dashboard", href: "/kasir", icon: Home, type: 'item', roles: ['CASHIER'] },
     { title: "Transaksi", href: "/kasir/transaksi", icon: Receipt, type: 'item', roles: ['CASHIER'] },
     { title: "Riwayat Transaksi", href: "/kasir/riwayat", icon: History, type: 'item', roles: ['CASHIER'] },
+    { title: "Retur Produk", href: "/kasir/retur-produk", icon: PackageX, type: 'item', roles: ['CASHIER'] },
     { title: "Master", type: 'heading', roles: ['CASHIER'] },
     { title: "Produk", href: "/kasir/produk", icon: ShoppingBag, type: 'item', roles: ['CASHIER'] },
     { title: "Kategori", href: "/kasir/kategori", icon: Tag, type: 'item', roles: ['CASHIER'] },

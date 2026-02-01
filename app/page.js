@@ -28,6 +28,13 @@ export default function Home() {
   const fetchDashboardData = async () => {
     if (!session || !session.user) return;
 
+    // Hanya panggil endpoint dashboard untuk role yang diizinkan
+    if (!['ADMIN', 'CASHIER', 'ATTENDANT'].includes(session.user.role)) {
+      // Untuk role lain, tidak perlu mengambil data dashboard
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await fetch('/api/dashboard');
@@ -109,7 +116,7 @@ export default function Home() {
               )}
 
               {/* Dashboard Summary for Authenticated Users */}
-              {session.user.storeId && dashboardData ? (
+              {session.user.storeId && ['ADMIN', 'CASHIER', 'ATTENDANT'].includes(session.user.role) && dashboardData ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                   <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow flex items-center">
                     <div className="mr-4 p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
@@ -152,9 +159,13 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-              ) : session.user.storeId && !dashboardData ? (
+              ) : session.user.storeId && ['ADMIN', 'CASHIER', 'ATTENDANT'].includes(session.user.role) && !dashboardData ? (
                 <div className="text-center py-8">
                   <p className="text-gray-600 dark:text-gray-300">Memuat data toko...</p>
+                </div>
+              ) : session.user.storeId && !['ADMIN', 'CASHIER', 'ATTENDANT'].includes(session.user.role) ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600 dark:text-gray-300">Dashboard hanya tersedia untuk role Admin, Kasir, dan Pelayan.</p>
                 </div>
               ) : (
                 <div className="text-center py-8">
@@ -163,7 +174,7 @@ export default function Home() {
               )}
 
               {/* Best Selling Products Section */}
-              {session.user.storeId && dashboardData?.bestSellingProducts && dashboardData.bestSellingProducts.length > 0 && (
+              {session.user.storeId && ['ADMIN', 'CASHIER', 'ATTENDANT'].includes(session.user.role) && dashboardData?.bestSellingProducts && dashboardData.bestSellingProducts.length > 0 && (
                 <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow mb-8">
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Produk Terlaris Minggu Ini</h3>
                   <div className="overflow-x-auto">
@@ -190,7 +201,7 @@ export default function Home() {
               )}
 
               {/* Sales Chart Section */}
-              {session.user.storeId && dashboardData?.salesData && dashboardData.salesData.length > 0 && (
+              {session.user.storeId && ['ADMIN', 'CASHIER', 'ATTENDANT'].includes(session.user.role) && dashboardData?.salesData && dashboardData.salesData.length > 0 && (
                 <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow">
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Grafik Penjualan 7 Hari Terakhir</h3>
                   <div className="space-y-4">

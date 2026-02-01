@@ -15,7 +15,7 @@ const ReportPreview = ({
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const componentRef = useRef();
+  const componentRef = useRef(null);
 
   // Fungsi untuk mengambil data laporan berdasarkan tipe
   const fetchReportData = async () => {
@@ -93,7 +93,13 @@ const ReportPreview = ({
 
   // Fungsi untuk mencetak laporan
   const handlePrint = useReactToPrint({
-    content: () => componentRef.current,
+    content: () => {
+      if (componentRef.current) {
+        return componentRef.current;
+      }
+      console.error("Component reference is not available");
+      return null;
+    },
     documentTitle: `Laporan - ${getReportTypeName(reportType)} - ${getStoreName(storeId)}`,
     onAfterPrint: () => console.log('Print success!'),
   });
@@ -143,23 +149,12 @@ const ReportPreview = ({
 
     // Tampilkan laporan dalam div untuk bisa di-print
     return (
-      <div 
-        ref={componentRef} 
+      <div
+        ref={componentRef}
         className="w-full h-[70vh] overflow-auto border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white"
         dangerouslySetInnerHTML={{ __html: reportData }}
       />
     );
-  };
-
-  // Dapatkan nama jenis laporan
-  function getReportTypeName(type) {
-    switch(type) {
-      case 'sales': return 'Laporan Penjualan';
-      case 'daily': return 'Laporan Harian';
-      case 'inventory': return 'Laporan Inventaris';
-      case 'summary': return 'Ringkasan Laporan';
-      default: return 'Laporan';
-    }
   };
 
   if (!isOpen) return null;

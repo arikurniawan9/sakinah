@@ -1,6 +1,0 @@
-# Database Configuration - Direct connection to Supabase (for production)
-DATABASE_URL="postgresql://postgres:dzikrullah99@db.oazyjsnhxamlamvotyll.supabase.co:5432/postgres?sslmode=require"
-
-# Authentication
-NEXTAUTH_URL="https://toko-sakinah-nextjs.vercel.app/"
-NEXTAUTH_SECRET="Ql5v5qFILcOuJ36jAXZz5fe5ejHVvT/H86OCpq+TzG8="

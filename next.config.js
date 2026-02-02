@@ -6,6 +6,50 @@ const nextConfig = {
   experimental: {
     // Optimize package imports
     optimizePackageImports: ['lucide-react', 'recharts'],
+    // Add turbopack configuration to prevent build errors
+    turbopack: {},
+  },
+  // Explicitly specify webpack usage to prevent build errors
+  webpack: (config, { isServer, dev }) => {
+    // Existing webpack configuration
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      };
+    }
+
+    // Hanya untuk development
+    if (dev && !isServer) {
+      // Tambahkan mode development specific optimasi
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              chunks: 'all',
+              priority: 10,
+              maxSize: 244000, // ~244KB
+            },
+            common: {
+              name: 'common',
+              minChunks: 2,
+              chunks: 'all',
+              enforce: true,
+              priority: 5,
+              maxSize: 244000, // ~244KB
+            },
+          },
+        },
+      };
+    }
+
+    return config;
   },
   async headers() {
     const isDevelopment = process.env.NODE_ENV === 'development';

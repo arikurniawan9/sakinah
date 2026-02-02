@@ -8,7 +8,7 @@
     "start": "node server.js",
     "lint": "next lint",
     "postinstall": "prisma generate --no-engine",
-    "vercel-build": "prisma generate && prisma migrate deploy && next build",
+    "vercel-build": "prisma generate && prisma migrate deploy && next build --webpack",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate --no-engine",
     "prisma:studio": "prisma studio",

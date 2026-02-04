@@ -1,7 +1,7 @@
 // app/api/manager/activity-logs/route.js
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
-import { getActivityLogs } from '@/lib/auditTrail';
+import prisma from '@/lib/prisma';
 import { ROLES } from '@/lib/constants';
 
 export async function GET(request) {
@@ -16,12 +16,11 @@ export async function GET(request) {
     }
 
     const url = new URL(request.url);
-    const page = parseInt(url.searchParams.get('page')) || 1;
     const limit = parseInt(url.searchParams.get('limit')) || 10;
+    const page = parseInt(url.searchParams.get('page')) || 1;
     const userId = url.searchParams.get('userId');
     const action = url.searchParams.get('action');
     const entity = url.searchParams.get('entity');
-    const storeId = url.searchParams.get('storeId');
     const startDate = url.searchParams.get('startDate');
     const endDate = url.searchParams.get('endDate');
 
@@ -32,18 +31,80 @@ export async function GET(request) {
         headers: { 'Content-Type': 'application/json' },
       });
     }
+    
+    // Bangun where clause tanpa membatasi storeId
+    const whereClause = {};
 
-    const filters = {};
-    if (userId) filters.userId = userId;
-    if (action) filters.action = action;
-    if (entity) filters.entity = entity;
-    if (storeId) filters.storeId = storeId;
-    if (startDate) filters.startDate = startDate;
-    if (endDate) filters.endDate = endDate;
+    if (userId) whereClause.userId = userId;
+    if (action) whereClause.action = action;
+    if (entity) whereClause.entity = entity;
+    if (startDate || endDate) {
+      whereClause.createdAt = {};
+      if (startDate) whereClause.createdAt.gte = new Date(startDate);
+      if (endDate) whereClause.createdAt.lte = new Date(endDate);
+    }
 
-    const logsData = await getActivityLogs(filters, page, limit);
+    const skip = (page - 1) * limit;
 
-    return new Response(JSON.stringify(logsData), {
+    const [logs, total] = await Promise.all([
+      prisma.auditLog.findMany({
+        where: whereClause,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              role: true
+            }
+          },
+          store: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.auditLog.count({ where: whereClause })
+    ]);
+
+    // Format waktu untuk tampilan
+    const formattedLogs = logs.map(log => ({
+      id: log.id,
+      userId: log.userId,
+      action: log.action,
+      entity: log.entity,
+      entityId: log.entityId,
+      additionalData: log.additionalData,
+      oldValue: log.oldValue,
+      newValue: log.newValue,
+      ipAddress: log.ipAddress,
+      userAgent: log.userAgent,
+      createdAt: log.createdAt,
+      updatedAt: log.updatedAt,
+      user: log.user,
+      store: log.store,
+      time: new Date(log.createdAt).toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      date: new Date(log.createdAt).toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      })
+    }));
+
+    return new Response(JSON.stringify({
+      logs: formattedLogs,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });

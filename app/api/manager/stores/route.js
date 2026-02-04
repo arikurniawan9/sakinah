@@ -1,107 +1,67 @@
 // app/api/manager/stores/route.js
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { ROLES } from '@/lib/constants';
-import { logActivity } from '@/lib/auditTrail';
+import { logActivity } from '@/lib/auditTrail'; // Re-add this import
 
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
 
     if (!session || session.user.role !== ROLES.MANAGER) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const url = new URL(request.url);
-    const page = parseInt(url.searchParams.get('page')) || 1;
-    const limit = parseInt(url.searchParams.get('limit')) || 10;
-    const search = url.searchParams.get('search') || '';
-    const status = url.searchParams.get('status') || '';
-    const sortKey = url.searchParams.get('sortKey') || 'createdAt';
-    const sortDirection = url.searchParams.get('sortDirection') || 'desc';
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const search = searchParams.get('search') || '';
+    const sortKey = searchParams.get('sortKey') || 'createdAt';
+    const sortDirection = searchParams.get('sortDirection') || 'desc';
+    const status = searchParams.get('status') || '';
 
-    // Validasi input
-    if (page < 1 || limit < 1 || limit > 100) {
-      return new Response(JSON.stringify({ error: 'Parameter halaman atau batas tidak valid' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+    const skip = (page - 1) * limit;
 
-    // Bangun where clause
-    const whereClause = {};
-    
-    if (search) {
-      whereClause.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { code: { contains: search, mode: 'insensitive' } },
-        { address: { contains: search, mode: 'insensitive' } }
-      ];
-    }
-    
-    if (status) {
-      whereClause.status = status;
-    }
+    const whereClause = {
+      ...(status && { status: status }),
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { code: { contains: search, mode: 'insensitive' } },
+          { address: { contains: search, mode: 'insensitive' } },
+          { phone: { contains: search, mode: 'insensitive' } },
+        ],
+      }),
+    };
 
-    // Bangun order clause
-    const orderBy = {};
-    if (['name', 'code', 'status', 'createdAt', 'updatedAt'].includes(sortKey)) {
-      orderBy[sortKey] = sortDirection.toLowerCase() === 'asc' ? 'asc' : 'desc';
-    } else {
-      orderBy.createdAt = 'desc'; // default
-    }
-
-    const [stores, total] = await Promise.all([
+    const [stores, total] = await prisma.$transaction([
       prisma.store.findMany({
         where: whereClause,
-        orderBy,
-        skip: (page - 1) * limit,
+        orderBy: {
+          [sortKey]: sortDirection,
+        },
+        skip: skip,
         take: limit,
-        include: {
-          // Tambahkan jumlah pengguna terkait dengan toko ini
-          _count: {
-            select: {
-              storeUsers: {
-                where: {
-                  status: 'ACTIVE'
-                }
-              }
-            }
-          }
-        }
       }),
-      prisma.store.count({ where: whereClause })
+      prisma.store.count({
+        where: whereClause,
+      }),
     ]);
 
-    // Tambahkan jumlah pengguna ke setiap toko
-    const storesWithUserCount = stores.map(store => ({
-      ...store,
-      userCount: store._count.storeUsers
-    }));
-
-    return new Response(JSON.stringify({ 
-      stores: storesWithUserCount, 
-      total,
+    return NextResponse.json({
+      stores,
       pagination: {
+        total,
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit)
-      }
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
+        totalPages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
     console.error('Error fetching stores:', error);
-    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });      
   }
 }
 
@@ -110,19 +70,15 @@ export async function POST(request) {
     const session = await getServerSession(authOptions);
 
     if (!session || session.user.role !== ROLES.MANAGER) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const data = await request.json();
 
     // Validasi input
     if (!data.name || !data.code) {
-      return new Response(JSON.stringify({ error: 'Nama dan kode toko wajib diisi' }), {
+      return NextResponse.json({ error: 'Nama dan kode toko wajib diisi' }, { 
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
       });
     }
 
@@ -132,9 +88,8 @@ export async function POST(request) {
     });
 
     if (existingStore) {
-      return new Response(JSON.stringify({ error: 'Kode toko sudah digunakan' }), {
+      return NextResponse.json({ error: 'Kode toko sudah digunakan' }, {      
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
       });
     }
 
@@ -162,24 +117,21 @@ export async function POST(request) {
       { ...newStore }
     );
 
-    return new Response(JSON.stringify(newStore), {
+    return NextResponse.json(newStore, {
       status: 201,
-      headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Error creating store:', error);
-    
+
     if (error.code === 'P2002') {
       // Unique constraint violation
-      return new Response(JSON.stringify({ error: 'Kode toko sudah digunakan' }), {
+      return NextResponse.json({ error: 'Kode toko sudah digunakan' }, {      
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
       });
     }
-    
-    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+
+    return NextResponse.json({ error: 'Internal Server Error' }, {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
     });
   }
 }
@@ -189,10 +141,7 @@ export async function PUT(request) {
     const session = await getServerSession(authOptions);
 
     if (!session || session.user.role !== ROLES.MANAGER) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const url = new URL(request.url);
@@ -200,9 +149,8 @@ export async function PUT(request) {
 
     // Validasi ID
     if (!storeId) {
-      return new Response(JSON.stringify({ error: 'ID toko tidak valid' }), {
+      return NextResponse.json({ error: 'ID toko tidak valid' }, {
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
       });
     }
 
@@ -214,9 +162,8 @@ export async function PUT(request) {
     });
 
     if (!existingStore) {
-      return new Response(JSON.stringify({ error: 'Toko tidak ditemukan' }), {
+      return NextResponse.json({ error: 'Toko tidak ditemukan' }, {
         status: 404,
-        headers: { 'Content-Type': 'application/json' },
       });
     }
 
@@ -244,24 +191,21 @@ export async function PUT(request) {
       { ...updatedStore }
     );
 
-    return new Response(JSON.stringify(updatedStore), {
+    return NextResponse.json(updatedStore, {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Error updating store:', error);
-    
+
     if (error.code === 'P2002') {
       // Unique constraint violation
-      return new Response(JSON.stringify({ error: 'Kode toko sudah digunakan' }), {
+      return NextResponse.json({ error: 'Kode toko sudah digunakan' }, {      
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
       });
     }
-    
-    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+
+    return NextResponse.json({ error: 'Internal Server Error' }, {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
     });
   }
 }
@@ -271,10 +215,7 @@ export async function DELETE(request) {
     const session = await getServerSession(authOptions);
 
     if (!session || session.user.role !== ROLES.MANAGER) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const url = new URL(request.url);
@@ -282,9 +223,8 @@ export async function DELETE(request) {
 
     // Validasi ID
     if (!storeId) {
-      return new Response(JSON.stringify({ error: 'ID toko tidak valid' }), {
+      return NextResponse.json({ error: 'ID toko tidak valid' }, {
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
       });
     }
 
@@ -294,9 +234,8 @@ export async function DELETE(request) {
     });
 
     if (!storeToDelete) {
-      return new Response(JSON.stringify({ error: 'Toko tidak ditemukan' }), {
+      return NextResponse.json({ error: 'Toko tidak ditemukan' }, {
         status: 404,
-        headers: { 'Content-Type': 'application/json' },
       });
     }
 
@@ -317,18 +256,16 @@ export async function DELETE(request) {
       { ...updatedStore }
     );
 
-    return new Response(JSON.stringify({ 
+    return NextResponse.json({
       message: 'Toko berhasil dinonaktifkan',
-      store: updatedStore 
-    }), {
+      store: updatedStore
+    }, {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Error deleting store:', error);
-    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+    return NextResponse.json({ error: 'Internal Server Error' }, {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
     });
   }
 }

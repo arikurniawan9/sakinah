@@ -11,7 +11,7 @@ export async function GET(request, { params }) {
 
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== ROLES.MANAGER) {
+    if (!session || !['ADMIN', 'MANAGER'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -55,7 +55,7 @@ export async function PUT(request, { params }) {
 
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== ROLES.MANAGER) {
+    if (!session || !['ADMIN', 'MANAGER'].includes(session.user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

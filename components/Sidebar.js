@@ -116,6 +116,8 @@ const Sidebar = ({ children }) => {
     { title: "Monitor Toko", href: "/manager/monitor-all", icon: Monitor, type: 'item', roles: ['MANAGER'] },
     { title: "Cetak Laporan Toko", href: "/manager/print-reports", icon: Printer, type: 'item', roles: ['MANAGER'] },
     { title: "Backup & Restore", href: "/manager/backup-restore", icon: HardDrive, type: 'item', roles: ['MANAGER'] },
+    { title: "Log Aktivitas", href: "/manager/activity-log", icon: Activity, type: 'item', roles: ['MANAGER'] },
+    { title: "Semua Member", href: "/manager/members", icon: Users, type: 'item', roles: ['MANAGER'] },
     { title: "Manajemen Pengguna", type: 'heading', roles: ['MANAGER'] },
     { title: "Semua Pengguna", href: "/manager/users", icon: Users, type: 'item', roles: ['MANAGER'] },
     { title: "Akun Gudang", href: "/manager/warehouse-users", icon: Package, type: 'item', roles: ['MANAGER'] },
@@ -150,6 +152,7 @@ const Sidebar = ({ children }) => {
     { title: "Pengaturan", type: 'heading', roles: ['ADMIN'] },
     { title: "Pengaturan", href: "/admin/pengaturan", icon: Settings, type: 'item', roles: ['ADMIN'] },
     { title: "Kebijakan Retur", href: "/admin/pengaturan/retur", icon: PackageX, type: 'item', roles: ['ADMIN'] },
+    { title: "Log Aktivitas", href: "/admin/activity-log", icon: Activity, type: 'item', roles: ['ADMIN'] },
 
     // CASHIER menus
     { title: "Kasir", type: 'heading', roles: ['CASHIER'] },

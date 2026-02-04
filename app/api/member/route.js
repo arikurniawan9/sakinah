@@ -3,13 +3,19 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
-import { generateShortCode } from '@/lib/utils';
+
+// Fungsi untuk menghasilkan kode pendek unik
+function generateShortCode(prefix = '') {
+  // Generate angka acak 6 digit
+  const randomNum = Math.floor(Math.random() * 900000) + 100000;
+  return `${prefix}${randomNum}`;
+}
 
 // GET: Mengambil semua member
 export async function GET(request) {
   const session = await getServerSession(authOptions);
 
-  if (!session || !['CASHIER', 'ADMIN', 'ATTENDANT'].includes(session.user.role)) {
+  if (!session || !['CASHIER', 'ADMIN', 'ATTENDANT', 'MANAGER'].includes(session.user.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -72,6 +78,9 @@ export async function GET(request) {
           phone: true,
           code: true,
           membershipType: true,
+          storeId: true, // Tambahkan storeId untuk menampilkan informasi toko
+          createdAt: true, // Tambahkan createdAt untuk menampilkan tanggal dibuat
+          address: true, // Tambahkan address untuk menampilkan alamat
         },
         skip,
         take: limit,
@@ -104,7 +113,7 @@ export async function GET(request) {
 export async function POST(request) {
   const session = await getServerSession(authOptions);
 
-  if (!session || !['CASHIER', 'ADMIN', 'ATTENDANT'].includes(session.user.role)) {
+  if (!session || !['CASHIER', 'ADMIN', 'ATTENDANT', 'MANAGER'].includes(session.user.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

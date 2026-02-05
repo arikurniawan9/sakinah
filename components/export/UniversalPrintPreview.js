@@ -16,11 +16,11 @@ const getStoreName = (propStoreName) => {
 
   // Jika tidak, coba dari localStorage
   if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-    return localStorage.getItem('storeName') || 'TOKO SAKINAH';
+    return localStorage.getItem('storeName') || 'SAKINAH';
   }
 
   // Default saat di server
-  return 'TOKO SAKINAH'; // Gunakan nama default dari aplikasi
+  return 'SAKINAH'; // Gunakan nama default dari aplikasi
 };
 
 // Fungsi untuk mendapatkan nama kota dari alamat toko
@@ -91,10 +91,10 @@ const SalesReportPreview = ({ reportData, darkMode, storeName, storeAddress }) =
     }
 
     if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-      return localStorage.getItem('storeName') || 'TOKO SAKINAH';
+      return localStorage.getItem('storeName') || 'SAKINAH';
     }
 
-    return 'TOKO SAKINAH';
+    return 'SAKINAH';
   };
 
   // Dapatkan kota dari alamat toko

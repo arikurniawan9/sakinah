@@ -102,7 +102,7 @@ export const generateMemberCardPDF = (member, options = {}) => {
   // Add company logo/text at bottom
   doc.setFontSize(fontSize);
   doc.setTextColor(100, 100, 100); // Abu-abu gelap
-  doc.text('TOKO SAKINAH', currentX + cardWidth / 2, currentY + cardHeight - 5, { align: 'center' });
+  doc.text('SAKINAH', currentX + cardWidth / 2, currentY + cardHeight - 5, { align: 'center' });
 
   // Simpan file PDF
   doc.save(`kartu-member-${member.code || 'unknown'}.pdf`);
@@ -226,7 +226,7 @@ export const generateMultipleMemberCardsPDF = (members, options = {}) => {
     // Add company logo/text at bottom
     doc.setFontSize(fontSize);
     doc.setTextColor(100, 100, 100); // Abu-abu gelap
-    doc.text('TOKO SAKINAH', currentX + cardWidth / 2, currentY + cardHeight - 5, { align: 'center' });
+    doc.text('SAKINAH', currentX + cardWidth / 2, currentY + cardHeight - 5, { align: 'center' });
   }
 
   // Simpan file PDF

@@ -377,7 +377,7 @@ export default function ProfitLossReport() {
         reportType="profitLoss"
         darkMode={darkMode}
         storeName={{
-          name: session?.user?.storeAccess?.name || 'TOKO SAKINAH',
+          name: session?.user?.storeAccess?.name || 'SAKINAH',
           address: session?.user?.storeAccess?.address
         }}
       />

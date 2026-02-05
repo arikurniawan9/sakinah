@@ -6,7 +6,7 @@ Membuat fitur yang memungkinkan role MANAGER untuk mengelola menu sidebar di hal
 
 ## 2. Gambaran Umum
 
-Saat ini, menu sidebar di sistem Toko Sakinah ditentukan secara statis dalam file `components/Sidebar.js`. Setiap role (MANAGER, ADMIN, CASHIER, ATTENDANT, WAREHOUSE) memiliki menu yang telah ditentukan dan tidak dapat dimodifikasi.
+Saat ini, menu sidebar di sistem Sakinah ditentukan secara statis dalam file `components/Sidebar.js`. Setiap role (MANAGER, ADMIN, CASHIER, ATTENDANT, WAREHOUSE) memiliki menu yang telah ditentukan dan tidak dapat dimodifikasi.
 
 Fitur ini akan memungkinkan MANAGER untuk:
 - Menampilkan/menyembunyikan menu tertentu
@@ -116,4 +116,4 @@ Membuat halaman baru di `/manager/menu-settings` untuk:
 
 ## 8. Penutup
 
-Fitur manajemen menu sidebar akan meningkatkan fleksibilitas sistem Toko Sakinah, memungkinkan MANAGER untuk menyesuaikan antarmuka sesuai kebutuhan operasional toko mereka. Implementasi harus dilakukan dengan hati-hati untuk memastikan keamanan dan kompatibilitas dengan sistem yang sudah ada.
+Fitur manajemen menu sidebar akan meningkatkan fleksibilitas sistem Sakinah, memungkinkan MANAGER untuk menyesuaikan antarmuka sesuai kebutuhan operasional toko mereka. Implementasi harus dilakukan dengan hati-hati untuk memastikan keamanan dan kompatibilitas dengan sistem yang sudah ada.

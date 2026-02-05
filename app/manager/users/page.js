@@ -307,22 +307,63 @@ export default function ManagerAllUsersManagement() {
     setShowTransferModal(true);
   };
 
+  const [isActivating, setIsActivating] = useState(false);
+
+  const handleActivateUser = async (userId) => {
+    if (!canManageUsers) return;
+
+    setIsActivating(true);
+    setTableError('');
+
+    try {
+      const response = await fetch(`/api/manager/users/${userId}/activate`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Gagal mengaktifkan user');
+      }
+
+      setToast({ show: true, message: result.message || 'User berhasil diaktifkan.', type: 'success' });
+      fetchUsers(); // Refresh data
+    } catch (err) {
+      setToast({ show: true, message: err.message, type: 'error' });
+    } finally {
+      setIsActivating(false);
+    }
+  };
+
   const renderRowActions = (row) => {
     const isCurrentUser = session?.user?.id === row.id;
     const canEdit = !isCurrentUser && canManageUsers;
     const canDelete = !isCurrentUser && canManageUsers && row.role !== 'MANAGER';
+    const isInactive = row.status !== 'AKTIF' && row.status !== 'ACTIVE';
 
     return (
       <div className="flex items-center space-x-2">
-        <button
-          onClick={() => canEdit ? openModalForEdit(row) : undefined}
-          className={`${canEdit ? 'p-1 text-blue-500 hover:text-blue-700 cursor-pointer' : 'p-1 text-gray-400 cursor-not-allowed'}`}
-          title={canEdit ? "Edit" : "Tidak dapat mengedit akun sendiri"}
-          disabled={!canEdit}
-        >
-          <Edit size={18} />
-        </button>
-        {row.role !== 'MANAGER' && (
+        {isInactive ? (
+          <button
+            onClick={() => handleActivateUser(row.id)}
+            className="p-1 text-green-500 hover:text-green-700 cursor-pointer"
+            title="Aktifkan User"
+            disabled={isActivating}
+          >
+            <CheckCircle size={18} />
+          </button>
+        ) : (
+          <button
+            onClick={() => canEdit ? openModalForEdit(row) : undefined}
+            className={`${canEdit ? 'p-1 text-blue-500 hover:text-blue-700 cursor-pointer' : 'p-1 text-gray-400 cursor-not-allowed'}`}
+            title={canEdit ? "Edit" : "Tidak dapat mengedit akun sendiri"}
+            disabled={!canEdit}
+          >
+            <Edit size={18} />
+          </button>
+        )}
+        {row.role !== 'MANAGER' && !isInactive && (
           <button
             onClick={() => openTransferModal(row)}
             className="p-1 text-green-500 hover:text-green-700"

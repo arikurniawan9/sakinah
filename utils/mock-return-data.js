@@ -18,7 +18,7 @@ const MOCK_RETURN_DATA = [
     updatedAt: new Date('2025-12-15T10:30:00Z'),
     store: {
       id: 'STORE001',
-      name: 'Toko Sakinah Pusat'
+      name: 'Sakinah Pusat'
     },
     product: {
       id: 'PROD-001',
@@ -44,7 +44,7 @@ const MOCK_RETURN_DATA = [
     updatedAt: new Date('2025-12-16T13:45:00Z'),
     store: {
       id: 'STORE001',
-      name: 'Toko Sakinah Pusat'
+      name: 'Sakinah Pusat'
     },
     product: {
       id: 'PROD-005',
@@ -70,7 +70,7 @@ const MOCK_RETURN_DATA = [
     updatedAt: new Date('2025-12-17T09:15:00Z'),
     store: {
       id: 'STORE001',
-      name: 'Toko Sakinah Pusat'
+      name: 'Sakinah Pusat'
     },
     product: {
       id: 'PROD-008',

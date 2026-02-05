@@ -47,7 +47,7 @@ const Receipt = React.forwardRef(({ receiptData, onReadyToPrint }, ref) => {
 
   // Store information - ambil dari receiptData jika tersedia, jika tidak gunakan default
   const store = {
-    name: receiptData.storeName || 'Toko Sakinah',
+    name: receiptData.storeName || 'Sakinah',
     address: receiptData.storeAddress || 'Jl. Raya No. 123, Kota Anda',
     phone: receiptData.storePhone || '0812-3456-7890',
     code: receiptData.storeCode || 'N/A', // Tambahkan storeCode

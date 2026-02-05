@@ -18,6 +18,50 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit')) || 10;
     const page = parseInt(searchParams.get('page')) || 1;
     const search = searchParams.get('search') || '';
+    const exportParam = searchParams.get('export'); // Check if export parameter is present
+
+    // If export parameter is present, return all suppliers without pagination
+    if (exportParam) {
+      // Build query conditions
+      const whereCondition = {}; // Empty condition to get all suppliers from all stores
+
+      if (search) {
+          whereCondition.OR = [
+              { name: { contains: search, mode: 'insensitive' } },
+              { phone: { contains: search, mode: 'insensitive' } },
+              { email: { contains: search, mode: 'insensitive' } },
+              { address: { contains: search, mode: 'insensitive' } },
+              { code: { contains: search, mode: 'insensitive' } }
+          ];
+      }
+
+      // Get all suppliers without pagination for export
+      const suppliers = await prisma.supplier.findMany({
+        where: whereCondition,
+        orderBy: {
+          createdAt: 'desc'
+        },
+        include: {
+          store: true, // Include store information
+          products: {
+            select: {
+              id: true
+            }
+          }
+        }
+      });
+
+      // Transform data to include store name and product count
+      const suppliersWithStoreAndProductCount = suppliers.map((supplier, index) => ({
+        ...supplier,
+        storeName: supplier.store?.name || 'N/A',
+        productCount: supplier.products.length,
+        // Add sequential number for export
+        no: index + 1
+      }));
+
+      return NextResponse.json({ suppliers: suppliersWithStoreAndProductCount });
+    }
 
     // Validasi parameter
     if (page < 1 || limit < 1 || limit > 100) {

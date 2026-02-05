@@ -1,7 +1,7 @@
 # Penghapusan Fitur Ikon Kategori
 
 ## Ringkasan Perubahan
-Fitur pilihan ikon pada komponen kategori telah dihapus dari aplikasi Toko Sakinah sesuai permintaan.
+Fitur pilihan ikon pada komponen kategori telah dihapus dari aplikasi Sakinah sesuai permintaan.
 
 ## File yang Diubah
 

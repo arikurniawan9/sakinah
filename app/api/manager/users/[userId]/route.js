@@ -2,18 +2,17 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
-import { ROLES } from '@/lib/constants';
+import { ROLES, WAREHOUSE_STORE_ID } from '@/lib/constants';
 import bcrypt from 'bcryptjs';
 import { logActivity } from '@/lib/auditTrail';
 
-// GET a specific user by ID
 export async function GET(request, { params }) {
+  const { userId } = await params;
   const session = await getServerSession(authOptions);
-  if (!session || !session.user || !session.user.id || session.user.role !== ROLES.MANAGER) {
+
+  if (!session || session.user.role !== ROLES.MANAGER) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { userId } = params;
 
   try {
     const user = await prisma.user.findUnique({
@@ -43,15 +42,14 @@ export async function GET(request, { params }) {
   }
 }
 
-// PUT (update) a specific user by ID
 export async function PUT(request, { params }) {
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.user || !session.user.id || session.user.role !== ROLES.MANAGER) {
+  if (!session || session.user.role !== ROLES.MANAGER) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { userId } = params;
+  const { userId } = await params;
 
   if (userId === session.user.id) {
     return NextResponse.json({ error: "You cannot edit your own account here. Please use the profile page." }, { status: 403 });
@@ -114,15 +112,14 @@ export async function PUT(request, { params }) {
   }
 }
 
-// DELETE a specific user by ID (deactivate user)
 export async function DELETE(request, { params }) {
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.user || !session.user.id || session.user.role !== ROLES.MANAGER) {
+  if (!session || session.user.role !== ROLES.MANAGER) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { userId } = params;
+  const { userId } = await params;
 
   if (userId === session.user.id) {
     return NextResponse.json({ error: "You cannot delete your own account." }, { status: 403 });
@@ -162,6 +159,19 @@ export async function DELETE(request, { params }) {
       }
     });
 
+    // Dapatkan storeId untuk mencatat aktivitas
+    // Untuk operasi manager, kita bisa menggunakan store default
+    const defaultStore = await prisma.store.findFirst({
+      where: { code: 'GM001' } // Gunakan kode warehouse store sebagai default
+    });
+
+    let storeIdForActivity = defaultStore?.id;
+    if (!storeIdForActivity) {
+      // Jika tidak ada default store, cari store pertama
+      const firstStore = await prisma.store.findFirst();
+      storeIdForActivity = firstStore?.id;
+    }
+
     // Catat aktivitas
     await logActivity(
       session.user.id,
@@ -171,7 +181,7 @@ export async function DELETE(request, { params }) {
       `Pengguna "${updatedUser.name}" dinonaktifkan`,
       { ...userToDelete },
       { ...updatedUser },
-      null // Tidak ada storeId karena ini adalah operasi manager
+      storeIdForActivity
     );
 
     return NextResponse.json({

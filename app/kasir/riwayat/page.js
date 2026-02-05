@@ -64,7 +64,7 @@ export default function RiwayatKasirPage() {
   const handlePrintReceipt = async (transaction) => {
     // Ambil informasi toko untuk dimasukkan ke dalam receipt
     let storeInfo = {
-      name: 'TOKO SAKINAH',
+      name: 'SAKINAH',
       address: 'Jl. Raya No. 123, Kota Anda',
       phone: '0812-3456-7890',
     };
@@ -74,7 +74,7 @@ export default function RiwayatKasirPage() {
       if (storeResponse.ok) {
         const storeData = await storeResponse.json();
         storeInfo = {
-          name: storeData.name || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+          name: storeData.name || process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
           address: storeData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
           phone: storeData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
         };
@@ -84,7 +84,7 @@ export default function RiwayatKasirPage() {
         if (settingResponse.ok) {
           const settingData = await settingResponse.json();
           storeInfo = {
-            name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+            name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
             address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
             phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
           };
@@ -94,7 +94,7 @@ export default function RiwayatKasirPage() {
       console.error('Error fetching store info for receipt:', error);
       // Gunakan environment variables atau default jika API gagal
       storeInfo = {
-        name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+        name: process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
         address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
         phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
       };

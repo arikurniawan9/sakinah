@@ -1,7 +1,7 @@
 # Panduan Developer: Menambahkan Fitur Export dan Caching ke Modul Lain
 
 ## Overview
-Dokumen ini menjelaskan bagaimana menambahkan fitur export (ke Excel, PDF, CSV) dan caching Redis ke modul aplikasi lain di sistem Toko Sakinah.
+Dokumen ini menjelaskan bagaimana menambahkan fitur export (ke Excel, PDF, CSV) dan caching Redis ke modul aplikasi lain di sistem Sakinah.
 
 ## 1. Menambahkan Export ke Modul Baru
 
@@ -247,4 +247,4 @@ Untuk menguji implementasi:
 3. Test caching dengan membandingkan waktu respons
 4. Verifikasi bahwa data tetap akurat setelah perubahan
 
-Dengan mengikuti panduan ini, Anda dapat dengan mudah menambahkan fitur export dan caching ke modul-modul lain dalam sistem Toko Sakinah.
+Dengan mengikuti panduan ini, Anda dapat dengan mudah menambahkan fitur export dan caching ke modul-modul lain dalam sistem Sakinah.

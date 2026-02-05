@@ -22,7 +22,7 @@ export async function GET(request) {
     if (!session.user.storeId && session.user.role === 'MANAGER') {
       // Tidak ada toko spesifik yang dipilih, kembalikan nilai default
       return NextResponse.json({
-        shopName: 'Toko Sakinah',
+        shopName: 'Sakinah',
         address: '',
         phone: '',
         themeColor: '#3c8dbc'

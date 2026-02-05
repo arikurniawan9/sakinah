@@ -1,4 +1,4 @@
--- MIGRASI DATABASE UNTUK SISTEM MULTI-TENANT TOKO SAKINAH
+-- MIGRASI DATABASE UNTUK SISTEM MULTI-TENANT SAKINAH
 -- Jalankan perintah-perintah berikut satu per satu di Supabase SQL Editor
 
 -- 1. HAPUS TABEL JIKA ADA (opsional, hanya jika perlu setup ulang)

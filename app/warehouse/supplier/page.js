@@ -167,7 +167,7 @@ export default function SupplierManagementPage() {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('/api/warehouse/supplier?export=true');
+      const response = await fetch('/api/warehouse/all-suppliers?export=true');
       const data = await response.json();
 
       if (!response.ok) {
@@ -306,7 +306,7 @@ export default function SupplierManagementPage() {
 
   return (
     <ProtectedRoute requiredRole="WAREHOUSE">
-      <main className={`w-full px-4 sm:px-6 lg:px-8 py-8 ${darkMode ? 'bg-gray-900' : 'bg-white'}`}>
+      <main className={`w-full px-4 sm:px-6 lg:px-8 py-8 ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
         <Breadcrumb
           items={[
             { title: 'Dashboard Gudang', href: '/warehouse' },
@@ -315,11 +315,20 @@ export default function SupplierManagementPage() {
           darkMode={darkMode}
         />
 
-        <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-          Manajemen Supplier Gudang
-        </h1>
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                Manajemen Supplier Gudang
+              </h1>
+              <p className={`mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                Kelola data supplier untuk kebutuhan gudang
+              </p>
+            </div>
+          </div>
+        </div>
 
-        <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
+        <div className={`rounded-2xl shadow-lg overflow-hidden ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
           <DataTable
             data={suppliers}
             columns={columns}
@@ -432,21 +441,32 @@ export default function SupplierManagementPage() {
 
                   <div className={`inline-block align-bottom ${
                     darkMode ? 'bg-gray-800' : 'bg-white'
-                  } rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${
-                    darkMode ? 'border-gray-700' : 'border-pastel-purple-200'
+                  } rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${
+                    darkMode ? 'border-gray-700' : 'border-gray-200'
                   } border`}>
                     <div className={`px-4 pt-5 pb-4 sm:p-6 sm:pb-4 ${
                       darkMode ? 'bg-gray-800' : 'bg-white'
                     }`}>
                       <div className="sm:flex sm:items-start">
                         <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                          <h3 className={`text-lg leading-6 font-medium ${
-                            darkMode ? 'text-cyan-400' : 'text-cyan-800'
-                          }`} id="modal-title">
-                            Detail Supplier
-                          </h3>
-                          <div className="mt-4 w-full">
-                            <div className="grid grid-cols-2 gap-4">
+                          <div className="flex justify-between items-center">
+                            <h3 className={`text-lg leading-6 font-medium ${
+                              darkMode ? 'text-white' : 'text-gray-900'
+                            }`} id="modal-title">
+                              Detail Supplier
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={() => setShowDetailModal(false)}
+                              className={`text-gray-400 hover:text-gray-500 focus:outline-none`}
+                            >
+                              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div className="mt-6 w-full">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               <div>
                                 <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Kode Supplier</p>
                                 <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedSupplier.code}</p>
@@ -467,7 +487,7 @@ export default function SupplierManagementPage() {
                                 <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Email</p>
                                 <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedSupplier.email || '-'}</p>
                               </div>
-                              <div className="col-span-2">
+                              <div className="md:col-span-2">
                                 <p className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Alamat</p>
                                 <p className={`mt-1 text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{selectedSupplier.address || '-'}</p>
                               </div>
@@ -489,15 +509,15 @@ export default function SupplierManagementPage() {
                       </div>
                     </div>
                     <div className={`px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse ${
-                      darkMode ? 'bg-gray-700' : 'bg-pastel-purple-50'
+                      darkMode ? 'bg-gray-800' : 'bg-gray-50'
                     }`}>
                       <button
                         type="button"
                         onClick={() => setShowDetailModal(false)}
                         className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm ${
                           darkMode
-                            ? 'bg-cyan-600 hover:bg-cyan-700'
-                            : 'bg-cyan-600 hover:bg-cyan-700'
+                            ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
+                            : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
                         }`}
                       >
                         Tutup
@@ -510,15 +530,15 @@ export default function SupplierManagementPage() {
           </>
         )}
         {/* Keyboard Shortcuts Guide */}
-        <div className={`mt-4 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+        <div className={`mt-6 text-xs ${darkMode ? 'text-gray-500' : 'text-gray-600'}`}>
           <div className="flex flex-wrap gap-3">
-            <span>Tambah: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+N</kbd></span>
-            <span>Import: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+I</kbd></span>
-            <span>Export: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+E</kbd></span>
-            <span>Template: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+D</kbd></span>
-            <span>Cari: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+K</kbd></span>
-            <span>Simpan: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+S</kbd></span>
-            <span>Tutup: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>ESC</kbd></span>
+            <span>Tambah: <kbd className={`px-2 py-1 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+N</kbd></span>
+            <span>Import: <kbd className={`px-2 py-1 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+I</kbd></span>
+            <span>Export: <kbd className={`px-2 py-1 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+E</kbd></span>
+            <span>Template: <kbd className={`px-2 py-1 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+D</kbd></span>
+            <span>Cari: <kbd className={`px-2 py-1 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+K</kbd></span>
+            <span>Simpan: <kbd className={`px-2 py-1 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+S</kbd></span>
+            <span>Tutup: <kbd className={`px-2 py-1 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>ESC</kbd></span>
           </div>
         </div>
       </main>

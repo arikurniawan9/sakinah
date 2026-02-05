@@ -1,4 +1,4 @@
-# URL Routes Documentation - Sistem Multi-Tenant Toko Sakinah
+# URL Routes Documentation - Sistem Multi-Tenant Sakinah
 
 ## Public Routes
 - `GET /login` - Halaman login sistem

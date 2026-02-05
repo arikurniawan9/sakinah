@@ -100,7 +100,7 @@ export default function ReceivablesPage() {
           reportType="receivable"
           darkMode={darkMode}
           storeName={{
-            name: session?.user?.storeAccess?.name || 'TOKO SAKINAH',
+            name: session?.user?.storeAccess?.name || 'SAKINAH',
             address: session?.user?.storeAccess?.address
           }}
         />

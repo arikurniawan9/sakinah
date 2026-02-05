@@ -434,7 +434,7 @@ async function createReportPDF(reportData, reportType, template, options) {
     doc.setPage(i);
     doc.setFontSize(10);
     doc.text(`Halaman ${i}/${pageCount}`, doc.internal.pageSize.width - 30, doc.internal.pageSize.height - 10);
-    doc.text('Laporan Sistem Toko Sakinah', 20, doc.internal.pageSize.height - 10);
+    doc.text('Laporan Sistem Sakinah', 20, doc.internal.pageSize.height - 10);
   }
 
   return doc.output('arraybuffer');

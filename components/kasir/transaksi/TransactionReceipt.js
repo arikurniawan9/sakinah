@@ -18,7 +18,7 @@ const ReceiptContent = ({ transaction }) => {
   return (
     <div className="font-mono text-sm">
       <div className="text-center mb-2">
-        <div className="font-bold text-lg">TOKO SAKINAH</div>
+        <div className="font-bold text-lg">SAKINAH</div>
         <div className="text-xs">Kode Toko: {transaction.storeCode || 'N/A'}</div>
         <div className="text-xs">Jl. Contoh Alamat Toko</div>
         <div className="text-xs">Telp: 0123-456789</div>

@@ -1,6 +1,6 @@
 # Migrasi dari employeeNumber ke code
 
-Dokumen ini menjelaskan perubahan struktural yang direkomendasikan untuk menyederhanakan sistem pengelolaan kode pengguna dalam aplikasi Toko Sakinah.
+Dokumen ini menjelaskan perubahan struktural yang direkomendasikan untuk menyederhanakan sistem pengelolaan kode pengguna dalam aplikasi Sakinah.
 
 ## Latar Belakang
 

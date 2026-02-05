@@ -1,6 +1,6 @@
-# Toko Sakinah - Aplikasi Kasir Toko Pakaian
+# Sakinah - Aplikasi Kasir Toko Pakaian
 
-Aplikasi kasir untuk toko pakaian Toko Sakinah, dibangun dengan Next.js 14, Prisma ORM, SQLite, dan Tailwind CSS.
+Aplikasi kasir untuk toko pakaian Sakinah, dibangun dengan Next.js 14, Prisma ORM, SQLite, dan Tailwind CSS.
 
 ## ⚙️ Teknologi yang Digunakan
 

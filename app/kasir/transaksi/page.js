@@ -420,7 +420,7 @@ export default function KasirTransaksiPage() {
 
         // Ambil informasi toko untuk dimasukkan ke dalam receipt
         let storeInfo = {
-          name: 'TOKO SAKINAH',
+          name: 'SAKINAH',
           address: 'Jl. Raya No. 123, Kota Anda',
           phone: '0812-3456-7890',
           code: 'TOKO001', // Default code
@@ -431,7 +431,7 @@ export default function KasirTransaksiPage() {
           if (storeResponse.ok) {
             const storeData = await storeResponse.json();
             storeInfo = {
-              name: storeData.name || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+              name: storeData.name || process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
               address: storeData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
               phone: storeData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
               code: storeData.code || 'TOKO001', // Gunakan code dari storeData
@@ -442,7 +442,7 @@ export default function KasirTransaksiPage() {
             if (settingResponse.ok) {
               const settingData = await settingResponse.json();
               storeInfo = {
-                name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+                name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
                 address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
                 phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
                 code: settingData.code || 'TOKO001', // Gunakan code dari setting jika ada
@@ -453,7 +453,7 @@ export default function KasirTransaksiPage() {
           console.error('Error fetching store info for receipt:', error);
           // Gunakan environment variables atau default jika API gagal
           storeInfo = {
-            name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+            name: process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
             address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
             phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
             code: 'TOKO001', // Default code
@@ -699,7 +699,7 @@ export default function KasirTransaksiPage() {
           console.error("Gagal mengambil informasi toko:", storeRes.status);
           // Fallback untuk handle kasus ketika API tidak bisa diakses
           setStoreInfo({
-            name: process.env.NEXT_PUBLIC_SHOP_NAME || 'Toko SAKINAH',
+            name: process.env.NEXT_PUBLIC_SHOP_NAME || 'Sakinah',
             id: session?.user?.storeId || 'TOKO001' // Gunakan storeId dari session jika tersedia
           });
         }

@@ -1,4 +1,4 @@
-# Setup Database Lokal untuk Toko Sakinah
+# Setup Database Lokal untuk Sakinah
 
 ## Masalah
 Anda mengalami error saat menjalankan aplikasi karena konfigurasi database Prisma tidak valid.

@@ -1,7 +1,7 @@
-# Panduan Setup Redis untuk Sistem Toko Sakinah
+# Panduan Setup Redis untuk Sistem Sakinah
 
 ## Overview
-Redis digunakan sebagai solusi caching untuk meningkatkan performa sistem aplikasi Toko Sakinah, khususnya untuk endpoint produk, kategori, dan supplier. Dokumen ini menjelaskan cara setup dan konfigurasi Redis di berbagai lingkungan.
+Redis digunakan sebagai solusi caching untuk meningkatkan performa sistem aplikasi Sakinah, khususnya untuk endpoint produk, kategori, dan supplier. Dokumen ini menjelaskan cara setup dan konfigurasi Redis di berbagai lingkungan.
 
 ## Instalasi Redis
 

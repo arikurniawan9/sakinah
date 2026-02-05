@@ -96,7 +96,7 @@ const AppHeader = ({ darkModeOverride = null }) => {
             <Link href="/" className="flex items-center">
               <ShoppingCart className={`h-8 w-8 ${dynamicDarkMode ? 'text-indigo-400' : 'text-indigo-600'} mr-2`} />
               <span className={`text-xl font-bold ${dynamicDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                Toko Sakinah
+                Sakinah
               </span>
             </Link>
           </div>

@@ -79,7 +79,7 @@ const DistributionInvoice = forwardRef(({ distributionData }, ref) => {
           <div className="grid grid-cols-2 gap-4 text-base">
             <div className="text-left">
               <h2 className="text-base font-semibold print:text-base mb-1">PENGIRIM</h2>
-              <p className="font-bold">TOKO SAKINAH - GUDANG PUSAT</p>
+              <p className="font-bold">SAKINAH - GUDANG PUSAT</p>
               <p>Jl. Raya No. 123, Kota Anda</p>
               <p>Telp: 0812-3456-7890</p>
             </div>

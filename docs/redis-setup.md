@@ -1,7 +1,7 @@
 # Panduan Setup Redis Cache
 
 ## Overview
-Aplikasi Toko Sakinah menggunakan Redis sebagai sistem caching untuk meningkatkan performa. Jika Redis tidak tersedia, sistem akan menggunakan mock Redis sebagai fallback.
+Aplikasi Sakinah menggunakan Redis sebagai sistem caching untuk meningkatkan performa. Jika Redis tidak tersedia, sistem akan menggunakan mock Redis sebagai fallback.
 
 ## Konfigurasi Environment Variable
 

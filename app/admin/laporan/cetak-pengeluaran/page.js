@@ -174,7 +174,7 @@ export default function PrintExpenseReportPage() {
         {/* Report Content */}
         <div className={`${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold">TOKO SAKINAH</h1>
+            <h1 className="text-3xl font-bold">SAKINAH</h1>
             <p className="mt-2 text-lg">LAPORAN PENGELUARAN</p>
             <div className="mt-4 border-b border-gray-300 pb-2">
               <p className="font-medium">
@@ -288,7 +288,7 @@ export default function PrintExpenseReportPage() {
           reportType="expense"
           darkMode={darkMode}
           storeName={{
-            name: session?.user?.storeAccess?.name || 'TOKO SAKINAH',
+            name: session?.user?.storeAccess?.name || 'SAKINAH',
             address: session?.user?.storeAccess?.address
           }}
         />

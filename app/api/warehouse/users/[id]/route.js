@@ -1,275 +1,272 @@
-// app/api/warehouse/users/[id]/route.js
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
-import bcrypt from 'bcryptjs';
-import { ROLES, WAREHOUSE_STORE_ID } from '@/lib/constants';
+import { ROLES } from '@/lib/constants';
+import { logActivity } from '@/lib/auditTrail';
 
-// PUT /api/warehouse/users/[id] - Update a user for warehouse
-export async function PUT(request, { params }) {
+export async function GET(request, { params }) {
   try {
+    const { id: userId } = await params;
     const session = await getServerSession(authOptions);
 
-    if (!session) {
+    if (!session || session.user.role !== ROLES.WAREHOUSE) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only WAREHOUSE and MANAGER roles can update warehouse users
-    if (session.user.role !== ROLES.WAREHOUSE && session.user.role !== ROLES.MANAGER) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Get the warehouse store
-    let warehouseStore = await prisma.store.findFirst({
-      where: { code: WAREHOUSE_STORE_ID },
-    });
-
-    if (!warehouseStore) {
-      // Create the warehouse store if it doesn't exist
-      warehouseStore = await prisma.store.create({
-        data: {
-          name: 'Warehouse Master Store',
-          code: WAREHOUSE_STORE_ID,
-          description: 'Master store for warehouse operations',
-        }
-      });
-    }
-
-    const warehouseStoreId = warehouseStore.id;
-    const { id } = params; // Get ID from URL parameter
-
-    const { name, username, employeeNumber, password, role, code, address, phone } = await request.json();
-
-    // Validation
-    if (!id) {
-      return NextResponse.json(
-        { error: 'ID user wajib disediakan' },
-        { status: 400 }
-      );
-    }
-
-    if (!name || !username || !role) {
-      return NextResponse.json(
-        { error: 'Nama, username, dan role wajib diisi' },
-        { status: 400 }
-      );
-    }
-
-    // Validate role - only allow warehouse-specific roles
-    const validWarehouseRoles = [ROLES.CASHIER, ROLES.ATTENDANT];
-    if (!validWarehouseRoles.includes(role)) {
-      return NextResponse.json(
-        { error: 'Role tidak valid untuk warehouse' },
-        { status: 400 }
-      );
-    }
-
-    // Check if user exists and is associated with the warehouse store
-    const storeUser = await prisma.storeUser.findFirst({
-      where: {
-        userId: id,
-        storeId: warehouseStoreId,
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        email: true,
+        role: true,
+        status: true,
+        employeeNumber: true,
+        createdAt: true,
+        updatedAt: true
       }
     });
 
-    if (!storeUser) {
-      return NextResponse.json(
-        { error: 'User tidak ditemukan di warehouse' },
-        { status: 404 }
-      );
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Check if username already exists (excluding current user)
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        username: username.trim(),
-        id: { not: id }  // Exclude current user
-      }
-    });
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'Username sudah digunakan' },
-        { status: 400 }
-      );
-    }
-
-    // Check if code already exists for this warehouse store (excluding current user)
-    if (code) {
-      const existingUserCode = await prisma.storeUser.findFirst({
-        where: {
-          storeId: warehouseStoreId,
-          userId: { not: id }, // Exclude current user
-          user: {
-            code: code.trim()
-          }
-        }
-      });
-
-      if (existingUserCode) {
-        return NextResponse.json(
-          { error: 'Kode pengguna sudah digunakan di warehouse' },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Prepare update data for user table
-    const updateUserData = {
-      name: name.trim(),
-      username: username.trim(),
-      employeeNumber: employeeNumber ? employeeNumber.trim() : null,
-      code: code ? code.trim() : null,
-      address: address || null, // Add address field
-      phone: phone || null, // Add phone field
-      role: role, // Also update role in User table to match warehouse role
-    };
-
-    // Add password if provided
-    if (password) {
-      updateUserData.password = await bcrypt.hash(password, 10);
-    }
-
-    // Update the user
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: updateUserData
-    });
-
-    // Update the warehouse store-user relationship with new role
-    await prisma.storeUser.update({
-      where: {
-        userId_storeId: {
-          userId: id,
-          storeId: warehouseStoreId,
-        }
-      },
-      data: {
-        role: role, // Update role in this warehouse store
-        status: 'AKTIF', // Ensure the status is active
-      }
-    });
-
-    // Don't return the password hash
-    const { password: _, ...userWithoutPassword } = updatedUser;
-    return NextResponse.json({...userWithoutPassword, role}); // Return user data with warehouse role
+    return NextResponse.json(user);
   } catch (error) {
-    console.error('Error updating warehouse user:', error);
-
-    // Check if it's a Prisma error (e.g., record not found)
-    if (error.code === 'P2025') {
-      return NextResponse.json(
-        { error: 'User tidak ditemukan' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'Failed to update warehouse user' },
-      { status: 500 }
-    );
+    console.error('Error fetching user:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
-// DELETE /api/warehouse/users/[id] - Delete a single user from warehouse
-export async function DELETE(request, { params }) {
+export async function PUT(request, { params }) {
   try {
+    const { id: userId } = await params;
     const session = await getServerSession(authOptions);
 
-    if (!session) {
+    if (!session || session.user.role !== ROLES.WAREHOUSE) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Only WAREHOUSE and MANAGER roles can delete warehouse users
-    if (session.user.role !== ROLES.WAREHOUSE && session.user.role !== ROLES.MANAGER) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const data = await request.json();
 
-    // Get the warehouse store
-    let warehouseStore = await prisma.store.findFirst({
-      where: { code: WAREHOUSE_STORE_ID },
+    // Ambil data user sebelum update
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        email: true,
+        role: true,
+        status: true,
+        employeeNumber: true
+      }
     });
 
-    if (!warehouseStore) {
-      // Create the warehouse store if it doesn't exist
-      warehouseStore = await prisma.store.create({
-        data: {
-          name: 'Warehouse Master Store',
-          code: WAREHOUSE_STORE_ID,
-          description: 'Master store for warehouse operations',
+    if (!existingUser) {
+      return NextResponse.json({ error: 'Pengguna tidak ditemukan' }, { status: 404 });
+    }
+
+    // Validasi role - hanya boleh membuat role tertentu
+    if (!['ATTENDANT', 'WAREHOUSE', 'CASHIER'].includes(data.role)) {
+      return NextResponse.json({ error: 'Role tidak valid untuk pengguna gudang' }, { status: 400 });
+    }
+
+    // Tentukan storeId berdasarkan role
+    let storeIdToUse = null;
+
+    // Untuk role ATTENDANT dan CASHIER, kita tetap perlu storeId
+    if (data.role === 'ATTENDANT' || data.role === 'CASHIER') {
+      // Kita bisa menggunakan store default untuk role ini
+      const defaultStore = await prisma.store.findFirst({
+        where: { code: 'GM001' } // Gunakan kode warehouse store
+      });
+
+      if (!defaultStore) {
+        // Jika tidak ada default store, buat satu
+        const newStore = await prisma.store.create({
+          data: {
+            name: 'Warehouse Master Store',
+            code: 'GM001',
+            description: 'Master store for warehouse operations'
+          }
+        });
+        storeIdToUse = newStore.id;
+      } else {
+        storeIdToUse = defaultStore.id;
+      }
+    }
+
+    // Siapkan data update
+    const updateData = {
+      name: data.name,
+      username: data.username,
+      email: data.email,
+      role: data.role,
+      status: data.status,
+      employeeNumber: data.employeeNumber,
+    };
+
+    // Jika password disertakan, hash dulu
+    if (data.password) {
+      const bcrypt = await import('bcryptjs');
+      updateData.password = await bcrypt.hash(data.password, 10);
+    }
+
+    // Update user
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        email: true,
+        role: true,
+        status: true,
+        employeeNumber: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    // Jika storeId ditentukan, perbarui atau buat relasi ke store melalui tabel storeUser
+    if (storeIdToUse) {
+      const existingStoreUser = await prisma.storeUser.findFirst({
+        where: {
+          userId: userId,
         }
       });
+
+      if (existingStoreUser) {
+        // Update relasi yang sudah ada
+        await prisma.storeUser.update({
+          where: { id: existingStoreUser.id },
+          data: {
+            storeId: storeIdToUse,
+            role: data.role,
+            status: data.status
+          }
+        });
+      } else {
+        // Buat relasi baru
+        await prisma.storeUser.create({
+          data: {
+            userId: updatedUser.id,
+            storeId: storeIdToUse,
+            role: data.role,
+            status: data.status
+          }
+        });
+      }
     }
 
-    const warehouseStoreId = warehouseStore.id;
-    const { id } = params; // Get ID from URL parameter
+    // Dapatkan warehouse store untuk mencatat aktivitas
+    const warehouseStore = await prisma.store.findFirst({
+      where: { code: 'GM001' } // Gunakan kode warehouse store
+    });
 
-    // Check if user exists and is associated with the warehouse store
-    const storeUser = await prisma.storeUser.findFirst({
-      where: {
-        userId: id,
-        storeId: warehouseStoreId,
+    // Jika warehouse store tidak ditemukan, cari store pertama
+    let storeIdForActivity = warehouseStore?.id;
+    if (!storeIdForActivity) {
+      const firstStore = await prisma.store.findFirst();
+      storeIdForActivity = firstStore?.id;
+    }
+
+    // Catat aktivitas
+    await logActivity(
+      session.user.id,
+      'UPDATE',
+      'USER',
+      updatedUser.id,
+      `Data pengguna "${updatedUser.name}" diperbarui`,
+      { ...existingUser },
+      { ...updatedUser },
+      storeIdForActivity
+    );
+
+    return NextResponse.json(updatedUser);
+  } catch (error) {
+    console.error('Error updating user:', error);
+
+    if (error.code === 'P2002') {
+      // Unique constraint violation
+      return NextResponse.json({ error: 'Username sudah digunakan' }, { status: 400 });
+    }
+
+    return NextResponse.json({ error: 'Internal Server Error: ' + error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request, { params }) {
+  try {
+    const { id: userId } = await params;
+    const session = await getServerSession(authOptions);
+
+    if (!session || session.user.role !== ROLES.WAREHOUSE) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Ambil data user sebelum dihapus
+    const userToDelete = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        role: true
       }
     });
 
-    if (!storeUser) {
-      return NextResponse.json(
-        { error: 'User tidak ditemukan di warehouse' },
-        { status: 404 }
-      );
+    if (!userToDelete) {
+      return NextResponse.json({ error: 'Pengguna tidak ditemukan' }, { status: 404 });
     }
 
-    // Update status in storeUser table to mark as inactive
-    const updatedStoreUser = await prisma.storeUser.update({
-      where: {
-        userId_storeId: {
-          userId: id,
-          storeId: warehouseStoreId,
-        }
-      },
-      data: {
-        status: 'TIDAK AKTIF', // Mark as inactive instead of deleting
+    // Update status menjadi TIDAK_AKTIF alih-alih menghapus
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { status: 'TIDAK_AKTIF' },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        role: true,
+        status: true
       }
     });
 
-    // Also update status in the main User table
-    // Check if user is inactive in ALL stores before changing main user status
-    const activeStoreUsers = await prisma.storeUser.findMany({
-      where: {
-        userId: id,
-        status: { not: 'TIDAK AKTIF' } // Find if user is active in any store
-      }
+    // Dapatkan warehouse store untuk mencatat aktivitas
+    const warehouseStore = await prisma.store.findFirst({
+      where: { code: 'GM001' } // Gunakan kode warehouse store
     });
 
-    // Only update main user status if user is inactive in ALL stores
-    if (activeStoreUsers.length === 0) {
-      await prisma.user.update({
-        where: { id },
-        data: {
-          status: 'TIDAK_AKTIF' // Change main user status to inactive
-        }
-      });
+    // Jika warehouse store tidak ditemukan, cari store pertama
+    let storeIdForActivity = warehouseStore?.id;
+    if (!storeIdForActivity) {
+      const firstStore = await prisma.store.findFirst();
+      storeIdForActivity = firstStore?.id;
     }
+
+    // Catat aktivitas
+    await logActivity(
+      session.user.id,
+      'DELETE',
+      'USER',
+      updatedUser.id,
+      `Pengguna "${updatedUser.name}" dinonaktifkan`,
+      { ...userToDelete },
+      { ...updatedUser },
+      storeIdForActivity
+    );
 
     return NextResponse.json({
-      message: 'Berhasil menonaktifkan user dari warehouse',
-      deletedCount: 1
+      message: 'Pengguna berhasil dinonaktifkan',
+      user: updatedUser
     });
   } catch (error) {
-    console.error('Error deleting warehouse user:', error);
-
-    // Check if it's a Prisma error
-    if (error.code === 'P2025') {
-      return NextResponse.json(
-        { error: 'User tidak ditemukan' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'Failed to delete warehouse user' },
-      { status: 500 }
-    );
+    console.error('Error deleting user:', error);
+    return NextResponse.json({ error: 'Internal Server Error: ' + error.message }, { status: 500 });
   }
 }

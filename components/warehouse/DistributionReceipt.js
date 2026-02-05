@@ -81,7 +81,7 @@ const DistributionReceipt = forwardRef(({ distributionData }, ref) => {
       {/* Header */}
       <div className="text-center mb-2">
         <h1 className="text-sm font-bold mb-1">STRUK DISTRIBUSI PRODUK</h1>
-        <p className="text-xs">Toko SAKINAH</p>
+        <p className="text-xs">SAKINAH</p>
         <p className="text-xs">Jl. Raya No. 123, Kota Anda</p>
         <p className="text-xs">Telp: 0812-3456-7890</p>
       </div>

@@ -417,7 +417,7 @@ export default function ReportDashboard() {
         reportType="sales"
         darkMode={darkMode}
         storeName={{
-          name: session?.user?.storeAccess?.name || 'TOKO SAKINAH',
+          name: session?.user?.storeAccess?.name || 'SAKINAH',
           address: session?.user?.storeAccess?.address
         }}
       />

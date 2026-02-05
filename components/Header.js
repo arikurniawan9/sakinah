@@ -49,7 +49,7 @@ const Header = ({ onLogout }) => {
             <div className="flex-shrink-0 flex items-center ml-2 md:ml-0">
               <Link href={session?.user?.storeRole === 'CASHIER' ? '/kasir' : '/'}>
                 <span className="text-xl font-bold" style={{ color: userTheme.themeColor }}>
-                  {session?.user?.storeAccess?.name || 'Toko Sakinah'}
+                  {session?.user?.storeAccess?.name || 'Sakinah'}
                 </span>
               </Link>
             </div>

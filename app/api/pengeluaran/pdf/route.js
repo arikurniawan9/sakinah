@@ -171,7 +171,7 @@ export async function GET(request) {
 <body>
   <div class="header">
     <h1>LAPORAN PENGELUARAN</h1>
-    <div class="subtitle">Toko SAKINAH</div>
+    <div class="subtitle">SAKINAH</div>
     <div class="period">Periode: ${startDate && endDate
       ? `${formatDate(startDate)} - ${formatDate(endDate)}`
       : startDate
@@ -225,7 +225,7 @@ export async function GET(request) {
 
   <div class="footer">
     <p>Dicetak pada: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-    <p>Laporan Pengeluaran - Toko SAKINAH</p>
+    <p>Laporan Pengeluaran - SAKINAH</p>
   </div>
 </body>
 </html>

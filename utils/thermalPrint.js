@@ -20,7 +20,7 @@ export const printThermalReceipt = async (receiptData) => {
 
       // Gunakan informasi toko dari receiptData jika tersedia, jika tidak ambil dari API
       let storeInfo = {
-        name: receiptData.storeName || 'TOKO SAKINAH',
+        name: receiptData.storeName || 'SAKINAH',
         address: receiptData.storeAddress || 'Jl. Raya No. 123, Kota Anda',
         phone: receiptData.storePhone || '0812-3456-7890',
       };
@@ -32,7 +32,7 @@ export const printThermalReceipt = async (receiptData) => {
           if (response.ok) {
             const data = await response.json();
             storeInfo = {
-              name: data.name || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+              name: data.name || process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
               address: data.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
               phone: data.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
             };
@@ -42,7 +42,7 @@ export const printThermalReceipt = async (receiptData) => {
             if (settingResponse.ok) {
               const settingData = await settingResponse.json();
               storeInfo = {
-                name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+                name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
                 address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
                 phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
               };
@@ -52,7 +52,7 @@ export const printThermalReceipt = async (receiptData) => {
           console.error('Error fetching store info for receipt:', error);
           // Gunakan environment variables atau default jika API gagal
           storeInfo = {
-            name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+            name: process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
             address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
             phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
           };

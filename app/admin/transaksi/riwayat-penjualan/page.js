@@ -350,7 +350,7 @@ export default function RiwayatPenjualan() {
               <div className="space-y-4 print:space-y-2">
                 {/* Header struk cetak */}
                 <div className="print:block hidden text-center border-b pb-3 mb-3">
-                  <h2 className="text-lg font-bold">TOKO SAKINAH</h2>
+                  <h2 className="text-lg font-bold">SAKINAH</h2>
                   <p className="text-sm">Jl. Contoh Alamat Toko No. 123</p>
                   <p className="text-sm">Telp: (021) 12345678</p>
                 </div>
@@ -453,7 +453,7 @@ export default function RiwayatPenjualan() {
                             </head>
                             <body>
                               <div class="header">
-                                <h2>TOKO SAKINAH</h2>
+                                <h2>SAKINAH</h2>
                                 <p>Jl. Contoh Alamat Toko No. 123</p>
                                 <p>Telp: (021) 12345678</p>
                                 <div class="divider"></div>
@@ -524,7 +524,7 @@ export default function RiwayatPenjualan() {
                               
                               <div class="footer">
                                 <p>Terima kasih telah berbelanja</p>
-                                <p>di Toko Sakinah</p>
+                                <p>di Sakinah</p>
                                 <p>Barang yang sudah dibeli</p>
                                 <p>tidak dapat ditukar/dikembalikan</p>
                               </div>
@@ -630,7 +630,7 @@ export default function RiwayatPenjualan() {
                 
                 {/* Footer struk cetak */}
                 <div className="print:block hidden text-center pt-3 mt-3 border-t">
-                  <p className="text-xs">Terima kasih telah berbelanja di Toko Sakinah</p>
+                  <p className="text-xs">Terima kasih telah berbelanja di Sakinah</p>
                   <p className="text-xs">Barang yang sudah dibeli tidak dapat ditukar/dikembalikan</p>
                 </div>
               </div>

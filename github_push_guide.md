@@ -7,7 +7,7 @@ Jika belum:
 ```bash
 git init
 git add .
-git commit -m "Initial commit: Toko Sakinah with Supabase integration"
+git commit -m "Initial commit: Sakinah with Supabase integration"
 ```
 
 ### 2. Buat Repository di GitHub

@@ -1,7 +1,7 @@
 # Panduan Template Import Produk Terbaru
 
 ## Overview
-Dokumen ini menjelaskan format dan struktur template import produk terbaru yang tersedia di sistem Toko Sakinah. Kami telah memperbarui template untuk menyediakan contoh produk yang lebih bervariasi dan realistis.
+Dokumen ini menjelaskan format dan struktur template import produk terbaru yang tersedia di sistem Sakinah. Kami telah memperbarui template untuk menyediakan contoh produk yang lebih bervariasi dan realistis.
 
 ## File Template Tersedia
 

@@ -302,7 +302,7 @@ export default function RegisterManagerPage() {
         {/* Dekorasi tambahan */}
         <div className="mt-8 text-center">
           <p className="text-gray-500 text-sm">
-            © {new Date().getFullYear()} Toko Sakinah. Dilindungi sepenuhnya.
+            © {new Date().getFullYear()} Sakinah. Dilindungi sepenuhnya.
           </p>
         </div>
       </div>

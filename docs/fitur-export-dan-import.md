@@ -9,7 +9,7 @@
 
 ## Overview
 
-Sistem Toko Sakinah menyediakan fitur import dan export produk untuk memudahkan pengelolaan data produk dalam skala besar. Fitur ini mendukung import dan export dalam format CSV, Excel, dan PDF.
+Sistem Sakinah menyediakan fitur import dan export produk untuk memudahkan pengelolaan data produk dalam skala besar. Fitur ini mendukung import dan export dalam format CSV, Excel, dan PDF.
 
 ## Fitur Import Produk
 

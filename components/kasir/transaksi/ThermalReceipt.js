@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 const ThermalReceipt = ({ receiptData, darkMode }) => {
   const [storeInfo, setStoreInfo] = useState({
-    name: 'TOKO SAKINAH',
+    name: 'SAKINAH',
     address: 'Jl. Raya No. 123, Kota Anda',
     phone: '0812-3456-7890',
   });
@@ -23,7 +23,7 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
           if (response.ok) {
             const data = await response.json();
             setStoreInfo({
-              name: data.name || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+              name: data.name || process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
               address: data.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
               phone: data.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
             });
@@ -33,21 +33,21 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
             if (settingResponse.ok) {
               const settingData = await settingResponse.json();
               setStoreInfo({
-                name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+                name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
                 address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
                 phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
               });
             } else if (settingResponse.status === 401) {
               // Jika unauthorized, gunakan environment variables atau default
               setStoreInfo({
-                name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+                name: process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
                 address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
                 phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
               });
             } else {
               // Gunakan environment variables atau default jika API gagal
               setStoreInfo({
-                name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+                name: process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
                 address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
                 phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
               });
@@ -61,14 +61,14 @@ const ThermalReceipt = ({ receiptData, darkMode }) => {
             if (settingResponse.ok) {
               const settingData = await settingResponse.json();
               setStoreInfo({
-                name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+                name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
                 address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
                 phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
               });
             } else if (settingResponse.status === 401) {
               // Jika unauthorized, gunakan default values
               setStoreInfo({
-                name: process.env.NEXT_PUBLIC_SHOP_NAME || 'TOKO SAKINAH',
+                name: process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
                 address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
                 phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
               });

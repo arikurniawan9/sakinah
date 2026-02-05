@@ -8,6 +8,7 @@ import { useSession } from 'next-auth/react';
 import { useUserForm } from '@/lib/hooks/useUserForm';
 import { useWarehouseUserTable } from '@/lib/hooks/useWarehouseUserTable';
 import UserModal from '@/components/admin/UserModal';
+import WarehouseUserModal from '@/components/warehouse/WarehouseUserModal';
 import Link from 'next/link';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { AlertTriangle, CheckCircle, Plus, Edit, Trash2, Search, Eye } from 'lucide-react';
@@ -34,7 +35,7 @@ export default function WarehouseUserManagement() {
     totalUsers,
     fetchUsers,
     setError: setTableError,
-  } = useWarehouseUserTable('WAREHOUSE'); // Get only warehouse users
+  } = useWarehouseUserTable(); // Get all warehouse-related users (ATTENDANT, CASHIER, WAREHOUSE)
 
   const {
     showModal,
@@ -48,7 +49,10 @@ export default function WarehouseUserManagement() {
     handleSave: originalHandleSave,
     error: formError,
     setError: setFormError,
-  } = useUserForm(fetchUsers, { isWarehouseContext: true }); // Warehouse context without default role
+  } = useUserForm(fetchUsers, {
+    isWarehouseContext: true,
+    apiEndpoint: '/api/warehouse/users' // Use warehouse-specific endpoint
+  }); // Warehouse context without default role
 
   // Keyboard shortcuts
   useKeyboardShortcut({
@@ -245,27 +249,48 @@ export default function WarehouseUserManagement() {
     },
   ];
 
-  const renderRowActions = (row) => (
-    <>
-      <Link href={`/warehouse/users/${row.id}`} className="p-1 text-green-500 hover:text-green-700 mr-2" title="Lihat Detail">
-        <Eye size={18} />
-      </Link>
-      <button
-        onClick={() => openModalForEdit(row)}
-        className="p-1 text-blue-500 hover:text-blue-700 mr-2"
-        title="Edit"
-      >
-        <Edit size={18} />
-      </button>
-      <button
-        onClick={() => handleDelete([row.id])}
-        className="p-1 text-red-500 hover:text-red-500"
-        title="Hapus"
-      >
-        <Trash2 size={18} />
-      </button>
-    </>
-  );
+  const renderRowActions = (row) => {
+    const isCurrentUser = session?.user?.id === row.id;
+
+    return (
+      <>
+        {isCurrentUser ? (
+          <Link href="/profile" className="p-1 text-green-500 hover:text-green-700 mr-2" title="Lihat Profil Saya">
+            <Eye size={18} />
+          </Link>
+        ) : (
+          <Link href={`/warehouse/users/${row.id}`} className="p-1 text-green-500 hover:text-green-700 mr-2" title="Lihat Detail">
+            <Eye size={18} />
+          </Link>
+        )}
+        {isCurrentUser ? (
+          <button
+            className="p-1 text-gray-400 cursor-not-allowed mr-2"
+            title="Edit profil Anda sendiri di halaman profil"
+            disabled
+          >
+            <Edit size={18} />
+          </button>
+        ) : (
+          <button
+            onClick={() => openModalForEdit(row)}
+            className="p-1 text-blue-500 hover:text-blue-700 mr-2"
+            title="Edit"
+          >
+            <Edit size={18} />
+          </button>
+        )}
+        <button
+          onClick={() => handleDelete([row.id])}
+          className={`p-1 mr-2 ${isCurrentUser ? 'text-gray-400 cursor-not-allowed' : 'text-red-500 hover:text-red-500'}`}
+          title={isCurrentUser ? "Tidak dapat menghapus akun sendiri" : "Hapus"}
+          disabled={isCurrentUser}
+        >
+          <Trash2 size={18} />
+        </button>
+      </>
+    );
+  };
 
   const paginationData = {
     currentPage,
@@ -278,115 +303,115 @@ export default function WarehouseUserManagement() {
   };
 
   return (
-    <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
-      <Breadcrumb
-        items={[
-          { title: 'Dashboard Gudang', href: '/warehouse' },
-          { title: 'Manajemen User', href: '/warehouse/users' }
-        ]}
-        darkMode={darkMode}
-      />
-
-      <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-        Manajemen User Gudang
-      </h1>
-      
-      <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
-        <DataTable
-          data={users}
-          columns={columns}
-          loading={loading}
-          selectedRows={selectedRows}
-          onSelectAll={handleSelectAll}
-          onSelectRow={handleSelectRow}
-          onAdd={canManageUsers ?
-            () => {
-              if (warehouseStore && warehouseStore[0]) {
-                openModalForCreate({ storeId: warehouseStore[0].id });
-              } else {
-                // If warehouse store is not loaded yet, fetch it first
-                const fetchAndOpen = async () => {
-                  try {
-                    const response = await fetch('/api/warehouse/store');
-                    if (response.ok) {
-                      const data = await response.json();
-                      if (data.store) {
-                        openModalForCreate({ storeId: data.store.id });
-                      }
-                    }
-                  } catch (error) {
-                    console.error('Error fetching warehouse store:', error);
-                    openModalForCreate(); // Open without store ID as fallback
-                  }
-                };
-                fetchAndOpen();
-              }
-            }
-          : undefined}
-          onSearch={setSearchTerm}
-          onItemsPerPageChange={setItemsPerPage}
+    <ProtectedRoute requiredRole="WAREHOUSE">
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <Breadcrumb
+          items={[
+            { title: 'Dashboard Gudang', href: '/warehouse' },
+            { title: 'Manajemen User', href: '/warehouse/users' }
+          ]}
           darkMode={darkMode}
-          actions={canManageUsers}
-          showAdd={canManageUsers}
-          pagination={paginationData}
-          mobileColumns={['employeeNumber', 'name', 'role']}
-          rowActions={renderRowActions}
-          onDeleteMultiple={() => handleDelete(selectedRows)}
-          selectedRowsCount={selectedRows.length}
         />
-      </div>
 
-      {(tableError || formError) && (
-        <div className="fixed bottom-4 right-4 z-50 flex items-center p-4 rounded-lg bg-red-500/10 text-red-400 shadow-lg">
-          <AlertTriangle className="h-5 w-5 mr-3" />
-          <p className="text-sm font-medium">{tableError || formError}</p>
-        </div>
-      )}
-      
-      {successMessage && (
-          <div className="fixed bottom-4 right-4 z-50 flex items-center p-4 rounded-lg bg-green-500/10 text-green-400 shadow-lg">
-              <CheckCircle className="h-5 w-5 mr-3" />
-              <p className="text-sm font-medium">{successMessage}</p>
-          </div>
-      )}
+        <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+          Manajemen User Gudang
+        </h1>
 
-      {canManageUsers && (
-        <>
-          <UserModal
-            showModal={showModal}
-            closeModal={closeModal}
-            handleSave={handleSave}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            editingUser={editingUser}
-            error={formError}
-            setFormError={setFormError}
+        <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
+          <DataTable
+            data={users}
+            columns={columns}
+            loading={loading}
+            selectedRows={selectedRows}
+            onSelectAll={handleSelectAll}
+            onSelectRow={handleSelectRow}
+            onAdd={canManageUsers ?
+              () => {
+                if (warehouseStore && warehouseStore[0]) {
+                  openModalForCreate({ storeId: warehouseStore[0].id });
+                } else {
+                  // If warehouse store is not loaded yet, fetch it first
+                  const fetchAndOpen = async () => {
+                    try {
+                      const response = await fetch('/api/warehouse/store');
+                      if (response.ok) {
+                        const data = await response.json();
+                        if (data.store) {
+                          openModalForCreate({ storeId: data.store.id });
+                        }
+                      }
+                    } catch (error) {
+                      console.error('Error fetching warehouse store:', error);
+                      openModalForCreate(); // Open without store ID as fallback
+                    }
+                  };
+                  fetchAndOpen();
+                }
+              }
+            : undefined}
+            onSearch={setSearchTerm}
+            onItemsPerPageChange={setItemsPerPage}
             darkMode={darkMode}
-            allowedRoles={['CASHIER', 'ATTENDANT']} // Allow creating CASHIER and ATTENDANT users only
-            stores={warehouseStore || []} // Pass warehouse store to the modal
+            actions={canManageUsers}
+            showAdd={canManageUsers}
+            pagination={paginationData}
+            mobileColumns={['employeeNumber', 'name', 'role']}
+            rowActions={renderRowActions}
+            onDeleteMultiple={() => handleDelete(selectedRows)}
+            selectedRowsCount={selectedRows.length}
           />
-          <ConfirmationModal
-            isOpen={showDeleteModal}
-            onClose={() => setShowDeleteModal(false)}
-            onConfirm={handleConfirmDelete}
-            title={`Konfirmasi Hapus ${itemsToDelete.length} User`}
-            message="Apakah Anda yakin ingin menghapus user yang dipilih? Tindakan ini tidak dapat dibatalkan."
-            isLoading={isDeleting}
-          />
-        </>
-      )}
-        {/* Keyboard Shortcuts Guide */}
-        <div className={`mt-4 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-          <div className="flex flex-wrap gap-3">
-            <span>Tambah: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+N</kbd></span>
-            <span>Import: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+I</kbd></span>
-            <span>Export: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+E</kbd></span>
-            <span>Template: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+D</kbd></span>
-            <span>Cari: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+K</kbd></span>
-            <span>Simpan: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+S</kbd></span>
-            <span>Tutup: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>ESC</kbd></span>
-          </div>
         </div>
-    </main>
+
+        {(tableError || formError) && (
+          <div className="fixed bottom-4 right-4 z-50 flex items-center p-4 rounded-lg bg-red-500/10 text-red-400 shadow-lg">
+            <AlertTriangle className="h-5 w-5 mr-3" />
+            <p className="text-sm font-medium">{tableError || formError}</p>
+          </div>
+        )}
+
+        {successMessage && (
+            <div className="fixed bottom-4 right-4 z-50 flex items-center p-4 rounded-lg bg-green-500/10 text-green-400 shadow-lg">
+                <CheckCircle className="h-5 w-5 mr-3" />
+                <p className="text-sm font-medium">{successMessage}</p>
+            </div>
+        )}
+
+        {canManageUsers && (
+          <>
+            <WarehouseUserModal
+              showModal={showModal}
+              closeModal={closeModal}
+              handleSave={handleSave}
+              formData={formData}
+              handleInputChange={handleInputChange}
+              editingUser={editingUser}
+              error={formError}
+              setFormError={setFormError}
+              darkMode={darkMode}
+            />
+            <ConfirmationModal
+              isOpen={showDeleteModal}
+              onClose={() => setShowDeleteModal(false)}
+              onConfirm={handleConfirmDelete}
+              title={`Konfirmasi Hapus ${itemsToDelete.length} User`}
+              message="Apakah Anda yakin ingin menghapus user yang dipilih? Tindakan ini tidak dapat dibatalkan."
+              isLoading={isDeleting}
+            />
+          </>
+        )}
+          {/* Keyboard Shortcuts Guide */}
+          <div className={`mt-4 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            <div className="flex flex-wrap gap-3">
+              <span>Tambah: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+N</kbd></span>
+              <span>Import: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+I</kbd></span>
+              <span>Export: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+E</kbd></span>
+              <span>Template: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+D</kbd></span>
+              <span>Cari: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+K</kbd></span>
+              <span>Simpan: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>Alt+S</kbd></span>
+              <span>Tutup: <kbd className={`px-1.5 py-0.5 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>ESC</kbd></span>
+            </div>
+          </div>
+      </main>
+    </ProtectedRoute>
   );
 }

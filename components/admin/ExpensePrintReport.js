@@ -63,7 +63,7 @@ export default function ExpensePrintReport({
 
       {/* Report Header */}
       <div className="text-center mb-8 printable-content">
-        <h1 className="text-3xl font-bold">TOKO SAKINAH</h1>
+        <h1 className="text-3xl font-bold">SAKINAH</h1>
         <p className="text-xl mt-2">LAPORAN PENGELUARAN</p>
         <div className="mt-4 border-b border-gray-300 pb-2">
           <p className="font-medium">

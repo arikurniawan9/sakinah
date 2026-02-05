@@ -236,7 +236,7 @@ export default function Home() {
               <div className="max-w-7xl mx-auto">
                 <div className="text-center">
                   <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 dark:text-white mb-6">
-                    Selamat Datang di <span className="text-indigo-600 dark:text-indigo-400">Sistem Informasi</span> Toko Sakinah
+                    Selamat Datang di <span className="text-indigo-600 dark:text-indigo-400">Sistem Informasi</span> Sakinah
                   </h1>
                   <p className="mt-4 text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
                     Solusi lengkap untuk mengelola toko Anda dengan sistem informasi penjualan &amp; inventaris multi-toko
@@ -357,7 +357,7 @@ export default function Home() {
                     Login untuk mengakses sistem sesuai peran Anda
                   </p>
                   <p className="mt-2 text-sm text-gray-500 dark:text-gray-500">
-                    &copy; 2025 Toko Sakinah. All rights reserved.
+                    &copy; 2025 Sakinah. All rights reserved.
                   </p>
                 </div>
               </div>

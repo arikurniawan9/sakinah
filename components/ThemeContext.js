@@ -6,7 +6,7 @@ const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
   const [themeColor, setThemeColor] = useState('#8B5CF6'); // Default purple color
-  const [shopName, setShopName] = useState('Toko Sakinah');
+  const [shopName, setShopName] = useState('Sakinah');
   const [currentShopName, setCurrentShopName] = useState(null); // Store the shop name from session
 
   const fetchSettings = useCallback(async () => {
@@ -23,13 +23,13 @@ export const ThemeProvider = ({ children }) => {
       } else if (response.status === 401) {
         // Jika unauthorized, gunakan default values tanpa error
         setThemeColor('#8B5CF6');
-        setShopName('Toko Sakinah');
+        setShopName('Sakinah');
       }
     } catch (error) {
       console.error('Failed to fetch theme settings:', error);
       // fallback to default color in case of error
       setThemeColor('#8B5CF6');
-      setShopName('Toko Sakinah');
+      setShopName('Sakinah');
     }
   }, []);
 

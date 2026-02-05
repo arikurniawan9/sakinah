@@ -7,7 +7,7 @@ import { ROLES } from '@/lib/constants';
 export async function GET(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
-    const { id: userId } = params;
+    const { id: userId } = await params;
 
     if (!session || ![ROLES.WAREHOUSE, ROLES.MANAGER].includes(session.user.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

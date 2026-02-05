@@ -186,10 +186,10 @@ const UserDetailPage = () => {
             </div>
           </div>
           <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <p><strong>Kode Karyawan:</strong> {user?.employeeNumber || '-'}</p>
-            <p><strong>No. Telepon:</strong> {user?.phone || '-'}</p>
-            <p><strong>Status:</strong> {user?.status}</p>
-            <p><strong>Tanggal Bergabung:</strong> {new Date(user?.createdAt).toLocaleDateString('id-ID')}</p>
+            <div><strong>Kode Karyawan:</strong> {user?.employeeNumber || '-'}</div>
+            <div><strong>No. Telepon:</strong> {user?.phone || '-'}</div>
+            <div><strong>Status:</strong> {user?.status}</div>
+            <div><strong>Tanggal Bergabung:</strong> {new Date(user?.createdAt).toLocaleDateString('id-ID')}</div>
           </div>
         </div>
 
@@ -204,8 +204,8 @@ const UserDetailPage = () => {
                         <stat.icon className={`h-6 w-6 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
                     </div>
                     <div>
-                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{stat.title}</p>
-                        <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{stat.value}</p>
+                        <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{stat.title}</div>
+                        <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{stat.value}</div>
                     </div>
                 </div>
               ))}

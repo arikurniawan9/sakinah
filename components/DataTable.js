@@ -368,8 +368,8 @@ const DataTable = forwardRef(function DataTable({
 
                 {/* Mobile Content */}
                 <div className="space-y-1">
-                  {visibleColumns.map((column) => (
-                    <div key={column.key} className="flex justify-between text-sm">
+                  {visibleColumns.map((column, index) => (
+                    <div key={column.key + '-' + index} className="flex justify-between text-sm">
                       <span className={`font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                         {column.title}:
                       </span>
@@ -406,9 +406,9 @@ const DataTable = forwardRef(function DataTable({
                     />
                   </th>
                 )}
-                {columns.map((column) => (
+                {columns.map((column, index) => (
                   <th
-                    key={column.key}
+                    key={column.key + '-' + index}
                     className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer ${
                       darkMode ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'
                     } ${column.sortable ? 'hover:bg-gray-100 dark:hover:bg-gray-600' : ''} ${column.className || ''}`}
@@ -470,7 +470,7 @@ const DataTable = forwardRef(function DataTable({
                                       />
                                     </td>
                                   )}
-                                  {columns.map((column) => {
+                                  {columns.map((column, colIndex) => {
                                     if (!column || !column.key) {
                                       console.warn('Invalid column definition:', column);
                                       return null;
@@ -478,7 +478,7 @@ const DataTable = forwardRef(function DataTable({
 
                                     return (
                                       <td
-                                        key={column.key}
+                                        key={column.key + '-' + colIndex}
                                         className={`px-6 py-4 whitespace-nowrap text-sm ${
                                           darkMode ? 'text-gray-300' : 'text-gray-900'
                                         }`}

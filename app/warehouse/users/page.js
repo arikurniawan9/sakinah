@@ -365,14 +365,14 @@ export default function WarehouseUserManagement() {
         {(tableError || formError) && (
           <div className="fixed bottom-4 right-4 z-50 flex items-center p-4 rounded-lg bg-red-500/10 text-red-400 shadow-lg">
             <AlertTriangle className="h-5 w-5 mr-3" />
-            <p className="text-sm font-medium">{tableError || formError}</p>
+            <div className="text-sm font-medium">{tableError || formError}</div>
           </div>
         )}
 
         {successMessage && (
             <div className="fixed bottom-4 right-4 z-50 flex items-center p-4 rounded-lg bg-green-500/10 text-green-400 shadow-lg">
                 <CheckCircle className="h-5 w-5 mr-3" />
-                <p className="text-sm font-medium">{successMessage}</p>
+                <div className="text-sm font-medium">{successMessage}</div>
             </div>
         )}
 

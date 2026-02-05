@@ -7,7 +7,7 @@ import { ROLES } from '@/lib/constants';
 export async function GET(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
-    const { id: userId } = params;
+    const { id: userId } = await params;
 
     // Allow access for warehouse managers or if the user is fetching their own data
     if (!session || (![ROLES.WAREHOUSE, ROLES.MANAGER].includes(session.user.role) && session.user.id !== userId)) {

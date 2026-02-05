@@ -6,16 +6,15 @@ import { useRouter } from 'next/navigation';
 import { ROLES } from '@/lib/constants';
 import { useUserTheme } from '@/components/UserThemeContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import DataTable from '@/components/DataTable';
 import Breadcrumb from '@/components/Breadcrumb';
-import { Search, Users, Store, Phone, MapPin, UserPlus, Edit, Trash2, Eye, User, CreditCard, Calendar } from 'lucide-react';
+import { Search, Users, Store, Phone, MapPin, UserPlus, Edit, Trash2, Eye, User, CreditCard, Calendar, Grid, List } from 'lucide-react';
 
 export default function AllMembersPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { userTheme } = useUserTheme();
   const darkMode = userTheme.darkMode;
-  
+
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -26,6 +25,7 @@ export default function AllMembersPage() {
   const [stores, setStores] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
+  const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
 
   // Fetch all members and stores
   useEffect(() => {
@@ -91,100 +91,8 @@ export default function AllMembersPage() {
   // Function to get store name by ID
   const getStoreName = (storeId) => {
     const store = stores.find(s => s.id === storeId);
-    return store ? store.name : (storeId ? 'Toko Tidak Dikenal' : 'Belum Ditentukan');
+    return store ? store.name : (storeId ? 'Toko Tidak Ditemukan' : 'Belum Ditentukan');
   };
-
-  // Columns configuration for the DataTable
-  const columns = [
-    {
-      key: 'no',
-      title: 'No.',
-      render: (_, __, index) => (currentPage - 1) * itemsPerPage + index + 1,
-    },
-    {
-      key: 'name',
-      title: 'Nama Member',
-      render: (value, row) => (
-        <div className="flex items-center">
-          <div className="ml-4">
-            <div className="font-medium text-gray-900 dark:text-white">{value}</div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">{row.code}</div>
-          </div>
-        </div>
-      )
-    },
-    {
-      key: 'phone',
-      title: 'Telepon',
-      render: (value) => (
-        <div className="flex items-center">
-          <Phone className="h-4 w-4 mr-2 text-gray-400" />
-          {value}
-        </div>
-      )
-    },
-    {
-      key: 'membershipType',
-      title: 'Tipe Keanggotaan',
-      render: (value) => {
-        const typeColors = {
-          'SILVER': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-          'GOLD': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-          'PLATINUM': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
-        };
-        
-        const bgColor = typeColors[value] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-        
-        return (
-          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${bgColor}`}>
-            {value}
-          </span>
-        );
-      }
-    },
-    {
-      key: 'storeId',
-      title: 'Toko',
-      render: (value) => (
-        <div className="flex items-center">
-          <Store className="h-4 w-4 mr-2 text-gray-400" />
-          {getStoreName(value)}
-        </div>
-      )
-    },
-    {
-      key: 'address',
-      title: 'Alamat',
-      render: (value) => (
-        <div className="flex items-center">
-          <MapPin className="h-4 w-4 mr-2 text-gray-400" />
-          {value || 'Alamat tidak disediakan'}
-        </div>
-      )
-    },
-    {
-      key: 'actions',
-      title: 'Aksi',
-      render: (value, row) => (
-        <div className="flex space-x-2">
-          <button
-            onClick={() => {
-              // Gunakan informasi toko yang sudah digabungkan ke data member
-              setSelectedMember(row);
-              setIsModalOpen(true);
-            }}
-            className={`p-1 rounded-full ${
-              darkMode
-                ? 'text-blue-400 hover:bg-blue-700/30'
-                : 'text-blue-500 hover:bg-blue-100'
-            }`}
-          >
-            <Eye className="h-4 w-4" />
-          </button>
-        </div>
-      )
-    }
-  ];
 
   // Hydration-safe loading and authentication checks
   if (status === 'loading') {
@@ -207,6 +115,122 @@ export default function AllMembersPage() {
     onPageChange: setCurrentPage,
   };
 
+  // Render membership type badge with colors
+  const renderMembershipBadge = (type) => {
+    const typeColors = {
+      'SILVER': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+      'GOLD': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+      'PLATINUM': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
+    };
+
+    const bgColor = typeColors[type] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+
+    return (
+      <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${bgColor}`}>
+        {type}
+      </span>
+    );
+  };
+
+  // Handle ESC key press to close modal
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape' && isModalOpen) {
+        setIsModalOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isModalOpen]);
+
+  // Render member card for card view
+  const renderMemberCard = (member, index) => {
+    return (
+      <div
+        key={member.id || index}
+        className={`rounded-xl p-6 shadow-lg transition-all duration-200 hover:shadow-xl ${
+          darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
+        }`}
+      >
+        <div className="flex justify-between items-start">
+          <div className="flex items-center">
+            <div className="flex-shrink-0 h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+              {member.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="ml-4">
+              <h3 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                {member.name}
+              </h3>
+              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                {member.code}
+              </p>
+            </div>
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => {
+                setSelectedMember(member);
+                setIsModalOpen(true);
+              }}
+              className={`p-2 rounded-lg ${
+                darkMode
+                  ? 'text-blue-400 hover:bg-blue-700/30'
+                  : 'text-blue-500 hover:bg-blue-100'
+              }`}
+            >
+              <Eye className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center text-sm">
+            <Phone className={`h-4 w-4 mr-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+            <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{member.phone || '-'}</span>
+          </div>
+
+          <div className="flex items-center text-sm">
+            <MapPin className={`h-4 w-4 mr-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+            <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{member.address || 'Alamat tidak disediakan'}</span>
+          </div>
+
+          <div className="flex items-center text-sm">
+            <Store className={`h-4 w-4 mr-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+            <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{getStoreName(member.storeId) || 'Toko tidak ditemukan'}</span>
+          </div>
+
+          <div className="flex items-center text-sm">
+            <User className={`h-4 w-4 mr-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+            <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{renderMembershipBadge(member.membershipType)}</span>
+          </div>
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            Bergabung: {member.createdAt ? new Date(member.createdAt).toLocaleDateString('id-ID') : '-'}
+          </span>
+          <button
+            onClick={() => {
+              setIsModalOpen(false);
+              router.push(`/admin/member/${member.id}/edit`);
+            }}
+            className={`px-3 py-1 text-xs rounded-lg ${
+              darkMode
+                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-blue-500 hover:bg-blue-600 text-white'
+            }`}
+          >
+            Edit
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
       <Breadcrumb
@@ -218,12 +242,48 @@ export default function AllMembersPage() {
       />
 
       <div className="mb-8">
-        <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-          Semua Member
-        </h1>
-        <p className={`mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          Daftar semua member dari semua toko
-        </p>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Semua Member
+            </h1>
+            <p className={`mt-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              Daftar semua member dari semua toko
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="flex rounded-lg border overflow-hidden">
+              <button
+                onClick={() => setViewMode('table')}
+                className={`p-2 ${
+                  viewMode === 'table'
+                    ? darkMode
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-blue-500 text-white'
+                    : darkMode
+                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('card')}
+                className={`p-2 ${
+                  viewMode === 'card'
+                    ? darkMode
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-blue-500 text-white'
+                    : darkMode
+                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                <Grid className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {error && (
@@ -235,8 +295,8 @@ export default function AllMembersPage() {
       <div className={`rounded-xl shadow-lg overflow-hidden ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border`}>
         {/* Table Header */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="relative">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="relative flex-grow max-w-md">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-gray-400" />
               </div>
@@ -252,61 +312,144 @@ export default function AllMembersPage() {
                 }`}
               />
             </div>
+
+            <div className="flex items-center space-x-2">
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1); // Reset to first page when changing items per page
+                }}
+                className={`px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                  darkMode
+                    ? 'bg-gray-700 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500'
+                    : 'border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500'
+                }`}
+              >
+                {[10, 20, 30, 50, 100].map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className={darkMode ? 'bg-gray-700' : 'bg-gray-50'}>
-              <tr>
-                {columns.map((column) => (
-                  <th
-                    key={column.key}
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"
-                  >
-                    <div className={darkMode ? 'text-gray-300' : 'text-gray-500'}>
-                      {column.title}
-                    </div>
+        {/* Members Content */}
+        {loading ? (
+          <div className="py-12 flex justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          </div>
+        ) : members.length === 0 ? (
+          <div className="py-12 text-center">
+            <Users className={`mx-auto h-12 w-12 ${darkMode ? 'text-gray-400' : 'text-gray-300'}`} />
+            <h3 className={`mt-2 text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+              Tidak ada member
+            </h3>
+            <p className={`mt-1 text-sm ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+              Tidak ditemukan data member berdasarkan pencarian Anda.
+            </p>
+          </div>
+        ) : viewMode === 'table' ? (
+          // Table View
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className={darkMode ? 'bg-gray-700' : 'bg-gray-50'}>
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                    <div className={darkMode ? 'text-gray-300' : 'text-gray-500'}>No.</div>
                   </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className={`divide-y divide-gray-200 dark:divide-gray-700 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-              {loading ? (
-                <tr>
-                  <td colSpan={columns.length} className="px-6 py-4 text-center">
-                    <div className="flex justify-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-                    </div>
-                  </td>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                    <div className={darkMode ? 'text-gray-300' : 'text-gray-500'}>Nama Member</div>
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                    <div className={darkMode ? 'text-gray-300' : 'text-gray-500'}>Telepon</div>
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                    <div className={darkMode ? 'text-gray-300' : 'text-gray-500'}>Keanggotaan</div>
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                    <div className={darkMode ? 'text-gray-300' : 'text-gray-500'}>Toko</div>
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                    <div className={darkMode ? 'text-gray-300' : 'text-gray-500'}>Alamat</div>
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                    <div className={darkMode ? 'text-gray-300' : 'text-gray-500'}>Aksi</div>
+                  </th>
                 </tr>
-              ) : members.length === 0 ? (
-                <tr>
-                  <td colSpan={columns.length} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
-                    Tidak ada data member ditemukan
-                  </td>
-                </tr>
-              ) : (
-                members.map((row, index) => (
-                  <tr key={row.id || index} className={darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}>
-                    {columns.map((column) => (
-                      <td
-                        key={`${row.id || index}-${column.key}`}
-                        className="px-6 py-4 whitespace-nowrap text-sm"
-                      >
-                        <div className={darkMode ? 'text-gray-300' : 'text-gray-900'}>
-                          {column.render ? column.render(row[column.key], row, index) : row[column.key]}
+              </thead>
+              <tbody className={`divide-y divide-gray-200 dark:divide-gray-700 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                {members.map((member, index) => (
+                  <tr key={member.id || index} className={darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className={darkMode ? 'text-gray-300' : 'text-gray-900'}>
+                        {(currentPage - 1) * itemsPerPage + index + 1}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                          {member.name.charAt(0).toUpperCase()}
                         </div>
-                      </td>
-                    ))}
+                        <div className="ml-4">
+                          <div className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{member.name}</div>
+                          <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{member.code}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="flex items-center">
+                        <Phone className="h-4 w-4 mr-2 text-gray-400" />
+                        {member.phone}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {renderMembershipBadge(member.membershipType)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="flex items-center">
+                        <Store className="h-4 w-4 mr-2 text-gray-400" />
+                        {getStoreName(member.storeId)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm max-w-xs truncate">
+                      <div className="flex items-center">
+                        <MapPin className="h-4 w-4 mr-2 text-gray-400" />
+                        {member.address || 'Alamat tidak disediakan'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => {
+                            setSelectedMember(member);
+                            setIsModalOpen(true);
+                          }}
+                          className={`p-1 rounded-full ${
+                            darkMode
+                              ? 'text-blue-400 hover:bg-blue-700/30'
+                              : 'text-blue-500 hover:bg-blue-100'
+                          }`}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          // Card View
+          <div className="p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {members.map((member, index) => renderMemberCard(member, index))}
+            </div>
+          </div>
+        )}
 
         {/* Pagination */}
         <div className={`px-6 py-4 border-t ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'}`}>
@@ -323,68 +466,47 @@ export default function AllMembersPage() {
               dari <span className="font-medium">{totalItems}</span> hasil
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1); // Reset to first page when changing items per page
-                }}
-                className={`px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                  darkMode
-                    ? 'bg-gray-700 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500'
-                    : 'border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500'
-                }`}
-              >
-                {[10, 20, 30, 50, 100].map((size) => (
-                  <option key={size} value={size}>
-                    {size} per halaman
-                  </option>
-                ))}
-              </select>
+            <div className="flex items-center space-x-1">
+              {(() => {
+                const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+                return (
+                  <>
+                    <button
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-2 rounded-md text-sm font-medium ${
+                        currentPage === 1
+                          ? 'opacity-50 cursor-not-allowed'
+                          : darkMode
+                          ? 'bg-gray-700 text-white hover:bg-gray-600'
+                          : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                      }`}
+                    >
+                      Sebelumnya
+                    </button>
 
-              <div className="flex items-center space-x-1">
-                {(() => {
-                  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
-                  return (
-                    <>
-                      <button
-                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                        disabled={currentPage === 1}
-                        className={`px-3 py-2 rounded-md text-sm font-medium ${
-                          currentPage === 1
-                            ? 'opacity-50 cursor-not-allowed'
-                            : darkMode
-                            ? 'bg-gray-700 text-white hover:bg-gray-600'
-                            : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                        }`}
-                      >
-                        Sebelumnya
-                      </button>
+                    <span className={`px-3 py-2 text-sm font-medium ${
+                      darkMode ? 'text-white' : 'text-gray-800'
+                    }`}>
+                      Halaman {currentPage} dari {totalPages}
+                    </span>
 
-                      <span className={`px-3 py-2 text-sm font-medium ${
-                        darkMode ? 'text-white' : 'text-gray-800'
-                      }`}>
-                        Halaman {currentPage} dari {totalPages}
-                      </span>
-
-                      <button
-                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                        disabled={currentPage === totalPages || totalPages === 0}
-                        className={`px-3 py-2 rounded-md text-sm font-medium ${
-                          currentPage === totalPages || totalPages === 0
-                            ? 'opacity-50 cursor-not-allowed'
-                            : darkMode
-                            ? 'bg-gray-700 text-white hover:bg-gray-600'
-                            : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                        }`}
-                      >
-                        Berikutnya
-                      </button>
-                    </>
-                  );
-                })()}
-              </div>
+                    <button
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages || totalPages === 0}
+                      className={`px-3 py-2 rounded-md text-sm font-medium ${
+                        currentPage === totalPages || totalPages === 0
+                          ? 'opacity-50 cursor-not-allowed'
+                          : darkMode
+                          ? 'bg-gray-700 text-white hover:bg-gray-600'
+                          : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                      }`}
+                    >
+                      Berikutnya
+                    </button>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -398,7 +520,7 @@ export default function AllMembersPage() {
 
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-            <div className={`inline-block align-bottom rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <div className={`inline-block align-bottom rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
               <div className={`px-4 pt-5 pb-4 sm:p-6 sm:pb-4 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
                 <div className="sm:flex sm:items-start">
                   <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
@@ -417,94 +539,51 @@ export default function AllMembersPage() {
                       </button>
                     </div>
 
-                    <div className="mt-4 space-y-4">
+                    <div className="mt-4 space-y-3">
                       <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 border-2 border-dashed"></div>
-                        <div className="ml-4">
-                          <h4 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <div className="flex-shrink-0 h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                          {selectedMember.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="ml-3">
+                          <h4 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                             {selectedMember.name}
                           </h4>
-                          <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                          <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                             {selectedMember.code}
                           </p>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-4">
-                        <div className="flex items-start">
-                          <User className={`h-5 w-5 mr-3 mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-                          <div>
-                            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Nama Lengkap</p>
-                            <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {selectedMember.name || '-'}
-                            </p>
-                          </div>
+                      <div className="grid grid-cols-1 gap-2 mt-3">
+                        <div className="flex items-center text-sm">
+                          <Phone className={`h-4 w-4 mr-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                          <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{selectedMember.phone || '-'}</span>
                         </div>
 
-                        <div className="flex items-start">
-                          <CreditCard className={`h-5 w-5 mr-3 mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-                          <div>
-                            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Kode Member</p>
-                            <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {selectedMember.code || '-'}
-                            </p>
-                          </div>
+                        <div className="flex items-center text-sm">
+                          <MapPin className={`h-4 w-4 mr-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                          <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{selectedMember.address || 'Alamat tidak disediakan'}</span>
                         </div>
 
-                        <div className="flex items-start">
-                          <Phone className={`h-5 w-5 mr-3 mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-                          <div>
-                            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Nomor Telepon</p>
-                            <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {selectedMember.phone || '-'}
-                            </p>
-                          </div>
+                        <div className="flex items-center text-sm">
+                          <Store className={`h-4 w-4 mr-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                          <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{getStoreName(selectedMember.storeId) || 'Toko tidak ditemukan'}</span>
                         </div>
 
-                        <div className="flex items-start">
-                          <MapPin className={`h-5 w-5 mr-3 mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-                          <div>
-                            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Alamat</p>
-                            <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {selectedMember.address || 'Alamat tidak disediakan'}
-                            </p>
-                          </div>
+                        <div className="flex items-center text-sm">
+                          <User className={`h-4 w-4 mr-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                          <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{renderMembershipBadge(selectedMember.membershipType)}</span>
                         </div>
 
-                        <div className="flex items-start">
-                          <Store className={`h-5 w-5 mr-3 mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-                          <div>
-                            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Toko</p>
-                            <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {selectedMember.storeName || 'Toko tidak ditemukan'}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-start">
-                          <User className={`h-5 w-5 mr-3 mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-                          <div>
-                            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Tipe Keanggotaan</p>
-                            <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {selectedMember.membershipType || '-'}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-start">
-                          <Calendar className={`h-5 w-5 mr-3 mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-                          <div>
-                            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Tanggal Dibuat</p>
-                            <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {selectedMember.createdAt ? new Date(selectedMember.createdAt).toLocaleDateString('id-ID', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              }) : '-'}
-                            </p>
-                          </div>
+                        <div className="flex items-center text-sm">
+                          <Calendar className={`h-4 w-4 mr-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                          <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
+                            {selectedMember.createdAt ? new Date(selectedMember.createdAt).toLocaleDateString('id-ID', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            }) : '-'}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -514,20 +593,8 @@ export default function AllMembersPage() {
               <div className={`px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse ${darkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
                 <button
                   type="button"
-                  className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-base ${
+                  className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-base ${
                     darkMode ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500' : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
-                  }`}
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    router.push(`/admin/member/${selectedMember.id}/edit`);
-                  }}
-                >
-                  Edit Member
-                </button>
-                <button
-                  type="button"
-                  className={`mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 sm:mt-0 sm:ml-3 sm:w-auto sm:text-base ${
-                    darkMode ? 'bg-gray-600 text-white border-gray-600 hover:bg-gray-700 focus:ring-gray-500' : 'bg-white text-gray-700 hover:bg-gray-50 focus:ring-gray-500'
                   }`}
                   onClick={() => setIsModalOpen(false)}
                 >

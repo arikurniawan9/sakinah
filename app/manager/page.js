@@ -241,17 +241,28 @@ export default function ManagerDashboard() {
     const fetchData = async () => {
       try {
         // Fetch stats
-        const statsResponse = await fetch('/api/manager/stores/summary');
+        const statsResponse = await fetch('/api/manager/stores/summary', {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
         if (statsResponse.ok) {
           const statsData = await statsResponse.json();
           setStats(statsData);
         } else {
-          console.error('Error fetching stats:', statsResponse.statusText);
+          const errorText = await statsResponse.text();
+          console.error('Error fetching stats:', statsResponse.status, statsResponse.statusText, errorText);
         }
         setLoading(prev => ({ ...prev, stats: false }));
 
         // Fetch recent activities
-        const activitiesResponse = await fetch('/api/manager/activity-logs?limit=10');
+        const activitiesResponse = await fetch('/api/manager/activity-logs?limit=10', {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
         if (activitiesResponse.ok) {
           const activitiesData = await activitiesResponse.json();
           setRecentActivities(activitiesData.logs || []);
@@ -274,7 +285,12 @@ export default function ManagerDashboard() {
         setLoading(prev => ({ ...prev, sales: false }));
 
         // Fetch stores data
-        const storesResponse = await fetch('/api/manager/stores');
+        const storesResponse = await fetch('/api/manager/stores', {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
         if (storesResponse.ok) {
           const storesData = await storesResponse.json();
           setStoresData(storesData.stores || []);

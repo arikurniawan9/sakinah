@@ -40,7 +40,8 @@ import {
   Printer,
   TrendingUp,
   PackageX,
-  Bell
+  Bell,
+  Warehouse
 } from 'lucide-react';
 import { useUserTheme } from './UserThemeContext';
 import { useSidebar } from './SidebarContext';
@@ -122,6 +123,8 @@ const Sidebar = ({ children }) => {
     { title: "Semua Pengguna", href: "/manager/users", icon: Users, type: 'item', roles: ['MANAGER'] },
     { title: "Semua Member", href: "/manager/members", icon: Users, type: 'item', roles: ['MANAGER'] },
     { title: "Akun Gudang", href: "/manager/warehouse-users", icon: Package, type: 'item', roles: ['MANAGER'] },
+    { title: "Gudang", type: 'heading', roles: ['MANAGER'] },
+    { title: "Dashboard Gudang", href: "/warehouse", icon: Warehouse, type: 'item', roles: ['MANAGER'] },
 
 
     // ADMIN menus

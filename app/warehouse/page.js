@@ -108,7 +108,7 @@ export default function WarehouseDashboard() {
 
   if (isLoading && !stats) {
     return (
-      <ProtectedRoute requiredRole="WAREHOUSE">
+      <ProtectedRoute requiredRole={['WAREHOUSE', 'MANAGER']}>
         {renderLoadingSkeleton()}
       </ProtectedRoute>
     );
@@ -116,7 +116,7 @@ export default function WarehouseDashboard() {
 
   if (isErrorStats || isErrorDists) {
     return (
-      <ProtectedRoute requiredRole="WAREHOUSE">
+      <ProtectedRoute requiredRole={['WAREHOUSE', 'MANAGER']}>
         <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
           <Breadcrumb items={breadcrumbItems} darkMode={darkMode} />
           <div className={`p-6 rounded-2xl shadow-lg ${darkMode ? 'bg-red-900/30 border border-red-800' : 'bg-red-50 border border-red-200'}`}>
@@ -140,7 +140,7 @@ export default function WarehouseDashboard() {
   }
 
   return (
-    <ProtectedRoute requiredRole="WAREHOUSE">
+    <ProtectedRoute requiredRole={['WAREHOUSE', 'MANAGER']}>
       <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
         <Breadcrumb items={breadcrumbItems} darkMode={darkMode} />
 

@@ -93,13 +93,7 @@ const ReportPreview = ({
 
   // Fungsi untuk mencetak laporan
   const handlePrint = useReactToPrint({
-    content: () => {
-      if (componentRef.current) {
-        return componentRef.current;
-      }
-      console.error("Component reference is not available");
-      return null;
-    },
+    contentRef: componentRef,
     documentTitle: `Laporan - ${getReportTypeName(reportType)} - ${getStoreName(storeId)}`,
     onAfterPrint: () => console.log('Print success!'),
   });

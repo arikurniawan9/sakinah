@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { PackageX, User, TrendingDown, Calendar, Download, Filter } from 'lucide-react';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function ReturnProductReportPage() {
   const { userTheme } = useUserTheme();
@@ -24,41 +25,31 @@ export default function ReturnProductReportPage() {
     { title: 'Retur Produk', href: '/admin/laporan/retur-produk' }
   ];
 
-  // Mock data for demonstration
+  // Fetch real data from API
   useEffect(() => {
-    // In a real application, this would come from an API call
-    const mockReportData = {
-      summary: {
-        totalReturns: 42,
-        totalApproved: 35,
-        totalRejected: 7,
-        totalValue: 2500000,
-        avgProcessingTime: 2.5 // days
-      },
-      byCategory: [
-        { name: 'Kesalahan Pelayan', value: 12, count: 12 },
-        { name: 'Produk Cacat', value: 18, count: 18 },
-        { name: 'Salah Pilih', value: 8, count: 8 },
-        { name: 'Lainnya', value: 4, count: 4 }
-      ],
-      byAttendant: [
-        { name: 'Ahmad K.', returns: 8, approved: 6, rejected: 2 },
-        { name: 'Rina L.', returns: 5, approved: 4, rejected: 1 },
-        { name: 'Bambang H.', returns: 12, approved: 10, rejected: 2 },
-        { name: 'Siti M.', returns: 7, approved: 5, rejected: 2 },
-        { name: 'Doni S.', returns: 10, approved: 10, rejected: 0 }
-      ],
-      byMonth: [
-        { month: 'Jan 2025', returns: 5, approved: 4, rejected: 1 },
-        { month: 'Feb 2025', returns: 8, approved: 6, rejected: 2 },
-        { month: 'Mar 2025', returns: 3, approved: 2, rejected: 1 },
-        { month: 'Apr 2025', returns: 6, approved: 5, rejected: 1 },
-        { month: 'Mei 2025', returns: 7, approved: 6, rejected: 1 },
-        { month: 'Jun 2025', returns: 13, approved: 12, rejected: 1 }
-      ]
+    const fetchReportData = async () => {
+      try {
+        const params = new URLSearchParams({
+          timeRange,
+          startDate,
+          endDate
+        });
+
+        const response = await fetch(`/api/admin/reports/return-products?${params.toString()}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setReportData(data);
+      } catch (error) {
+        console.error('Error fetching return product report:', error);
+        // Set a basic error state or show error message to user
+      }
     };
-    
-    setReportData(mockReportData);
+
+    fetchReportData();
   }, [timeRange, startDate, endDate]);
 
   const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e'];
@@ -74,8 +65,8 @@ export default function ReturnProductReportPage() {
         <div className={`w-full px-4 sm:px-6 lg:px-8 py-8 ${userTheme.darkMode ? 'dark' : ''}`}>
           <div className="flex items-center justify-center h-64">
             <div className={`text-center ${userTheme.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              <PackageX className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Loading laporan retur produk...</p>
+              <LoadingSpinner />
+              <p className="mt-4">Memuat laporan retur produk...</p>
             </div>
           </div>
         </div>

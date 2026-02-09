@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useUserTheme } from '../../../../components/UserThemeContext';
 import { useReceivableTable } from '@/lib/hooks/useReceivableTable';
@@ -13,6 +14,7 @@ import { Printer } from 'lucide-react';
 
 export default function ReceivablesPage() {
   const { userTheme } = useUserTheme();
+  const { data: session } = useSession();
   const darkMode = userTheme.darkMode;
   const {
     receivables,

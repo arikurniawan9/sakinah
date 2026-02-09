@@ -97,7 +97,14 @@ const ReportPreview = ({
 
   // Fungsi untuk mencetak laporan
   const handlePrint = useReactToPrint({
-    contentRef: componentRef,
+    content: () => {
+      // Buat elemen div baru untuk cetak
+      const printWindow = document.createElement('div');
+      printWindow.innerHTML = reportData;
+      printWindow.style.padding = '20px';
+      printWindow.style.fontFamily = 'Arial, sans-serif';
+      return printWindow;
+    },
     documentTitle: `Laporan - ${getReportTypeName(reportType)} - ${getStoreName(storeId)}`,
     onAfterPrint: () => console.log('Print success!'),
   });
@@ -145,10 +152,9 @@ const ReportPreview = ({
       );
     }
 
-    // Tampilkan laporan dalam div untuk bisa di-print
+    // Tampilkan laporan dalam div untuk preview
     return (
       <div
-        ref={componentRef}
         className="w-full h-[70vh] overflow-auto border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white"
         dangerouslySetInnerHTML={{ __html: reportData }}
       />

@@ -19,7 +19,9 @@ export default function Home() {
     // Fetch stores data to show store information
     const fetchStores = async () => {
       try {
-        const response = await fetch('/api/stores');
+        // Gunakan API publik jika pengguna belum login, jika tidak gunakan API yang dilindungi
+        const apiUrl = status === 'authenticated' ? '/api/stores' : '/api/public/stores';
+        const response = await fetch(apiUrl);
         if (response.ok) {
           const data = await response.json();
           setStores(data.stores || []);
@@ -32,7 +34,7 @@ export default function Home() {
     };
 
     fetchStores();
-  }, []);
+  }, [status]);
 
   // Fungsi untuk mendapatkan URL dashboard berdasarkan role
   const getDashboardUrl = () => {

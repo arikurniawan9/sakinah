@@ -215,7 +215,7 @@ const Sidebar = ({ children }) => {
       >
         {/* Logo */}
         <div className={`flex items-center justify-center h-16 px-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`} style={{ borderColor: darkMode ? '' : themeColor }}>
-          <h1 style={{ color: themeColor }} className={`text-lg font-bold ${isCollapsed && !isMobile ? 'hidden' : ''}`}>{session?.user?.storeAccess?.name || shopName}</h1>
+          <h1 style={{ color: themeColor }} className={`text-xl font-bold ${isCollapsed && !isMobile ? 'hidden' : ''}`}>{session?.user?.storeAccess?.name || shopName}</h1>
           <ShoppingBag style={{ color: themeColor }} className={`${!isCollapsed || isMobile ? 'hidden' : ''}`} />
         </div>
 
@@ -256,7 +256,7 @@ const Sidebar = ({ children }) => {
                     <Tooltip content={item.title} position="bottom">
                       <Link
                         href={item.href}
-                        className={`flex items-center px-4 py-3 text-xs font-medium rounded-lg transition-colors ${
+                        className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                           isActive
                             ? `text-white bg-theme-purple-gradient`
                             : `${darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'}`
@@ -269,7 +269,7 @@ const Sidebar = ({ children }) => {
                     <Link
                       href={item.href}
                       onClick={() => isMobile && setIsMobileMenuOpen(false)}
-                      className={`flex items-center px-4 py-2.5 text-xs font-medium rounded-lg transition-colors ${
+                      className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                         isActive
                           ? `text-white bg-theme-purple-gradient`
                           : `${darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'}`
@@ -361,7 +361,7 @@ const Sidebar = ({ children }) => {
                 {/* Only show text if not collapsed and not mobile */}
                 {!isCollapsed && !isMobile && (
                   <div className="ml-3 text-right">
-                    <p className={`text-xs font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{session?.user?.name || 'User'}</p>
+                    <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{session?.user?.name || 'User'}</p>
                     <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{session?.user?.role || 'Guest'}</p>
                     {session?.user?.employeeNumber && <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Kode: {session.user.employeeNumber}</p>}
                     {session?.user?.storeAccess?.name && (
@@ -398,7 +398,7 @@ const Sidebar = ({ children }) => {
                           : '/login' // fallback to login if role not recognized
                       }
                       onClick={() => setIsUserMenuOpen(false)}
-                      className={`w-full text-left flex items-center px-4 py-2 text-xs ${darkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-100'}`}
+                      className={`w-full text-left flex items-center px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-100'}`}
                       role="menuitem"
                     >
                       <UserCog className="mr-3 h-5 w-5" />
@@ -407,7 +407,7 @@ const Sidebar = ({ children }) => {
                     <div className={`border-t my-1 ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}></div>
                     <button
                       onClick={handleLogout}
-                      className={`w-full text-left flex items-center px-4 py-2 text-xs ${darkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-100'}`}
+                      className={`w-full text-left flex items-center px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-100'}`}
                       role="menuitem"
                     >
                       <LogOut className="mr-3 h-5 w-5" />

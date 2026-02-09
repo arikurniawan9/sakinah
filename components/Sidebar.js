@@ -118,9 +118,9 @@ const Sidebar = ({ children }) => {
     { title: "Backup & Restore", href: "/manager/backup-restore", icon: HardDrive, type: 'item', roles: ['MANAGER'] },
     { title: "Hapus Data Toko", href: "/manager/delete-store-data", icon: PackageX, type: 'item', roles: ['MANAGER'] },
     { title: "Log Aktivitas", href: "/manager/activity-log", icon: Activity, type: 'item', roles: ['MANAGER'] },
-    { title: "Semua Member", href: "/manager/members", icon: Users, type: 'item', roles: ['MANAGER'] },
     { title: "Manajemen Pengguna", type: 'heading', roles: ['MANAGER'] },
     { title: "Semua Pengguna", href: "/manager/users", icon: Users, type: 'item', roles: ['MANAGER'] },
+    { title: "Semua Member", href: "/manager/members", icon: Users, type: 'item', roles: ['MANAGER'] },
     { title: "Akun Gudang", href: "/manager/warehouse-users", icon: Package, type: 'item', roles: ['MANAGER'] },
 
 

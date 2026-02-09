@@ -20,6 +20,7 @@ export default function DeleteStoreDataPage() {
   const [error, setError] = useState('');
   const [selectedStore, setSelectedStore] = useState('');
   const [confirmationText, setConfirmationText] = useState('');
+  const [password, setPassword] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteResult, setDeleteResult] = useState(null);
@@ -72,6 +73,11 @@ export default function DeleteStoreDataPage() {
       return;
     }
 
+    if (!password.trim()) {
+      setError('Silakan masukkan password Anda');
+      return;
+    }
+
     setShowConfirmation(true);
   };
 
@@ -86,7 +92,8 @@ export default function DeleteStoreDataPage() {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.user?.token || ''}`
+          'Authorization': `Bearer ${session?.user?.token || ''}`,
+          'X-Manager-Password': password
         }
       });
 
@@ -105,6 +112,7 @@ export default function DeleteStoreDataPage() {
       setTimeout(() => {
         setSelectedStore('');
         setConfirmationText('');
+        setPassword('');
         setShowConfirmation(false);
         setDeleting(false);
       }, 2000);
@@ -241,6 +249,25 @@ export default function DeleteStoreDataPage() {
               value={confirmationText}
               onChange={(e) => setConfirmationText(e.target.value)}
               placeholder='Ketik "HAPUS DATA" untuk mengonfirmasi'
+              className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                darkMode 
+                  ? 'bg-gray-700 border-gray-600 text-white' 
+                  : 'bg-white border-gray-300 text-gray-900'
+              }`}
+              disabled={loading || deleting}
+            />
+          </div>
+          
+          {/* Password Input */}
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              Password Anda
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Masukkan password Anda"
               className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 darkMode 
                   ? 'bg-gray-700 border-gray-600 text-white' 

@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { ROLES } from '@/lib/constants';
+import bcrypt from 'bcryptjs';
 
 export async function DELETE(request, { params }) {
   try {
@@ -16,6 +17,15 @@ export async function DELETE(request, { params }) {
 
     const { id: storeId } = params;
 
+    // Ambil password dari header
+    const password = request.headers.get('X-Manager-Password');
+    if (!password) {
+      return new Response(
+        JSON.stringify({ error: 'Password wajib disediakan' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Validasi ID toko
     if (!storeId) {
       return new Response(
@@ -24,7 +34,7 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // Verifikasi bahwa toko ada dan milik pengguna
+    // Verifikasi bahwa toko ada
     const store = await prisma.store.findUnique({
       where: { id: storeId },
     });
@@ -33,6 +43,27 @@ export async function DELETE(request, { params }) {
       return new Response(
         JSON.stringify({ error: 'Toko tidak ditemukan' }),
         { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Ambil data pengguna saat ini untuk verifikasi password
+    const currentUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+    });
+
+    if (!currentUser) {
+      return new Response(
+        JSON.stringify({ error: 'Pengguna tidak ditemukan' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verifikasi password
+    const isPasswordValid = await bcrypt.compare(password, currentUser.password);
+    if (!isPasswordValid) {
+      return new Response(
+        JSON.stringify({ error: 'Password salah' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
 

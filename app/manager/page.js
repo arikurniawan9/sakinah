@@ -370,9 +370,8 @@ export default function ManagerDashboard() {
   return (
     <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
       <Breadcrumb
-        items={[
-          { title: 'Dashboard', href: '/manager' },
-        ]}
+        items={[]}
+        basePath="/manager"
         darkMode={darkMode}
       />
 

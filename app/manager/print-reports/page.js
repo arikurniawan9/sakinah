@@ -8,6 +8,7 @@ import { Printer, Store, FileText, ShoppingCart, TrendingUp, DollarSign, Package
 import { useUserTheme } from '@/components/UserThemeContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ReportPreview from '@/components/manager/ReportPreview';
+import Breadcrumb from '@/components/Breadcrumb';
 
 export default function PrintReportsPage() {
   const { data: session, status } = useSession();
@@ -129,6 +130,17 @@ export default function PrintReportsPage() {
 
   return (
     <div className={`max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 ${userTheme.darkMode ? 'dark' : ''}`}>
+      {/* Breadcrumb */}
+      <div className="mb-6">
+        <Breadcrumb 
+          items={[
+            { title: 'Cetak Laporan', href: '/manager/print-reports' },
+          ]} 
+          basePath="/manager" 
+          darkMode={userTheme.darkMode} 
+        />
+      </div>
+      
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Cetak Laporan Toko</h1>

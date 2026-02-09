@@ -152,9 +152,9 @@ export default function BackupRestorePage() {
     <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
       <Breadcrumb
         items={[
-          { title: 'Dashboard', href: '/manager' },
           { title: 'Backup & Restore', href: '/manager/backup-restore' },
         ]}
+        basePath="/manager"
         darkMode={darkMode}
       />
       

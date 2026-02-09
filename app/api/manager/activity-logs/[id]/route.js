@@ -15,7 +15,8 @@ export async function GET(request, { params }) {
       });
     }
 
-    const { id } = params;
+    const awaitedParams = await params;
+    const { id } = awaitedParams;
 
     // Validasi ID
     if (!id) {

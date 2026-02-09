@@ -1,10 +1,9 @@
-// app/page.js - versi sederhana dengan logika role-based dashboard
+// app/page.js - versi sederhana untuk testing
 'use client';
 
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ROLES } from '@/lib/constants';
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -22,26 +21,6 @@ export default function Home() {
     );
   }
 
-  // Fungsi untuk mendapatkan URL dashboard berdasarkan role
-  const getDashboardUrl = () => {
-    if (!session?.user?.role) return '/login';
-
-    switch (session.user.role) {
-      case ROLES.MANAGER:
-        return '/manager';
-      case ROLES.WAREHOUSE:
-        return '/warehouse';
-      case ROLES.ADMIN:
-        return '/admin';
-      case ROLES.CASHIER:
-        return '/kasir';
-      case ROLES.ATTENDANT:
-        return '/pelayan';
-      default:
-        return '/login';
-    }
-  };
-
   return (
     <div className="min-h-screen bg-white">
       <header className="bg-gray-800 text-white p-4">
@@ -58,8 +37,8 @@ export default function Home() {
           <div className="space-x-4">
             {status === 'authenticated' ? (
               <div>
-                <p>Sudah login sebagai {session?.user?.name} ({session?.user?.role})</p>
-                <Link href={getDashboardUrl()} className="text-blue-500 hover:underline">
+                <p>Sudah login sebagai {session?.user?.name}</p>
+                <Link href="/admin" className="text-blue-500 hover:underline">
                   Ke Dashboard
                 </Link>
               </div>

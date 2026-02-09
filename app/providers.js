@@ -10,6 +10,7 @@ import AutoLogoutProvider from '@/components/AutoLogoutProvider';
 import { DashboardCustomizationProvider } from '@/components/DashboardCustomizationContext';
 import { UserThemeProvider } from '@/components/UserThemeContext';
 import ShopNameUpdater from '@/components/ShopNameUpdater';
+import AuthenticatedThemeUpdater from '@/components/AuthenticatedThemeUpdater';
 
 import { PelayanStateProvider } from '@/components/pelayan/PelayanStateContext';
 
@@ -21,9 +22,10 @@ export function Providers({ children }) {
         <ThemeProvider>
           <UserThemeProvider>
             <NotificationProvider>
-              <SessionProvider>
+              <SessionProvider basePath="/api/auth" refetchOnWindowFocus={false}>
                 <AutoLogoutProvider>
                   <ShopNameUpdater />
+                  <AuthenticatedThemeUpdater />
                   {children}
                 </AutoLogoutProvider>
               </SessionProvider>
@@ -40,7 +42,8 @@ export function LightProviders({ children }) {
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <SessionProvider>
+        <SessionProvider basePath="/api/auth" refetchOnWindowFocus={false}>
+          <AuthenticatedThemeUpdater />
           {children}
         </SessionProvider>
       </ThemeProvider>

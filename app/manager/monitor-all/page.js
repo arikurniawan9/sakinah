@@ -4,12 +4,12 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { ROLES } from '@/lib/constants';
-import { 
-  BarChart3, 
-  TrendingUp, 
-  ShoppingCart, 
-  Package, 
-  Users, 
+import {
+  BarChart3,
+  TrendingUp,
+  ShoppingCart,
+  Package,
+  Users,
   AlertTriangle,
   Store,
   DollarSign,
@@ -18,6 +18,7 @@ import {
 import { useUserTheme } from '../../../components/UserThemeContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import SalesChart from '@/components/charts/SalesChart';
+import Breadcrumb from '@/components/Breadcrumb';
 
 export default function MonitorAllStoresPage() {
   const { data: session, status } = useSession();
@@ -113,6 +114,17 @@ export default function MonitorAllStoresPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+      {/* Breadcrumb */}
+      <div className="mb-6">
+        <Breadcrumb 
+          items={[
+            { title: 'Monitor Semua Toko', href: '/manager/monitor-all' },
+          ]} 
+          basePath="/manager" 
+          darkMode={userTheme.darkMode} 
+        />
+      </div>
+      
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Monitor Semua Toko</h1>

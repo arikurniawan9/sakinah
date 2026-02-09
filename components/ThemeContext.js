@@ -33,9 +33,8 @@ export const ThemeProvider = ({ children }) => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
+  // Tidak lagi memanggil fetchSettings secara otomatis
+  // Kita akan memanggilnya hanya ketika diperlukan dan dalam konteks session
 
   const updateShopName = (newName) => {
     setCurrentShopName(newName); // Store session-based shop name

@@ -395,8 +395,9 @@ export default function ManagerAllUsersManagement() {
     <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
       <Breadcrumb
         items={[
-            { title: 'Manajemen Pengguna', href: '/manager/users' },
+          { title: 'Manajemen Pengguna', href: '/manager/users' },
         ]}
+        basePath="/manager"
         darkMode={darkMode}
       />
       <h1 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>

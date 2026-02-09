@@ -14,6 +14,7 @@ import CreateStoreModal from '@/components/CreateStoreModal';
 import StoreDetailModal from '@/components/StoreDetailModal';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import SuccessModal from '@/components/SuccessModal';
+import Breadcrumb from '@/components/Breadcrumb';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -545,6 +546,17 @@ function AuthenticatedStoreManagementPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+      {/* Breadcrumb */}
+      <div className="mb-6">
+        <Breadcrumb 
+          items={[
+            { title: 'Manajemen Toko', href: '/manager/stores' },
+          ]} 
+          basePath="/manager" 
+          darkMode={userTheme.darkMode} 
+        />
+      </div>
+      
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Manajemen Toko</h1>

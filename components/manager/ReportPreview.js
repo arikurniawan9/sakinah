@@ -98,12 +98,12 @@ const ReportPreview = ({
   // Fungsi untuk mencetak laporan
   const handlePrint = useReactToPrint({
     content: () => {
-      // Buat elemen div baru untuk cetak
-      const printWindow = document.createElement('div');
-      printWindow.innerHTML = reportData;
-      printWindow.style.padding = '20px';
-      printWindow.style.fontFamily = 'Arial, sans-serif';
-      return printWindow;
+      // Pastikan konten tersedia sebelum mencetak
+      if (componentRef.current && reportData) {
+        return componentRef.current;
+      }
+      console.error("Component reference or report data not available for printing");
+      return null;
     },
     documentTitle: `Laporan - ${getReportTypeName(reportType)} - ${getStoreName(storeId)}`,
     onAfterPrint: () => console.log('Print success!'),
@@ -152,9 +152,10 @@ const ReportPreview = ({
       );
     }
 
-    // Tampilkan laporan dalam div untuk preview
+    // Tampilkan laporan dalam div untuk bisa di-print
     return (
       <div
+        ref={componentRef}
         className="w-full h-[70vh] overflow-auto border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white"
         dangerouslySetInnerHTML={{ __html: reportData }}
       />

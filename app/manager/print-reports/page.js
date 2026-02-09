@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ROLES } from '@/lib/constants';
-import { Printer, Store, FileText, ShoppingCart, TrendingUp, DollarSign, Package, Eye } from 'lucide-react';
+import { Printer, Store, FileText, ShoppingCart, TrendingUp, DollarSign, Package, Eye, ShoppingBag } from 'lucide-react';
 import { useUserTheme } from '@/components/UserThemeContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ReportPreview from '@/components/manager/ReportPreview';

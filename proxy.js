@@ -165,7 +165,12 @@ function authProxy(req) {
 export default async function mainProxy(req) {
   const { pathname } = req.nextUrl;
 
-  // Tangani register manager terlebih dahulu
+  // Izinkan akses ke halaman utama tanpa otentikasi
+  if (pathname === '/' || pathname === '/index') {
+    return NextResponse.next();
+  }
+
+  // Tangani register manager
   if (pathname === '/register-manager' || pathname.startsWith('/register-manager')) {
     const managerExists = await checkManagerExists();
 

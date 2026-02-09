@@ -43,6 +43,9 @@ const ReportPreview = ({
         case 'inventory':
           apiUrl = `/api/reports/inventory/print?${params.toString()}`;
           break;
+        case 'products':
+          apiUrl = `/api/reports/products/print?${params.toString()}`;
+          break;
         case 'summary':
           apiUrl = `/api/reports/summary/print?${params.toString()}`;
           break;
@@ -80,6 +83,7 @@ const ReportPreview = ({
       case 'sales': return 'Laporan Penjualan';
       case 'daily': return 'Laporan Harian';
       case 'inventory': return 'Laporan Inventaris';
+      case 'products': return 'Daftar Produk';
       case 'summary': return 'Ringkasan Laporan';
       default: return 'Laporan';
     }

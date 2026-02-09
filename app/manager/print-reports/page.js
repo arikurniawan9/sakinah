@@ -74,6 +74,9 @@ export default function PrintReportsPage() {
         case 'daily':
           printUrl = `/api/reports/daily/print?${params.toString()}`;
           break;
+        case 'products':
+          printUrl = `/api/reports/products/print?${params.toString()}`;
+          break;
         case 'summary':
           printUrl = `/api/reports/summary/print?${params.toString()}`;
           break;
@@ -125,6 +128,7 @@ export default function PrintReportsPage() {
     { id: 'sales', name: 'Laporan Penjualan', icon: ShoppingCart },
     { id: 'daily', name: 'Laporan Harian', icon: TrendingUp },
     { id: 'inventory', name: 'Laporan Inventaris', icon: Package },
+    { id: 'products', name: 'Daftar Produk', icon: ShoppingBag },
     { id: 'summary', name: 'Ringkasan Laporan', icon: FileText },
   ];
 

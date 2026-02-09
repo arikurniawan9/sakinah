@@ -90,13 +90,44 @@ export async function GET(request) {
         <meta charset="UTF-8">
         <title>Daftar Produk - ${store.name}</title>
         <style>
-          body { font-family: Arial, sans-serif; margin: 20px; }
+          @page {
+            size: A4 landscape;
+            margin: 1cm;
+          }
+          body { 
+            font-family: Arial, sans-serif; 
+            margin: 0;
+            padding: 1cm;
+            box-sizing: border-box;
+          }
           .header { text-align: center; margin-bottom: 20px; }
           .store-info { margin-bottom: 20px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f2f2f2; }
-          .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
+          table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 20px;
+            font-size: 12px;
+          }
+          th, td { 
+            border: 1px solid #ddd; 
+            padding: 6px 4px; 
+            text-align: left; 
+            word-wrap: break-word;
+            max-width: 150px;
+          }
+          th { 
+            background-color: #f2f2f2; 
+            white-space: nowrap;
+          }
+          .footer { 
+            margin-top: 30px; 
+            text-align: center; 
+            font-size: 10px; 
+            color: #666; 
+          }
+          @media print {
+            body { -webkit-print-color-adjust: exact; color-adjust: exact; }
+          }
         </style>
       </head>
       <body>

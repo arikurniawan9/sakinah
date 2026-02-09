@@ -1,17 +1,17 @@
-// app/api/reports/inventory/print/route.js
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { ROLES } from '@/lib/constants';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || session.user.role !== ROLES.MANAGER) {
-      return new Response('Unauthorized', { status: 401 });
+    if (!session || (session.user.role !== ROLES.MANAGER && session.user.role !== ROLES.ADMIN)) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
     const { searchParams } = new URL(request.url);
@@ -20,254 +20,246 @@ export async function GET(request) {
     const endDate = searchParams.get('endDate');
 
     if (!storeId) {
-      return new Response('Store ID is required', { status: 400 });
+      return new Response(
+        JSON.stringify({ error: 'Store ID is required' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
     }
-
-    // Validasi rentang tanggal untuk histori perubahan stok
-    let stockMovementWhereClause = {
-      storeId: storeId
-    };
-
-    if (startDate && endDate) {
-      stockMovementWhereClause.movedAt = {
-        gte: new Date(startDate),
-        lte: new Date(endDate)
-      };
-    } else if (startDate) {
-      stockMovementWhereClause.movedAt = {
-        gte: new Date(startDate)
-      };
-    } else if (endDate) {
-      stockMovementWhereClause.movedAt = {
-        lte: new Date(endDate)
-      };
-    }
-
-    // Ambil data produk untuk laporan inventaris
-    const products = await prisma.product.findMany({
-      where: {
-        storeId: storeId
-      },
-      include: {
-        category: {
-          select: {
-            name: true
-          }
-        },
-        supplier: {
-          select: {
-            name: true
-          }
-        }
-      },
-      orderBy: {
-        name: 'asc'
-      }
-    });
-
-    // Ambil histori perubahan stok (jika ada tabel movement)
-    const stockMovements = await prisma.stockMovement?.findMany({
-      where: stockMovementWhereClause,
-      include: {
-        product: {
-          select: {
-            name: true
-          }
-        }
-      }
-    }) || [];
 
     // Ambil informasi toko
     const store = await prisma.store.findUnique({
       where: { id: storeId },
-      select: {
-        name: true,
-        address: true,
-        phone: true,
-        email: true
-      }
     });
 
-    // Siapkan data untuk laporan
-    const reportData = {
-      store: store,
-      products: products,
-      stockMovements: stockMovements,
-      totalProducts: products.length,
-      period: {
-        start: startDate || '',
-        end: endDate || new Date().toISOString().split('T')[0]
-      }
+    if (!store) {
+      return new Response(
+        JSON.stringify({ error: 'Store not found' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Query untuk mendapatkan produk berdasarkan toko
+    let whereClause = {
+      storeId: storeId,
     };
 
-    // Hasilkan laporan dalam format HTML untuk dicetak
-    const htmlContent = generateInventoryReportHTML(reportData);
+    // Tambahkan filter tanggal jika disediakan
+    if (startDate && endDate) {
+      whereClause.createdAt = {
+        gte: new Date(startDate),
+        lte: new Date(endDate),
+      };
+    } else if (startDate) {
+      whereClause.createdAt = {
+        gte: new Date(startDate),
+      };
+    } else if (endDate) {
+      whereClause.createdAt = {
+        lte: new Date(endDate),
+      };
+    }
 
-    // Return HTML content
+    // Ambil produk berdasarkan toko dan filter tanggal
+    const products = await prisma.product.findMany({
+      where: whereClause,
+      include: {
+        category: true,
+        supplier: true,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    // Hitung total nilai inventaris
+    const totalInventoryValue = products.reduce((sum, product) => sum + (product.stock * product.purchasePrice), 0);
+    const totalProducts = products.length;
+    const lowStockProducts = products.filter(p => p.stock <= 5).length;
+
+    // Format data untuk ditampilkan dalam HTML
+    const formatDate = (date) => {
+      return new Date(date).toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+
+    const formatCurrency = (amount) => {
+      return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+      }).format(amount);
+    };
+
+    // Buat HTML untuk laporan
+    let htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Laporan Inventaris - ${store.name}</title>
+        <style>
+          @page {
+            size: A4 landscape;
+            margin: 1cm;
+          }
+          body { 
+            font-family: Arial, sans-serif; 
+            margin: 0;
+            padding: 1cm;
+            box-sizing: border-box;
+          }
+          .header { text-align: center; margin-bottom: 20px; }
+          .store-info { margin-bottom: 20px; }
+          .summary-cards {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+          }
+          .summary-card {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+          }
+          .summary-card h3 {
+            margin: 0;
+            font-size: 14px;
+            color: #555;
+          }
+          .summary-card p {
+            margin: 5px 0 0 0;
+            font-size: 18px;
+            font-weight: bold;
+          }
+          table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 20px;
+            font-size: 12px;
+          }
+          th, td { 
+            border: 1px solid #ddd; 
+            padding: 6px 4px; 
+            text-align: left; 
+            word-wrap: break-word;
+            max-width: 150px;
+          }
+          th { 
+            background-color: #f2f2f2; 
+            white-space: nowrap;
+          }
+          .footer { 
+            margin-top: 30px; 
+            text-align: center; 
+            font-size: 10px; 
+            color: #666; 
+          }
+          .low-stock {
+            background-color: #fff3cd !important;
+            color: #856404;
+          }
+          @media print {
+            body { -webkit-print-color-adjust: exact; color-adjust: exact; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Laporan Inventaris</h1>
+          <div class="store-info">
+            <h2>${store.name}</h2>
+            <p>${store.address || ''}</p>
+            <p>Tanggal Cetak: ${new Date().toLocaleDateString('id-ID', {
+              day: '2-digit',
+              month: 'long',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}</p>
+          </div>
+        </div>
+
+        <div class="summary-cards">
+          <div class="summary-card">
+            <h3>Total Produk</h3>
+            <p>${totalProducts}</p>
+          </div>
+          <div class="summary-card">
+            <h3>Stok Rendah</h3>
+            <p>${lowStockProducts}</p>
+          </div>
+          <div class="summary-card">
+            <h3>Nilai Inventaris</h3>
+            <p>${formatCurrency(totalInventoryValue)}</p>
+          </div>
+        </div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Kode Produk</th>
+              <th>Nama Produk</th>
+              <th>Kategori</th>
+              <th>Supplier</th>
+              <th>Stok</th>
+              <th>Harga Beli</th>
+              <th>Harga Jual</th>
+              <th>Nilai Stok</th>
+              <th>Dibuat</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    products.forEach((product, index) => {
+      const stockValue = product.stock * product.purchasePrice;
+      const isLowStock = product.stock <= 5;
+      
+      htmlContent += `
+        <tr ${isLowStock ? 'class="low-stock"' : ''}>
+          <td>${index + 1}</td>
+          <td>${product.productCode}</td>
+          <td>${product.name}</td>
+          <td>${product.category?.name || '-'}</td>
+          <td>${product.supplier?.name || '-'}</td>
+          <td>${product.stock}</td>
+          <td>${formatCurrency(product.purchasePrice)}</td>
+          <td>${formatCurrency(product.retailPrice)}</td>
+          <td>${formatCurrency(stockValue)}</td>
+          <td>${formatDate(product.createdAt)}</td>
+        </tr>
+      `;
+    });
+
+    htmlContent += `
+          </tbody>
+        </table>
+        
+        <div class="footer">
+          <p>Laporan Inventaris - Dicetak oleh: ${session.user.name}</p>
+        </div>
+      </body>
+      </html>
+    `;
+
     return new Response(htmlContent, {
       status: 200,
       headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Content-Disposition': `attachment; filename="laporan-inventaris-${storeId}-${new Date().toISOString().split('T')[0]}.html"`
-      }
+        'Content-Type': 'text/html',
+      },
     });
   } catch (error) {
     console.error('Error generating inventory report:', error);
-    return new Response('Internal Server Error', { status: 500 });
+    return new Response(
+      JSON.stringify({ error: 'Internal Server Error', details: error.message }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
-}
-
-// Fungsi untuk menghasilkan HTML laporan inventaris
-function generateInventoryReportHTML(data) {
-  const { store, products, stockMovements, totalProducts, period } = data;
-
-  // Format tanggal
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  // Format angka uang
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
-
-  return `
-    <!DOCTYPE html>
-    <html lang="id">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Laporan Inventaris - ${store.name}</title>
-      <style>
-        @media print {
-          @page {
-            size: A4 landscape;
-            margin: 0.5cm;
-          }
-        }
-        body {
-          font-family: Arial, sans-serif;
-          margin: 10px;
-          font-size: 10px;
-        }
-        .header { text-align: center; margin-bottom: 10px; }
-        .store-info { margin-bottom: 5px; }
-        .report-title { font-size: 16px; font-weight: bold; margin-bottom: 3px; }
-        .report-period { font-size: 12px; color: #666; margin-bottom: 5px; }
-        .report-meta { font-size: 10px; color: #888; margin-bottom: 10px; }
-        .inventory-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        .inventory-table th, .inventory-table td { border: 1px solid #000; padding: 4px; text-align: left; font-size: 9px; }
-        .inventory-table th { background-color: #f2f2f2; }
-        .inventory-table .text-right { text-align: right; }
-        .inventory-table .text-center { text-align: center; }
-        .summary-section { margin-top: 10px; }
-        .stock-status-low { color: red; font-weight: bold; }
-        .stock-status-medium { color: orange; font-weight: bold; }
-        .stock-status-good { color: green; }
-        .page-break { page-break-before: always; }
-        table { page-break-inside: auto; }
-        tr { page-break-inside: avoid; }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <div class="store-info">
-          <div class="report-title">LAPORAN INVENTARIS</div>
-          <div>Nama Toko: ${store.name}</div>
-          <div>Alamat: ${store.address || '-'}</div>
-          <div>Telepon: ${store.phone || '-'}</div>
-        </div>
-        <div class="report-period">
-          Periode: ${period.start ? period.start : 'Awal'} - ${period.end}
-        </div>
-        <div class="report-meta">
-          Dicetak pada: ${formatDate(new Date().toISOString())} oleh: Manager System
-        </div>
-      </div>
-
-      <table class="inventory-table">
-        <thead>
-          <tr>
-            <th>No</th>
-            <th>Nama Produk</th>
-            <th>Kode Produk</th>
-            <th>Kategori</th>
-            <th>Supplier</th>
-            <th>Stok</th>
-            <th>Harga Beli</th>
-            <th>Nilai Stok</th>
-            <th>Status Stok</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${products.map((product, index) => {
-            const stockValue = product.stock * product.purchasePrice;
-            let stockStatus = '<span class="stock-status-good">Normal</span>';
-            if (product.stock === 0) {
-              stockStatus = '<span class="stock-status-low">Habis</span>';
-            } else if (product.stock <= 5) {
-              stockStatus = '<span class="stock-status-medium">Rendah</span>';
-            }
-            
-            return `
-              <tr>
-                <td>${index + 1}</td>
-                <td>${product.name}</td>
-                <td>${product.productCode}</td>
-                <td>${product.category?.name || 'Umum'}</td>
-                <td>${product.supplier?.name || 'Tidak Ada'}</td>
-                <td class="text-center">${product.stock}</td>
-                <td class="text-right">${formatCurrency(product.purchasePrice)}</td>
-                <td class="text-right">${formatCurrency(stockValue)}</td>
-                <td>${stockStatus}</td>
-              </tr>
-            `;
-          }).join('')}
-        </tbody>
-      </table>
-
-      <div class="summary-section">
-        <div>Total Produk: ${totalProducts}</div>
-        <div>Total Nilai Inventaris: ${formatCurrency(products.reduce((sum, product) => sum + (product.stock * product.purchasePrice), 0))}</div>
-      </div>
-
-      ${stockMovements.length > 0 ? `
-        <div class="summary-section">
-          <h3>Riwayat Perubahan Stok:</h3>
-          <ul>
-            ${stockMovements.map(movement => `
-              <li>
-                ${formatDate(movement.movedAt)} - ${movement.product?.name || 'Produk Tidak Dikenal'}: 
-                ${movement.quantityChange > 0 ? 'Masuk' : 'Keluar'} ${Math.abs(movement.quantityChange)} - 
-                ${movement.description || 'Perubahan Stok'}
-              </li>
-            `).join('')}
-          </ul>
-        </div>
-      ` : ''}
-
-      <script>
-        // Otomatis cetak saat halaman dimuat
-        window.onload = function() {
-          window.print();
-          // Setelah cetak, tutup tab
-          setTimeout(function() {
-            window.close();
-          }, 1000);
-        };
-      </script>
-    </body>
-    </html>
-  `;
 }

@@ -84,8 +84,20 @@ export default function PrintReportsPage() {
           printUrl = `/api/reports/summary/print?${params.toString()}`;
       }
 
-      // Buka laporan di tab baru
-      window.open(printUrl, '_blank');
+      // Ambil konten laporan dan buat halaman cetak
+      const response = await fetch(printUrl);
+      const htmlContent = await response.text();
+      
+      // Buat jendela baru untuk mencetak
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      
+      // Tunggu konten dimuat sebelum mencetak
+      printWindow.onload = function() {
+        printWindow.print();
+        printWindow.close();
+      };
     } catch (error) {
       console.error('Error printing report:', error);
       alert('Terjadi kesalahan saat mencetak laporan');
@@ -100,6 +112,7 @@ export default function PrintReportsPage() {
     }
     setShowPreview(true);
   };
+
 
   // Hydration-safe loading and authentication checks
   if (status === 'loading') {
@@ -243,7 +256,7 @@ export default function PrintReportsPage() {
             className="flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
           >
             <Printer className="h-5 w-5 mr-2" />
-            Cetak Laporan
+            Cetak Langsung
           </button>
         </div>
       </div>

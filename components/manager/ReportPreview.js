@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useReactToPrint } from 'react-to-print';
-import { Printer, FileText, ShoppingCart, TrendingUp, Package, X } from 'lucide-react';
+import { FileText, ShoppingCart, TrendingUp, Package, X } from 'lucide-react';
 
 const ReportPreview = ({ 
   isOpen, 
@@ -16,6 +15,7 @@ const ReportPreview = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const componentRef = useRef(null);
+  const modalRef = useRef(null);
 
   // Fungsi untuk mengambil data laporan berdasarkan tipe
   const fetchReportData = async () => {
@@ -77,6 +77,23 @@ const ReportPreview = ({
     }
   }, [isOpen, storeId, reportType, dateRange]);
 
+  // Close modal with ESC key
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   // Dapatkan nama jenis laporan
   function getReportTypeName(type) {
     switch(type) {
@@ -95,19 +112,6 @@ const ReportPreview = ({
     return store ? store.name : 'Toko Tidak Dikenal';
   };
 
-  // Fungsi untuk mencetak laporan
-  const handlePrint = useReactToPrint({
-    content: () => {
-      // Pastikan konten tersedia sebelum mencetak
-      if (componentRef.current && reportData) {
-        return componentRef.current;
-      }
-      console.error("Component reference or report data not available for printing");
-      return null;
-    },
-    documentTitle: `Laporan - ${getReportTypeName(reportType)} - ${getStoreName(storeId)}`,
-    onAfterPrint: () => console.log('Print success!'),
-  });
 
   // Format tanggal untuk tampilan
   const formatDate = (dateString) => {
@@ -199,30 +203,13 @@ const ReportPreview = ({
         </div>
 
         {/* Footer/Action Buttons */}
-        <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            {reportData ? 'Preview siap dicetak' : 'Harap lengkapi parameter laporan'}
-          </div>
-          <div className="flex space-x-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              Tutup
-            </button>
-            <button
-              onClick={handlePrint}
-              disabled={!reportData || loading}
-              className={`flex items-center px-4 py-2 rounded-lg text-white transition-colors ${
-                reportData && !loading
-                  ? 'bg-blue-600 hover:bg-blue-700' 
-                  : 'bg-gray-400 cursor-not-allowed'
-              }`}
-            >
-              <Printer className="h-4 w-4 mr-2" />
-              Cetak
-            </button>
-          </div>
+        <div className="flex items-center justify-end p-4 border-t border-gray-200 dark:border-gray-700">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            Tutup
+          </button>
         </div>
       </div>
     </div>

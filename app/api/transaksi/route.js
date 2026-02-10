@@ -4,6 +4,7 @@ import prisma from '../../../lib/prisma';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../../lib/authOptions';
 import { logCreate } from '@/lib/auditLogger';
+import initRedisClient from '@/lib/redis';
 
 export async function GET(request) {
   const session = await getServerSession(authOptions);
@@ -25,6 +26,29 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const page = parseInt(searchParams.get('page') || '1');
 
+    // Generate cache key
+    const cacheKey = `transactions:${storeId}:${memberId || 'all'}:${page}:${limit}`;
+    let redisClient;
+    try {
+      redisClient = await initRedisClient();
+    } catch (error) {
+      console.warn('Redis not available, proceeding without caching:', error.message);
+    }
+
+    // Try to get cached data
+    let cachedData = null;
+    if (redisClient) {
+      try {
+        const cached = await redisClient.get(cacheKey);
+        if (cached) {
+          console.log('Cache hit for transactions');
+          return NextResponse.json(JSON.parse(cached));
+        }
+      } catch (error) {
+        console.warn('Cache retrieval failed:', error.message);
+      }
+    }
+
     // Buat filter berdasarkan storeId dan memberId jika disediakan
     const filter = {
       storeId: storeId,
@@ -34,51 +58,67 @@ export async function GET(request) {
     }
 
     // Ambil transaksi dengan filter dan pagination
-    const transactions = await prisma.sale.findMany({
-      where: filter,
-      include: {
-        cashier: {
-          select: {
-            name: true,
-            username: true,
-          }
-        },
-        attendant: {
-          select: {
-            name: true,
-            username: true,
-          }
-        },
-        member: {
-          select: {
-            name: true,
-            phone: true,
-            membershipType: true,
-          }
-        },
-        saleDetails: {
-          include: {
-            product: {
-              select: {
-                name: true,
+    const [transactions, totalCount] = await Promise.all([
+      prisma.sale.findMany({
+        where: filter,
+        select: {
+          id: true,
+          invoiceNumber: true,
+          date: true,
+          total: true,
+          tax: true,
+          payment: true,
+          change: true,
+          status: true,
+          paymentMethod: true,
+          referenceNumber: true,
+          cashier: {
+            select: {
+              name: true,
+              username: true,
+            }
+          },
+          attendant: {
+            select: {
+              name: true,
+              username: true,
+            }
+          },
+          member: {
+            select: {
+              name: true,
+              phone: true,
+              membershipType: true,
+            }
+          },
+          saleDetails: {
+            select: {
+              id: true,
+              quantity: true,
+              price: true,
+              discount: true,
+              subtotal: true,
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                }
               }
             }
-          }
+          },
         },
-      },
-      orderBy: {
-        date: 'desc',
-      },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+        orderBy: {
+          date: 'desc',
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.sale.count({
+        where: filter,
+      })
+    ]);
 
-    // Ambil total count untuk pagination
-    const totalCount = await prisma.sale.count({
-      where: filter,
-    });
-
-    return NextResponse.json({
+    const result = {
       transactions,
       pagination: {
         page,
@@ -86,7 +126,18 @@ export async function GET(request) {
         total: totalCount,
         pages: Math.ceil(totalCount / limit),
       }
-    });
+    };
+
+    // Cache the response if Redis is available
+    if (redisClient) {
+      try {
+        await redisClient.set(cacheKey, JSON.stringify(result), { EX: 300 }); // Cache for 5 minutes
+      } catch (error) {
+        console.warn('Cache storage failed:', error.message);
+      }
+    }
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error fetching transactions:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -192,15 +243,20 @@ export async function POST(request) {
     for (const item of items) {
       const product = await prisma.product.findUnique({
         where: { id: item.productId },
+        select: {
+          id: true,
+          name: true,
+          stock: true
+        }
       });
-      
+
       if (!product) {
         return NextResponse.json({ error: `Produk dengan ID ${item.productId} tidak ditemukan.` }, { status: 400 });
       }
-      
+
       if (product.stock < item.quantity) {
-        return NextResponse.json({ 
-          error: `Stok tidak cukup untuk produk "${product.name}". Stok tersedia: ${product.stock}, permintaan: ${item.quantity}.` 
+        return NextResponse.json({
+          error: `Stok tidak cukup untuk produk "${product.name}". Stok tersedia: ${product.stock}, permintaan: ${item.quantity}.`
         }, { status: 400 });
       }
     }
@@ -217,6 +273,11 @@ export async function POST(request) {
       for (const item of items) {
         const product = await tx.product.findUnique({
           where: { id: item.productId },
+          select: {
+            id: true,
+            name: true,
+            stock: true
+          }
         });
 
         if (!product) {
@@ -259,7 +320,12 @@ export async function POST(request) {
         include: {
           saleDetails: {
             include: {
-              product: true,
+              product: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              }
             }
           }
         }
@@ -275,14 +341,19 @@ export async function POST(request) {
               decrement: item.quantity,
             },
           },
+          select: {
+            id: true,
+            name: true,
+            stock: true
+          }
         });
 
         // Emit real-time stock update
         if (io && session.user.storeId) {
             const room = `attendant-store-${session.user.storeId}`;
-            io.to(room).emit('stock:update', { 
-                productId: updatedProduct.id, 
-                stock: updatedProduct.stock 
+            io.to(room).emit('stock:update', {
+                productId: updatedProduct.id,
+                stock: updatedProduct.stock
             });
             console.log(`Emitted 'stock:update' to ${room} for product ${updatedProduct.id}`);
         }
@@ -313,6 +384,18 @@ export async function POST(request) {
       return newSale;
     });
 
+    // Invalidate related caches after successful transaction
+    const redisClient = await initRedisClient().catch(() => null);
+    if (redisClient) {
+      try {
+        // Clear related cache entries
+        await redisClient.del(`dashboard_data:*:${session.user.storeId}:*`); // Clear dashboard cache for this store
+        await redisClient.del(`products:${session.user.storeId}:*`); // Clear product cache for this store
+      } catch (error) {
+        console.warn('Cache invalidation failed:', error.message);
+      }
+    }
+
     const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown';
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
@@ -332,17 +415,17 @@ export async function POST(request) {
     }, { status: 201 });
   } catch (error) {
     console.error('Failed to create sale:', error);
-    
+
     if (error.message && error.message.includes('stok menjadi negatif')) {
-      return NextResponse.json({ 
-        error: 'Gagal membuat transaksi: Stok produk tidak mencukupi karena transaksi lain sedang berlangsung.' 
+      return NextResponse.json({
+        error: 'Gagal membuat transaksi: Stok produk tidak mencukupi karena transaksi lain sedang berlangsung.'
       }, { status: 400 });
     }
-    
+
     if (error.code === 'P2025' || (error.meta && error.meta.cause === 'Record to update not found.')) {
        return NextResponse.json({ error: 'Gagal membuat transaksi: Stok produk tidak mencukupi.' }, { status: 400 });
     }
-    
+
     return NextResponse.json({ error: 'Gagal membuat transaksi: ' + error.message || 'Terjadi kesalahan internal.' }, { status: 500 });
   }
 }

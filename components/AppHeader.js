@@ -158,20 +158,22 @@ const AppHeader = ({ darkModeOverride = null }) => {
                             : '/kasir/profile'
                         }
                         onClick={() => setIsUserMenuOpen(false)}
-                        className={`w-full text-left flex items-center px-4 py-2 text-sm ${dynamicDarkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-100'}`}
+                        className={`w-full text-left flex items-center px-4 py-2 text-sm transition-all duration-200 ${dynamicDarkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-100'} hover:pl-8 relative group`}
                         role="menuitem"
                       >
                         <User className="mr-3 h-4 w-4" />
                         <span>Setting Profile</span>
+                        <span className={`absolute right-4 w-0 h-0.5 ${dynamicDarkMode ? 'bg-gray-300' : 'bg-gray-700'} transition-all duration-200 group-hover:w-4`}></span>
                       </Link>
                       <div className={`border-t my-1 ${dynamicDarkMode ? 'border-gray-600' : 'border-gray-200'}`}></div>
                       <button
                         onClick={handleLogout}
-                        className={`w-full text-left flex items-center px-4 py-2 text-sm ${dynamicDarkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-100'}`}
+                        className={`w-full text-left flex items-center px-4 py-2 text-sm transition-all duration-200 ${dynamicDarkMode ? 'text-gray-300 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-100'} hover:pl-8 relative group`}
                         role="menuitem"
                       >
                         <LogOut className="mr-3 h-4 w-4" />
                         <span>Logout</span>
+                        <span className={`absolute right-4 w-0 h-0.5 ${dynamicDarkMode ? 'bg-gray-300' : 'bg-gray-700'} transition-all duration-200 group-hover:w-4`}></span>
                       </button>
                     </div>
                   </div>

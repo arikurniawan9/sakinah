@@ -60,58 +60,82 @@ const Header = ({ onLogout }) => {
                 <>
                   <Link
                     href="/"
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium relative pb-1 group ${
                       pathname === '/'
                         ? 'border-current text-gray-900 dark:text-white'
                         : 'border-transparent text-gray-500 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-700 dark:hover:text-gray-200'
                     }`}
                     style={{ color: pathname === '/' ? userTheme.themeColor : undefined }}
                   >
-                    Dashboard
+                    <span>Dashboard</span>
+                    <span className={`absolute bottom-0 left-0 w-0 h-0.5 ${
+                      pathname === '/' 
+                        ? 'bg-current' 
+                        : 'bg-gray-500 dark:bg-gray-300'
+                    } transition-all duration-300 group-hover:w-full`}
+                    style={{ backgroundColor: pathname === '/' ? userTheme.themeColor : undefined }}></span>
                   </Link>
                   <Link
                     href="/products"
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium relative pb-1 group ${
                       pathname === '/products'
                         ? 'border-current text-gray-900 dark:text-white'
                         : 'border-transparent text-gray-500 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-700 dark:hover:text-gray-200'
                     }`}
                     style={{ color: pathname === '/products' ? userTheme.themeColor : undefined }}
                   >
-                    Produk
+                    <span>Produk</span>
+                    <span className={`absolute bottom-0 left-0 w-0 h-0.5 ${
+                      pathname === '/products' 
+                        ? 'bg-current' 
+                        : 'bg-gray-500 dark:bg-gray-300'
+                    } transition-all duration-300 group-hover:w-full`}
+                    style={{ backgroundColor: pathname === '/products' ? userTheme.themeColor : undefined }}></span>
                   </Link>
                   <Link
                     href="/transactions"
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium relative pb-1 group ${
                       pathname === '/transactions'
                         ? 'border-current text-gray-900 dark:text-white'
                         : 'border-transparent text-gray-500 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-700 dark:hover:text-gray-200'
                     }`}
                     style={{ color: pathname === '/transactions' ? userTheme.themeColor : undefined }}
                   >
-                    Transaksi
+                    <span>Transaksi</span>
+                    <span className={`absolute bottom-0 left-0 w-0 h-0.5 ${
+                      pathname === '/transactions' 
+                        ? 'bg-current' 
+                        : 'bg-gray-500 dark:bg-gray-300'
+                    } transition-all duration-300 group-hover:w-full`}
+                    style={{ backgroundColor: pathname === '/transactions' ? userTheme.themeColor : undefined }}></span>
                   </Link>
                 </>
               )}
               {session?.user?.storeRole === 'CASHIER' && (
                 <Link
                   href="/kasir"
-                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium relative pb-1 group ${
                     pathname === '/kasir'
                       ? 'border-current text-gray-900 dark:text-white'
                       : 'border-transparent text-gray-500 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-700 dark:hover:text-gray-200'
                   }`}
                   style={{ color: pathname === '/kasir' ? userTheme.themeColor : undefined }}
                 >
-                  Kasir
+                  <span>Kasir</span>
+                  <span className={`absolute bottom-0 left-0 w-0 h-0.5 ${
+                    pathname === '/kasir' 
+                      ? 'bg-current' 
+                      : 'bg-gray-500 dark:bg-gray-300'
+                  } transition-all duration-300 group-hover:w-full`}
+                  style={{ backgroundColor: pathname === '/kasir' ? userTheme.themeColor : undefined }}></span>
                 </Link>
               )}
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
-            {/* Theme Control for desktop */}
-            <div className="hidden md:block">
+          <div className="flex items-center space-x-2 md:space-x-4">
+            {/* Theme Control - visible on all screen sizes */}
+            <div>
               <ThemeControl showLabel={false} />
             </div>
 
@@ -141,31 +165,34 @@ const Header = ({ onLogout }) => {
                     
                     <Link
                       href="/profile"
-                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 hover:pl-6 relative group"
                     >
                       <div className="flex items-center">
                         <User className="h-4 w-4 mr-2" />
-                        Profil
+                        <span>Profil</span>
+                        <span className="absolute right-4 w-0 h-0.5 bg-gray-700 dark:bg-gray-300 transition-all duration-200 group-hover:w-4"></span>
                       </div>
                     </Link>
-                    
+
                     <Link
                       href="/settings"
-                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 hover:pl-6 relative group"
                     >
                       <div className="flex items-center">
                         <Settings className="h-4 w-4 mr-2" />
-                        Pengaturan
+                        <span>Pengaturan</span>
+                        <span className="absolute right-4 w-0 h-0.5 bg-gray-700 dark:bg-gray-300 transition-all duration-200 group-hover:w-4"></span>
                       </div>
                     </Link>
-                    
+
                     <button
                       onClick={onLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 hover:pl-6 relative group"
                     >
                       <div className="flex items-center">
                         <LogOut className="h-4 w-4 mr-2" />
-                        Keluar
+                        <span>Keluar</span>
+                        <span className="absolute right-4 w-0 h-0.5 bg-gray-700 dark:bg-gray-300 transition-all duration-200 group-hover:w-4"></span>
                       </div>
                     </button>
                   </div>

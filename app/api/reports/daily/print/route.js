@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { ROLES } from '@/lib/constants';
+import initRedisClient from '@/lib/redis';
 
 export async function GET(request) {
   try {
@@ -26,9 +27,43 @@ export async function GET(request) {
       );
     }
 
+    // Generate cache key
+    const cacheKey = `report_daily:${session.user.id}:${storeId}:${startDate || 'none'}:${endDate || 'none'}`;
+    let redisClient;
+    try {
+      redisClient = await initRedisClient();
+    } catch (error) {
+      console.warn('Redis not available, proceeding without caching:', error.message);
+    }
+
+    // Try to get cached data
+    let cachedData = null;
+    if (redisClient) {
+      try {
+        const cached = await redisClient.get(cacheKey);
+        if (cached) {
+          console.log('Cache hit for daily report');
+          // Since this returns HTML, we need to return the cached HTML directly
+          return new Response(cached, {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/html',
+            },
+          });
+        }
+      } catch (error) {
+        console.warn('Cache retrieval failed:', error.message);
+      }
+    }
+
     // Ambil informasi toko
     const store = await prisma.store.findUnique({
       where: { id: storeId },
+      select: {
+        id: true,
+        name: true,
+        address: true
+      }
     });
 
     if (!store) {
@@ -59,23 +94,49 @@ export async function GET(request) {
       };
     }
 
-    // Ambil penjualan berdasarkan toko dan filter tanggal
-    const sales = await prisma.sale.findMany({
-      where: whereClause,
-      include: {
-        cashier: true,
-        attendant: true,
-        member: true,
-        saleDetails: {
-          include: {
-            product: true,
+    // Ambil penjualan berdasarkan toko dan filter tanggal dengan optimasi select
+    const [sales, storeInfo] = await Promise.all([
+      prisma.sale.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          invoiceNumber: true,
+          date: true,
+          total: true,
+          status: true,
+          cashier: {
+            select: {
+              name: true
+            }
           },
+          attendant: {
+            select: {
+              name: true
+            }
+          },
+          member: {
+            select: {
+              name: true
+            }
+          },
+          saleDetails: {
+            select: {
+              quantity: true
+            }
+          }
         },
-      },
-      orderBy: {
-        date: 'desc',
-      },
-    });
+        orderBy: {
+          date: 'desc',
+        },
+      }),
+      prisma.store.findUnique({
+        where: { id: storeId },
+        select: {
+          name: true,
+          address: true
+        }
+      })
+    ]);
 
     // Hitung total penjualan
     const totalSales = sales.reduce((sum, sale) => sum + sale.total, 0);
@@ -109,14 +170,14 @@ export async function GET(request) {
       <html>
       <head>
         <meta charset="UTF-8">
-        <title>Laporan Harian - ${store.name}</title>
+        <title>Laporan Harian - ${storeInfo.name}</title>
         <style>
           @page {
             size: A4 landscape;
             margin: 1cm;
           }
-          body { 
-            font-family: Arial, sans-serif; 
+          body {
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 1cm;
             box-sizing: border-box;
@@ -145,28 +206,28 @@ export async function GET(request) {
             font-size: 18px;
             font-weight: bold;
           }
-          table { 
-            width: 100%; 
-            border-collapse: collapse; 
+          table {
+            width: 100%;
+            border-collapse: collapse;
             margin-top: 20px;
             font-size: 12px;
           }
-          th, td { 
-            border: 1px solid #ddd; 
-            padding: 6px 4px; 
-            text-align: left; 
+          th, td {
+            border: 1px solid #ddd;
+            padding: 6px 4px;
+            text-align: left;
             word-wrap: break-word;
             max-width: 150px;
           }
-          th { 
-            background-color: #f2f2f2; 
+          th {
+            background-color: #f2f2f2;
             white-space: nowrap;
           }
-          .footer { 
-            margin-top: 30px; 
-            text-align: center; 
-            font-size: 10px; 
-            color: #666; 
+          .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
           }
           @media print {
             body { -webkit-print-color-adjust: exact; color-adjust: exact; }
@@ -177,8 +238,8 @@ export async function GET(request) {
         <div class="header">
           <h1>Laporan Harian</h1>
           <div class="store-info">
-            <h2>${store.name}</h2>
-            <p>${store.address || ''}</p>
+            <h2>${storeInfo.name}</h2>
+            <p>${storeInfo.address || ''}</p>
             <p>Tanggal Cetak: ${new Date().toLocaleDateString('id-ID', {
               day: '2-digit',
               month: 'long',
@@ -203,7 +264,7 @@ export async function GET(request) {
             <p>${formatCurrency(totalSales)}</p>
           </div>
         </div>
-        
+
         <table>
           <thead>
             <tr>
@@ -238,13 +299,22 @@ export async function GET(request) {
     htmlContent += `
           </tbody>
         </table>
-        
+
         <div class="footer">
           <p>Laporan Harian - Dicetak oleh: ${session.user.name}</p>
         </div>
       </body>
       </html>
     `;
+
+    // Cache the HTML response if Redis is available
+    if (redisClient) {
+      try {
+        await redisClient.set(cacheKey, htmlContent, { EX: 300 }); // Cache for 5 minutes
+      } catch (error) {
+        console.warn('Cache storage failed:', error.message);
+      }
+    }
 
     return new Response(htmlContent, {
       status: 200,

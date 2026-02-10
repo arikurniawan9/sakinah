@@ -3,11 +3,12 @@ export const dynamic = 'force-dynamic';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
+import initRedisClient from '@/lib/redis';
 
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session || session.user.role !== 'MANAGER') {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
@@ -19,10 +20,37 @@ export async function GET(request) {
     const timeRange = searchParams.get('timeRange') || '7d';
     const reportType = searchParams.get('type') || 'sales';
 
+    // Generate cache key
+    const cacheKey = `report_combined:${session.user.id}:${timeRange}:${reportType}`;
+    let redisClient;
+    try {
+      redisClient = await initRedisClient();
+    } catch (error) {
+      console.warn('Redis not available, proceeding without caching:', error.message);
+    }
+
+    // Try to get cached data
+    let cachedData = null;
+    if (redisClient) {
+      try {
+        const cached = await redisClient.get(cacheKey);
+        if (cached) {
+          cachedData = JSON.parse(cached);
+          console.log('Cache hit for combined report');
+          return new Response(JSON.stringify(cachedData), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      } catch (error) {
+        console.warn('Cache retrieval failed:', error.message);
+      }
+    }
+
     // Tentukan rentang waktu berdasarkan timeRange
     const now = new Date();
     let startDate = new Date();
-    
+
     switch (timeRange) {
       case '7d':
         startDate.setDate(now.getDate() - 7);
@@ -43,91 +71,87 @@ export async function GET(request) {
     let reportData = {};
 
     if (reportType === 'sales') {
-      // Ambil data penjualan keseluruhan
-      const salesData = await prisma.sale.groupBy({
-        by: ['storeId'],
-        where: {
-          date: {
-            gte: startDate
-          }
-        },
-        _sum: {
-          total: true
-        },
-        _count: {
-          id: true
-        }
-      });
-
-      // Ambil data penjualan harian untuk grafik sesuai dengan rentang waktu
-      const dailySales = await prisma.sale.groupBy({
-        by: ['date'],
-        where: {
-          date: {
-            gte: startDate
-          }
-        },
-        _sum: {
-          total: true
-        },
-        _count: {
-          id: true
-        }
-      });
-
-      // Ambil toko untuk nama
-      const stores = await prisma.store.findMany({
-        where: {
-          status: 'ACTIVE'
-        }
-      });
-
-      // Gabungkan data
-      const storeSalesData = salesData.map(sale => {
-        const store = stores.find(s => s.id === sale.storeId);
-        return {
-          storeId: sale.storeId,
-          storeName: store ? store.name : 'Toko Tidak Dikenal',
-          totalSales: sale._count.id,
-          totalRevenue: sale._sum.total
-        };
-      });
-
-      // Ambil data produk terjual untuk menghitung total item yang terjual
-      const totalProductsSold = await prisma.saleDetail.aggregate({
-        where: {
-          sale: {
+      // Ambil data penjualan keseluruhan dengan optimasi
+      const [salesData, dailySales, stores, totalProductsSold, topProducts] = await Promise.all([
+        // Data penjualan per toko
+        prisma.sale.groupBy({
+          by: ['storeId'],
+          where: {
             date: {
               gte: startDate
             }
-          }
-        },
-        _sum: {
-          quantity: true
-        }
-      });
-
-      // Ambil informasi produk yang paling banyak terjual
-      const topProducts = await prisma.saleDetail.groupBy({
-        by: ['productId'],
-        where: {
-          sale: {
-            date: {
-              gte: startDate
-            }
-          }
-        },
-        _sum: {
-          quantity: true,
-          subtotal: true
-        },
-        orderBy: {
+          },
           _sum: {
-            quantity: 'desc'
+            total: true
+          },
+          _count: {
+            id: true
           }
-        },
-        take: 5
-      });
+        }),
+        
+        // Data penjualan harian
+        prisma.sale.groupBy({
+          by: ['date'],
+          where: {
+            date: {
+              gte: startDate
+            }
+          },
+          _sum: {
+            total: true
+          },
+          _count: {
+            id: true
+          }
+        }),
+        
+        // Data toko
+        prisma.store.findMany({
+          where: {
+            status: 'ACTIVE'
+          },
+          select: {
+            id: true,
+            name: true
+          }
+        }),
+        
+        // Total produk terjual
+        prisma.saleDetail.aggregate({
+          where: {
+            sale: {
+              date: {
+                gte: startDate
+              }
+            }
+          },
+          _sum: {
+            quantity: true
+          }
+        }),
+        
+        // Produk terlaris
+        prisma.saleDetail.groupBy({
+          by: ['productId'],
+          where: {
+            sale: {
+              date: {
+                gte: startDate
+              }
+            }
+          },
+          _sum: {
+            quantity: true,
+            subtotal: true
+          },
+          orderBy: {
+            _sum: {
+              quantity: 'desc'
+            }
+          },
+          take: 5
+        })
+      ]);
 
       // Ambil nama produk untuk top products
       const topProductIds = topProducts.map(item => item.productId);
@@ -141,6 +165,17 @@ export async function GET(request) {
           id: true,
           name: true
         }
+      });
+
+      // Gabungkan data
+      const storeSalesData = salesData.map(sale => {
+        const store = stores.find(s => s.id === sale.storeId);
+        return {
+          storeId: sale.storeId,
+          storeName: store ? store.name : 'Toko Tidak Dikenal',
+          totalSales: sale._count.id,
+          totalRevenue: sale._sum.total
+        };
       });
 
       // Gabungkan data produk
@@ -169,31 +204,48 @@ export async function GET(request) {
         topProducts: topProductsData
       };
     } else if (reportType === 'inventory') {
-      // Data inventaris
-      const totalProducts = await prisma.product.count();
-      const lowStockProducts = await prisma.product.count({
-        where: {
-          stock: { lte: 5 }
-        }
-      });
-      const outOfStockProducts = await prisma.product.count({
-        where: {
-          stock: 0
-        }
-      });
-
-      // Ambil data stok untuk setiap produk
-      const inventoryDataWithRelations = await prisma.product.findMany({
-        include: {
-          store: true,
-          category: true,
-          supplier: true
-        },
-        orderBy: {
-          stock: 'asc' // Urutkan dari stok terendah
-        },
-        take: 10 // Ambil 10 produk terendah
-      });
+      // Data inventaris dengan optimasi
+      const [totalProducts, lowStockProducts, outOfStockProducts, inventoryDataWithRelations] = await Promise.all([
+        prisma.product.count(),
+        prisma.product.count({
+          where: {
+            stock: { lte: 5 }
+          }
+        }),
+        prisma.product.count({
+          where: {
+            stock: 0
+          }
+        }),
+        prisma.product.findMany({
+          select: {
+            id: true,
+            name: true,
+            productCode: true,
+            stock: true,
+            store: {
+              select: {
+                name: true
+              }
+            },
+            category: {
+              select: {
+                name: true
+              }
+            },
+            supplier: {
+              select: {
+                name: true
+              }
+            },
+            purchasePrice: true,
+          },
+          orderBy: {
+            stock: 'asc' // Urutkan dari stok terendah
+          },
+          take: 10 // Ambil 10 produk terendah
+        })
+      ]);
 
       // Transformasi data untuk menghindari masalah jika relasi tidak ditemukan
       const inventoryData = inventoryDataWithRelations.map(item => ({
@@ -205,7 +257,6 @@ export async function GET(request) {
         categoryName: item.category ? item.category.name : 'Kategori Tidak Dikenal',
         supplierName: item.supplier ? item.supplier.name : 'Supplier Tidak Dikenal',
         purchasePrice: item.purchasePrice || 0,
-        price: item.priceTiers && item.priceTiers.length > 0 ? item.priceTiers[0].price : 0,
       }));
 
       reportData = {
@@ -218,55 +269,61 @@ export async function GET(request) {
         inventoryData: inventoryData
       };
     } else if (reportType === 'financial') {
-      // Data keuangan
-      const salesTotal = await prisma.sale.aggregate({
-        where: {
-          date: {
-            gte: startDate
+      // Data keuangan dengan optimasi
+      const [salesTotal, expensesTotal, expensesByCategory, expenseCategories, purchasesTotal] = await Promise.all([
+        prisma.sale.aggregate({
+          where: {
+            date: {
+              gte: startDate
+            }
+          },
+          _sum: {
+            total: true
           }
-        },
-        _sum: {
-          total: true
-        }
-      });
-
-      const expensesTotal = await prisma.expense.aggregate({
-        where: {
-          date: {
-            gte: startDate
+        }),
+        prisma.expense.aggregate({
+          where: {
+            date: {
+              gte: startDate
+            }
+          },
+          _sum: {
+            amount: true
           }
-        },
-        _sum: {
-          amount: true
-        }
-      });
-
-      // Ambil detail pengeluaran berdasarkan kategori
-      const expensesByCategory = await prisma.expense.groupBy({
-        by: ['expenseCategoryId'],
-        where: {
-          date: {
-            gte: startDate
+        }),
+        prisma.expense.groupBy({
+          by: ['expenseCategoryId'],
+          where: {
+            date: {
+              gte: startDate
+            }
+          },
+          _sum: {
+            amount: true
           }
-        },
-        _sum: {
-          amount: true
-        }
-      });
-
-      // Ambil nama kategori pengeluaran
-      const expenseCategoryIds = expensesByCategory.map(item => item.expenseCategoryId);
-      const expenseCategories = await prisma.expenseCategory.findMany({
-        where: {
-          id: {
-            in: expenseCategoryIds
+        }),
+        prisma.expenseCategory.findMany({
+          where: {
+            id: {
+              in: expensesByCategory.map(item => item.expenseCategoryId)
+            }
+          },
+          select: {
+            id: true,
+            name: true
           }
-        },
-        select: {
-          id: true,
-          name: true
-        }
-      });
+        }),
+        prisma.purchase.aggregate({
+          where: {
+            purchaseDate: {
+              gte: startDate
+            }
+          },
+          _sum: {
+            totalAmount: true
+          }
+        })
+      ]);
 
       // Gabungkan data kategori pengeluaran
       const expensesByCategoryData = expensesByCategory.map(item => {
@@ -275,18 +332,6 @@ export async function GET(request) {
           categoryName: category ? category.name : 'Kategori Tidak Dikenal',
           amount: item._sum.amount
         };
-      });
-
-      // Ambil data pembelian dalam periode yang sama untuk menghitung laba kotor
-      const purchasesTotal = await prisma.purchase.aggregate({
-        where: {
-          purchaseDate: {
-            gte: startDate
-          }
-        },
-        _sum: {
-          totalAmount: true
-        }
       });
 
       // Hitung laba kotor (total penjualan - total pembelian)
@@ -304,6 +349,15 @@ export async function GET(request) {
           expensesByCategory: expensesByCategoryData
         }
       };
+    }
+
+    // Cache the response if Redis is available
+    if (redisClient) {
+      try {
+        await redisClient.set(cacheKey, JSON.stringify(reportData), { EX: 600 }); // Cache for 10 minutes
+      } catch (error) {
+        console.warn('Cache storage failed:', error.message);
+      }
     }
 
     return new Response(JSON.stringify(reportData), {

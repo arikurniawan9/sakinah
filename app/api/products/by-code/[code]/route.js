@@ -9,7 +9,7 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: 'Unauthorized or user not associated with a store.' }, { status: 401 });
   }
 
-  const { code } = params;
+  const { code } = await params;
   const { storeId } = session.user;
 
   if (!code) {

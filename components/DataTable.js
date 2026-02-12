@@ -1,6 +1,6 @@
 // components/DataTable.js
 import { useState, useEffect, useRef, forwardRef } from 'react';
-import { Search, Plus, Download, Trash2, Edit, Eye, Filter, SortAsc, SortDesc, MinusCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Upload, FileText } from 'lucide-react';
+import { Search, Plus, Download, Trash2, Edit, Eye, Filter, SortAsc, SortDesc, MinusCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Upload, FileText, RotateCcw } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner'; // Import LoadingSpinner
 import AdvancedFilter from '@/components/AdvancedFilter'; // Import AdvancedFilter
 
@@ -43,7 +43,9 @@ const DataTable = forwardRef(function DataTable({
   filterValues = {}, // ADDED: Current filter values
   onFilterChange = null, // ADDED: Filter change handler
   onToggleFilters = null, // ADDED: Toggle filters handler
-  deleteMultipleLoading = false // ADDED: Loading state for delete multiple
+  deleteMultipleLoading = false, // ADDED: Loading state for delete multiple
+  onRefresh = null, // ADDED: Refresh handler - allows manual refresh of data
+  refreshLoading = false // ADDED: Loading state for refresh button
 }, forwardedRef) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobile, setIsMobile] = useState(false);
@@ -180,6 +182,13 @@ const DataTable = forwardRef(function DataTable({
 
   return (
     <div className={`rounded-xl shadow-lg ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border relative z-0`}>
+      {/* Background validating indicator */}
+      {pagination && !loading && pagination.validating && (
+        <div className="absolute top-0 left-0 right-0 h-1 z-50 overflow-hidden">
+          <div className="h-full bg-cyan-500 animate-progress-indeterminate"></div>
+        </div>
+      )}
+      
       {/* Toolbar */}
       {showToolbar && (
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -308,6 +317,24 @@ const DataTable = forwardRef(function DataTable({
                       title="Template"
                     >
                       <FileText className="h-4 w-4" />
+                    </button>
+                  )}
+                  {onRefresh && (
+                    <button
+                      onClick={onRefresh}
+                      disabled={refreshLoading}
+                      className={`p-2 border border-gray-300 rounded-lg transition-colors ${
+                        refreshLoading 
+                          ? 'opacity-50 cursor-not-allowed' 
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                      }`}
+                      title={refreshLoading ? "Menyegarkan..." : "Refresh"}
+                    >
+                      {refreshLoading ? (
+                        <div className="w-4 h-4 border-t-2 border-r-2 border-gray-500 rounded-full animate-spin"></div>
+                      ) : (
+                        <RotateCcw className="h-4 w-4" />
+                      )}
                     </button>
                   )}
                 </div>

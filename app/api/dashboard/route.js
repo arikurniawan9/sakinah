@@ -62,16 +62,29 @@ export async function GET(request) {
     }
     startDate.setHours(0, 0, 0, 0); // Start of the selected day
 
-    // --- Optimized Queries with Select ---
+    // --- Optimized Queries with Parallel Execution ---
     
-    // Combined query for static stats to reduce database round trips
-    const [totalProducts, totalMembers, activeEmployees] = await Promise.all([
+    // We run all independent queries in parallel to significantly reduce response time
+    const [
+      totalProducts, 
+      totalMembers, 
+      activeEmployees, 
+      salesInRange, 
+      recentTransactions, 
+      bestSellingProductsRaw,
+      pendingDistributions
+    ] = await Promise.all([
+      // 1. Total Products
       storeId
         ? prisma.product.count({ where: { storeId } })
         : prisma.product.count(),
+      
+      // 2. Total Members
       storeId
         ? prisma.member.count({ where: { storeId } })
         : prisma.member.count(),
+      
+      // 3. Active Employees
       storeId
         ? prisma.storeUser.count({
             where: {
@@ -82,41 +95,93 @@ export async function GET(request) {
           })
         : prisma.user.count({
             where: { role: { in: ['CASHIER', 'ATTENDANT'] } }
-          })
-    ]);
-
-    // Optimized query for sales data with selective inclusion
-    const salesInRange = await prisma.sale.findMany({
-      where: {
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
+          }),
+      
+      // 4. Sales in range (for chart and totals)
+      prisma.sale.findMany({
+        where: {
+          createdAt: {
+            gte: startDate,
+            lte: endDate,
+          },
+          ...(storeId && { storeId }),
         },
-        ...(storeId && { storeId }), // Filter by storeId if it exists (non-global roles)
-      },
-      select: {
-        total: true,
-        createdAt: true,
-        saleDetails: {
-          select: {
-            quantity: true,
-            product: {
-              select: {
-                purchasePrice: true,
+        select: {
+          total: true,
+          createdAt: true,
+          saleDetails: {
+            select: {
+              quantity: true,
+              product: {
+                select: {
+                  purchasePrice: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      }),
 
+      // 5. Recent transactions
+      prisma.sale.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        where: {
+          ...(storeId && { storeId }),
+        },
+        select: {
+          id: true,
+          invoiceNumber: true,
+          total: true,
+          date: true,
+          createdAt: true, // Crucial for frontend date rendering
+          cashier: {
+            select: {
+              name: true
+            }
+          }
+        }
+      }),
+
+      // 6. Best selling products raw
+      prisma.saleDetail.groupBy({
+        by: ['productId'],
+        where: {
+          sale: {
+            createdAt: {
+              gte: startDate,
+              lte: endDate,
+            },
+            ...(storeId && { storeId }),
+          },
+        },
+        _sum: {
+          quantity: true,
+        },
+        orderBy: {
+          _sum: {
+            quantity: 'desc',
+          },
+        },
+        take: 5,
+      }),
+
+      // 7. Pending distributions count (if applicable)
+      storeId ? prisma.warehouseDistribution.count({
+        where: {
+          storeId,
+          status: 'PENDING_ACCEPTANCE',
+        },
+      }) : Promise.resolve(0)
+    ]);
+
+    // Calculate totals from salesInRange
     const totalSalesInRange = salesInRange.reduce((sum, sale) => sum + sale.total, 0);
     const totalTransactionsInRange = salesInRange.length;
 
     // Calculate Total Profit
     const totalProfitInRange = salesInRange.reduce((totalProfit, sale) => {
       const totalCostForSale = sale.saleDetails.reduce((costSum, detail) => {
-        // Ensure product and purchasePrice exist to avoid errors
         const purchasePrice = detail.product?.purchasePrice || 0;
         return costSum + (purchasePrice * detail.quantity);
       }, 0);
@@ -124,83 +189,37 @@ export async function GET(request) {
       return totalProfit + profitForSale;
     }, 0);
 
-    // Optimized query for recent transactions with selective inclusion
-    const recentTransactions = await prisma.sale.findMany({
-      take: 5,
-      orderBy: { createdAt: 'desc' },
-      where: {
-        ...(storeId && { storeId }), // Filter by storeId if it exists (non-global roles)
-      },
-      select: {
-        id: true,
-        invoiceNumber: true,
-        total: true,
-        date: true,
-        cashier: {
-          select: {
-            name: true
-          }
-        }
-      }
-    });
-
-    // Optimized query for best selling products using a single groupBy with join
-    const bestSellingProducts = await prisma.saleDetail.groupBy({
-      by: ['productId'],
-      where: {
-        sale: {
-          createdAt: {
-            gte: startDate,
-            lte: endDate,
-          },
-          ...(storeId && { storeId }), // Filter by storeId if it exists (non-global roles)
+    // Filter out products with zero quantity sold and get details
+    const bestSellingProductsFiltered = bestSellingProductsRaw.filter(item => item._sum.quantity > 0);
+    const productIds = bestSellingProductsFiltered.map(p => p.productId);
+    
+    let enhancedBestSellingProducts = [];
+    if (productIds.length > 0) {
+      const productDetails = await prisma.product.findMany({
+        where: {
+          id: { in: productIds },
+          ...(storeId && { storeId }),
         },
-      },
-      _sum: {
-        quantity: true,
-      },
-      orderBy: {
-        _sum: {
-          quantity: 'desc',
+        select: {
+          id: true,
+          name: true,
+          productCode: true,
         },
-      },
-      take: 5,
-      having: {
-        _sum: {
-          quantity: {
-            gt: 0
-          }
-        }
-      }
-    });
+      });
 
-    // Get product details in a single query
-    const productIds = bestSellingProducts.map(p => p.productId);
-    const productDetails = await prisma.product.findMany({
-      where: {
-        id: { in: productIds },
-        ...(storeId && { storeId }), // Filter by storeId if it exists (non-global roles)
-      },
-      select: {
-        id: true,
-        name: true,
-        productCode: true,
-      },
-    });
+      enhancedBestSellingProducts = bestSellingProductsFiltered.map(topProduct => {
+        const detail = productDetails.find(p => p.id === topProduct.productId);
+        return detail ? {
+          ...detail,
+          quantitySold: topProduct._sum.quantity,
+        } : null;
+      }).filter(Boolean);
+    }
 
-    // Combine the data
-    const enhancedBestSellingProducts = bestSellingProducts.map(topProduct => {
-      const detail = productDetails.find(p => p.id === topProduct.productId);
-      return detail ? {
-        ...detail,
-        quantitySold: topProduct._sum.quantity,
-      } : null;
-    }).filter(Boolean); // Remove any null values
-
-    // Optimized calculation for chart data
+    // Calculation for chart data
     const salesByDay = {};
     salesInRange.forEach(sale => {
-      const date = sale.createdAt.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      const date = sale.createdAt.toISOString().split('T')[0];
 
       const profitForSale = sale.total - sale.saleDetails.reduce((costSum, detail) => {
         const purchasePrice = detail.product?.purchasePrice || 0;
@@ -221,16 +240,13 @@ export async function GET(request) {
       totalProducts,
       totalMembers,
       activeEmployees,
-      // New range-based stats
       totalSalesInRange,
       totalTransactionsInRange,
       totalProfitInRange,
-      // Recent activity
       recentTransactions,
-      // Best selling products
       bestSellingProducts: enhancedBestSellingProducts,
-      // Data for chart
       salesData,
+      pendingDistributions, // Include pending distributions count
     };
 
     // Cache the response if Redis is available

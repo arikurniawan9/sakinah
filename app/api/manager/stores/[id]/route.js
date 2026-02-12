@@ -16,7 +16,7 @@ export async function GET(request, { params }) {
       });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Validasi ID
     if (!id) {
@@ -63,7 +63,7 @@ export async function PUT(request, { params }) {
       });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const { name, description, address, phone, email, status } = await request.json();
 
     // Validasi ID
@@ -143,7 +143,7 @@ export async function DELETE(request, { params }) {
       });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Validasi ID
     if (!id) {

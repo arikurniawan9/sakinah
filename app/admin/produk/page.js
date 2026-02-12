@@ -1,7 +1,7 @@
-// app/admin/produk/page.js
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { Search, Plus, Download, Upload, Trash2, Folder, Edit, Eye, Hash, X, CheckCircle, XCircle } from 'lucide-react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import { useUserTheme } from '../../../components/UserThemeContext';
@@ -16,15 +16,16 @@ import { useTableSelection } from '../../../lib/hooks/useTableSelection';
 import { useCachedCategories, useCachedSuppliers } from '../../../lib/hooks/useCachedData';
 
 import DataTable from '../../../components/DataTable';
-import ProductModal from '../../../components/produk/ProductModal';
-import ProductDetailModal from '../../../components/produk/ProductDetailModal';
-import ConfirmationModal from '../../../components/ConfirmationModal';
 import Breadcrumb from '../../../components/Breadcrumb';
-import ExportFormatSelector from '../../../components/export/ExportFormatSelector';
-import PDFPreviewModal from '../../../components/export/PDFPreviewModal';
-import { generateProductBarcodePDF } from '../../../components/admin/ProductBarcodePDFGenerator';
 import AutoCompleteSearch from '../../../components/AutoCompleteSearch'; // Import AutoCompleteSearch
 import KeyboardShortcutsGuide from '../../../components/KeyboardShortcutsGuide';
+
+// Dynamic imports for performance optimization
+const ProductModal = dynamic(() => import('../../../components/produk/ProductModal'), { ssr: false });
+const ProductDetailModal = dynamic(() => import('../../../components/produk/ProductDetailModal'), { ssr: false });
+const ConfirmationModal = dynamic(() => import('../../../components/ConfirmationModal'), { ssr: false });
+const ExportFormatSelector = dynamic(() => import('../../../components/export/ExportFormatSelector'), { ssr: false });
+const PDFPreviewModal = dynamic(() => import('../../../components/export/PDFPreviewModal'), { ssr: false });
 
 export default function ProductManagement() {
   const { userTheme } = useUserTheme();
@@ -34,6 +35,7 @@ export default function ProductManagement() {
 
   const [showPDFPreviewModal, setShowPDFPreviewModal] = useState(false);
   const [pdfPreviewData, setPdfPreviewData] = useState(null);
+  const [refreshLoading, setRefreshLoading] = useState(false); // State untuk loading refresh
 
   const searchInputRef = useRef(null);
   const importInputRef = useRef(null);
@@ -42,6 +44,7 @@ export default function ProductManagement() {
   const {
     products,
     loading,
+    validating,
     error: tableError,
     searchTerm,
     setSearchTerm,
@@ -52,8 +55,7 @@ export default function ProductManagement() {
     totalPages,
     totalProducts,
     fetchProducts,
-    setError: setTableError,
-    // Optimistic update functions
+    mutate,
     removeProductsOptimistic,
     addProductOptimistic,
     updateProductOptimistic,
@@ -98,6 +100,10 @@ export default function ProductManagement() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // State untuk modal peringatan
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [warningMessage, setWarningMessage] = useState('');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState(null);
   const [showExportFormatModal, setShowExportFormatModal] = useState(false);
@@ -116,13 +122,11 @@ export default function ProductManagement() {
   useEffect(() => {
     if (categoriesError) {
       console.error('Error fetching categories:', categoriesError);
-      setTableError('Gagal memuat data kategori.');
     }
     if (suppliersError) {
       console.error('Error fetching suppliers:', suppliersError);
-      setTableError('Gagal memuat data supplier.');
     }
-  }, [categoriesError, suppliersError, setTableError]);
+  }, [categoriesError, suppliersError]);
 
   // Search handlers for AutoCompleteSearch filters
   const searchCategories = async (query) => {
@@ -189,26 +193,51 @@ export default function ProductManagement() {
         throw new Error(errorData.error || 'Gagal menghapus produk');
       }
 
-      // Fetch updated data to ensure consistency, forcing cache refresh
-      await fetchProducts(true);
-
-      // Reset pagination to ensure all products are visible
-      setCurrentPage(1);
-
+      // Optimistically update the UI by removing the deleted items
       if (isMultiple) {
+        await removeProductsOptimistic(itemToDelete);
         clearSelection();
         setSuccess(`Berhasil menghapus ${itemToDelete.length} produk`);
       } else {
+        await removeProductsOptimistic([itemToDelete]);
         setSelectedRows(prev => prev.filter(rowId => rowId !== itemToDelete));
         setSuccess('Produk berhasil dihapus');
       }
 
+      // Force a complete refresh of the data after optimistic update
+      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay to allow optimistic update to process
+      
+      // Refetch data to ensure consistency with server state
+      await mutate(undefined, true); // Re-fetch and re-validate
+
+      // Reset pagination to ensure all products are visible
+      setCurrentPage(1);
+
+      // Additional refresh to ensure UI is updated
+      await refreshProducts(true); // Force refresh with server data
+
+      // Force a re-render by updating state
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       // If deletion failed, refetch to restore original state
-      await fetchProducts(true);
-      setTableError('Terjadi kesalahan saat menghapus: ' + err.message);
-      setTimeout(() => setTableError(''), 5000);
+      await mutate();
+      
+      // Restore selection if it was a failed single deletion
+      if (!isMultiple && itemToDelete) {
+        setSelectedRows(prev => [...prev, itemToDelete]);
+      }
+
+      // Refresh the UI to ensure consistency
+      await refreshProducts(true);
+
+      // Tampilkan pesan kesalahan khusus dalam modal peringatan
+      if (err.message.includes('Beberapa produk terpilih sudah memiliki riwayat transaksi') || 
+          err.message.includes('tidak boleh dihapus demi integritas data laporan')) {
+        setWarningMessage(err.message);
+        setShowWarningModal(true);
+      } else {
+        toast.error('Terjadi kesalahan saat menghapus: ' + err.message);
+      }
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
@@ -229,20 +258,17 @@ export default function ProductManagement() {
   const handleExportWithFormat = async (format) => {
     setExportLoading(true);
     try {
-      const response = await fetch('/api/produk');
+      const response = await fetch('/api/produk?limit=1000'); // Fetch more for export
       if (!response.ok) throw new Error('Gagal mengambil data untuk export');
       const data = await response.json();
 
       const exportData = data.products.map(product => {
-        const category = cachedCategories.find(cat => cat.id === product.categoryId);
-        const supplier = cachedSuppliers.find(supp => supp.id === product.supplierId);
-
         return {
           'Nama': product.name,
           'Kode': product.productCode,
           'Stok': product.stock,
-          'Kategori': category?.name || '',
-          'Supplier': supplier?.name || '',
+          'Kategori': product.category?.name || '',
+          'Supplier': product.supplier?.name || '',
           'Deskripsi': product.description || '',
           'Tanggal Dibuat': new Date(product.createdAt).toLocaleDateString('id-ID'),
           'Tanggal Diubah': new Date(product.updatedAt).toLocaleDateString('id-ID'),
@@ -273,8 +299,7 @@ export default function ProductManagement() {
           writeFile(workbook, fileName);
         } catch (error) {
           console.error('Error saat ekspor ke Excel:', error);
-          setTableError('Gagal ekspor ke Excel, silakan coba format lain');
-          setTimeout(() => setTableError(''), 5000);
+          toast.error('Gagal ekspor ke Excel, silakan coba format lain');
           return;
         }
       } else if (format === 'pdf') {
@@ -308,11 +333,9 @@ export default function ProductManagement() {
         document.body.removeChild(link);
       }
 
-      setSuccess(`Data produk berhasil diekspor dalam format ${format.toUpperCase()}`);
-      setTimeout(() => setSuccess(''), 3000);
+      toast.success(`Data produk berhasil diekspor dalam format ${format.toUpperCase()}`);
     } catch (err) {
-      setTableError('Terjadi kesalahan saat export: ' + err.message);
-      setTimeout(() => setTableError(''), 5000);
+      toast.error('Terjadi kesalahan saat export: ' + err.message);
     } finally {
       setExportLoading(false);
     }
@@ -322,7 +345,7 @@ export default function ProductManagement() {
     openExportFormatSelector();
   }, [openExportFormatSelector]);
 
-  const handlePrintBarcode = useCallback(() => {
+  const handlePrintBarcode = useCallback(async () => {
     try {
       const productsToPrint = selectedRows.length > 0
         ? products.filter(p => selectedRows.includes(p.id))
@@ -332,6 +355,9 @@ export default function ProductManagement() {
         toast.warn('Tidak ada produk untuk dicetak barcode-nya');
         return;
       }
+
+      // Dynamic import to reduce initial bundle size
+      const { generateProductBarcodePDF } = await import('../../../components/admin/ProductBarcodePDFGenerator');
 
       generateProductBarcodePDF(productsToPrint, {
         barcodeWidth: 38, barcodeHeight: 15, labelWidth: 50, labelHeight: 25,
@@ -684,6 +710,9 @@ export default function ProductManagement() {
       await fetchProducts(true);
       setCurrentPage(1);
 
+      // Panggil refreshProducts untuk memastikan tampilan tabel diperbarui
+      refreshProducts();
+      
       // Tunggu sebentar sebelum menutup modal untuk memberi pengguna waktu melihat hasil
       setTimeout(() => {
         resetImportState();
@@ -742,6 +771,10 @@ export default function ProductManagement() {
       await fetchProducts(true);
       // Reset pagination untuk memastikan produk baru terlihat
       setCurrentPage(1);
+      
+      // Panggil refreshProducts untuk memastikan tampilan tabel diperbarui
+      refreshProducts();
+      
       toast.success(result.message || `Berhasil mengimport ${result.importedCount || 0} produk`);
       if (result.errors && result.errors.length > 0) {
         console.warn('Import errors:', result.errors);
@@ -756,6 +789,9 @@ export default function ProductManagement() {
       await fetchProducts(true);
       setCurrentPage(1);
 
+      // Panggil refreshProducts untuk memastikan tampilan tabel diperbarui
+      refreshProducts();
+      
       // Tunggu sebentar sebelum menutup modal untuk memberi pengguna waktu melihat hasil
       setTimeout(() => {
         resetImportState();
@@ -813,8 +849,19 @@ export default function ProductManagement() {
   }, [resetPagination]);
 
   // Fungsi untuk refresh data produk secara manual
-  const refreshProducts = useCallback((forceRefresh = false) => {
-    fetchProducts(forceRefresh);
+  const refreshProducts = useCallback(async (forceRefresh = false) => {
+    setRefreshLoading(true);
+    try {
+      await fetchProducts(forceRefresh);
+      // Tambahkan sedikit delay untuk memastikan UI selesai diperbarui
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      console.error('Error refreshing products:', error);
+      // Pastikan untuk tetap memanggil fetchProducts bahkan jika terjadi kesalahan
+      await fetchProducts(false);
+    } finally {
+      setRefreshLoading(false);
+    }
   }, [fetchProducts]);
 
   const handleDownloadTemplate = () => {
@@ -913,7 +960,8 @@ export default function ProductManagement() {
     startIndex: (currentPage - 1) * itemsPerPage + 1,
     endIndex: Math.min(currentPage * itemsPerPage, totalProducts),
     onPageChange: setCurrentPage,
-    itemsPerPage: itemsPerPage
+    itemsPerPage: itemsPerPage,
+    validating: validating
   };
 
   return (
@@ -964,6 +1012,19 @@ export default function ProductManagement() {
             showImport={true}
             showTemplate={true}
             showItemsPerPage={true}
+            onRefresh={async () => {
+              if (refreshLoading) return; // Hindari multiple click
+              
+              try {
+                // Panggil refresh dengan force refresh untuk memastikan data diambil dari server
+                await refreshProducts(true);
+                toast.info('Data produk berhasil diperbarui');
+              } catch (err) {
+                console.error('Refresh failed:', err);
+                toast.error('Gagal memperbarui data produk');
+              }
+            }}
+            refreshLoading={refreshLoading}
             pagination={paginationData}
             mobileColumns={['productCode', 'name', 'price', 'stock']}
           />
@@ -1012,6 +1073,18 @@ export default function ProductManagement() {
 
         <ExportFormatSelector isOpen={showExportFormatModal} onClose={() => setShowExportFormatModal(false)} onConfirm={handleExportWithFormat} title="Produk" darkMode={darkMode} />
         <PDFPreviewModal isOpen={showPDFPreviewModal} onClose={() => setShowPDFPreviewModal(false)} data={pdfPreviewData?.data} title={pdfPreviewData?.title} darkMode={darkMode} />
+
+        {/* Modal peringatan untuk kesalahan penghapusan */}
+        <ConfirmationModal
+          isOpen={showWarningModal}
+          onClose={() => setShowWarningModal(false)}
+          onConfirm={() => setShowWarningModal(false)}
+          title="Peringatan Penghapusan"
+          message={warningMessage}
+          confirmText="Oke"
+          cancelText="Tutup"
+          variant="warning"
+        />
 
         {/* Loading state saat mengecek status import dari storage */}
         {isCheckingStoredImport && (

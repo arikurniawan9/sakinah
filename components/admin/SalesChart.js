@@ -52,16 +52,26 @@ const SalesChart = ({ salesData, loading, darkMode }) => {
         <h3 className={`text-xl font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Grafik Penjualan & Keuntungan</h3>
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={salesData}>
-          <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#4A5568' : '#E2E8F0'} />
-          <XAxis dataKey="date" stroke={darkMode ? '#A0AEC0' : '#4A5568'} />
+          <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#4A5568' : '#E2E8F0'} vertical={false} />
+          <XAxis 
+            dataKey="date" 
+            stroke={darkMode ? '#A0AEC0' : '#4A5568'} 
+            fontSize={10}
+            tickFormatter={(str) => {
+              const date = new Date(str);
+              return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+            }}
+          />
           <YAxis
-            tickFormatter={(value) => new Intl.NumberFormat('id-ID').format(value)}
+            tickFormatter={(value) => new Intl.NumberFormat('id-ID', { notation: 'compact', compactDisplay: 'short' }).format(value)}
             stroke={darkMode ? '#A0AEC0' : '#4A5568'}
+            fontSize={10}
+            width={40}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Legend />
-          <Line type="monotone" dataKey="totalSales" name="Penjualan" stroke="#3b82f6" strokeWidth={2} />
-          <Line type="monotone" dataKey="totalProfit" name="Keuntungan" stroke="#22c55e" strokeWidth={2} />
+          <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+          <Line type="monotone" dataKey="totalSales" name="Penjualan" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+          <Line type="monotone" dataKey="totalProfit" name="Keuntungan" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
         </LineChart>
       </ResponsiveContainer>
     </div>

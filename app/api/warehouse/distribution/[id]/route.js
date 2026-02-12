@@ -27,7 +27,8 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { id } = params; // Distribution ID from URL
+    const awaitedParams = await params; // Await the params promise
+    const { id } = awaitedParams; // Distribution ID from URL
     const { status, notes } = await request.json(); // New status and optional notes
 
     if (!id || !status) {
@@ -236,7 +237,8 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { id } = params; // Distribution ID from URL
+    const awaitedParams = await params; // Await the params promise
+    const { id } = awaitedParams; // Distribution ID from URL
 
     // Check if the distribution exists and is still pending
     const distribution = await prisma.warehouseDistribution.findFirst({

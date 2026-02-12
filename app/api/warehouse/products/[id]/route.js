@@ -50,7 +50,8 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const awaitedParams = await params;
+    const { id } = awaitedParams;
     const body = await request.json();
     const { name, productCode, categoryId, supplierId, stock, purchasePrice, description, retailPrice, silverPrice, goldPrice, platinumPrice } = body;
 

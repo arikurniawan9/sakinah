@@ -13,7 +13,8 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = params.id;
+    const awaitedParams = await params;
+    const userId = awaitedParams.id;
 
     // Only allow the user themselves or manager/warehouse to access this endpoint
     if (session.user.id !== userId &&

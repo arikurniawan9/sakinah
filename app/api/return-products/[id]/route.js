@@ -23,7 +23,7 @@ async function isDatabaseAccessible() {
 // Handler untuk GET request (mengambil detail retur produk berdasarkan ID)
 export async function GET(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     if (!id) {
       return NextResponse.json(
@@ -156,7 +156,7 @@ export async function GET(request, { params }) {
 // Handler untuk PUT request (memperbarui retur produk, seperti menyetujui atau menolak)
 export async function PUT(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     
     if (!id) {
@@ -361,7 +361,7 @@ export async function PUT(request, { params }) {
 // Handler untuk DELETE request (menghapus retur produk)
 export async function DELETE(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     if (!id) {
       return NextResponse.json(

@@ -18,6 +18,8 @@ export async function GET(request) {
     const timeRange = searchParams.get('timeRange') || 'monthly';
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
+    const search = searchParams.get('search'); // Added for search term
+    const userId = searchParams.get('userId'); // Added for user ID filtering
 
     // Build date filter based on time range
     let dateFilter = {};
@@ -46,13 +48,18 @@ export async function GET(request) {
       where: dateFilter,
       include: {
         store: true,
-        transaction: true,
+        transaction: {
+          include: {
+            saleDetails: true,
+          },
+        },
         product: {
           include: {
             category: true
           }
         },
-        attendant: true
+        attendant: true,
+        cashier: true,
       }
     });
 
@@ -64,10 +71,13 @@ export async function GET(request) {
     // Calculate total value (based on product prices in transactions)
     let totalValue = 0;
     returnProducts.forEach(rp => {
-      // Find the corresponding sale detail to get the price
-      const saleDetail = rp.transaction.saleDetails.find(sd => sd.productId === rp.productId);
-      if (saleDetail) {
-        totalValue += saleDetail.price * saleDetail.quantity;
+      // Ensure transaction and its saleDetails exist before accessing them
+      if (rp.transaction && rp.transaction.saleDetails) {
+        // Find the corresponding sale detail to get the price
+        const saleDetail = rp.transaction.saleDetails.find(sd => sd.productId === rp.productId);
+        if (saleDetail) {
+          totalValue += saleDetail.price * saleDetail.quantity;
+        }
       }
     });
 
@@ -86,8 +96,8 @@ export async function GET(request) {
     // Group by category
     const categoryCounts = {};
     returnProducts.forEach(rp => {
-      const category = rp.category;
-      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+      const categoryName = rp.product?.category?.name || 'Unknown Category';
+      categoryCounts[categoryName] = (categoryCounts[categoryName] || 0) + 1;
     });
 
     const byCategory = Object.entries(categoryCounts).map(([name, count]) => ({

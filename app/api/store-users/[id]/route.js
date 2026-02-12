@@ -20,7 +20,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Store ID not found in session' }, { status: 400 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Get user from the current store context
     const storeUser = await prisma.storeUser.findFirst({
@@ -80,7 +80,7 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Store ID not found in session' }, { status: 400 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const { name, username, employeeNumber, password, role, code, address, phone } = await request.json();
 
     // Validation
@@ -210,7 +210,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Store ID not found in session' }, { status: 400 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Check if user exists in the current store
     const storeUser = await prisma.storeUser.findFirst({

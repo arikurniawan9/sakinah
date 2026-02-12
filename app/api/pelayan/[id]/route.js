@@ -18,7 +18,7 @@ export async function GET(request, { params }) {
     }
 
     const storeId = session.user.storeId;
-    const { id: attendantId } = params;
+    const { id: attendantId } = await params;
     
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page')) || 1;

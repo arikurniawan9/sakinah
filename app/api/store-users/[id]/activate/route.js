@@ -18,7 +18,7 @@ export async function PATCH(request, { params }) {
     }
 
     const storeId = session.user.storeId;
-    const { id: userId } = params;
+    const { id: userId } = await params;
 
     if (!storeId) {
       return NextResponse.json({ error: 'Store ID not found in session' }, { status: 400 });

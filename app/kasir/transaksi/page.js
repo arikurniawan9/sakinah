@@ -1,7 +1,7 @@
 // app/kasir/transaksi/page.js
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Home, Printer, Plus, AlertTriangle, CheckCircle, UserCheck, X, CreditCard, Lock, Users } from "lucide-react";
@@ -418,48 +418,6 @@ export default function KasirTransaksiPage() {
         // Debug log: Inspect calculation and receiptPayload before setting receiptData
         console.log("Debug: Calculation object before receiptPayload:", calculation);
 
-        // Ambil informasi toko untuk dimasukkan ke dalam receipt
-        let storeInfo = {
-          name: 'SAKINAH',
-          address: 'Jl. Raya No. 123, Kota Anda',
-          phone: '0812-3456-7890',
-          code: 'TOKO001', // Default code
-        };
-
-        try {
-          const storeResponse = await fetch('/api/stores/current');
-          if (storeResponse.ok) {
-            const storeData = await storeResponse.json();
-            storeInfo = {
-              name: storeData.name || process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
-              address: storeData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
-              phone: storeData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
-              code: storeData.code || 'TOKO001', // Gunakan code dari storeData
-            };
-          } else {
-            // Coba endpoint setting sebagai fallback
-            const settingResponse = await fetch('/api/setting');
-            if (settingResponse.ok) {
-              const settingData = await settingResponse.json();
-              storeInfo = {
-                name: settingData.shopName || process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
-                address: settingData.address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
-                phone: settingData.phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
-                code: settingData.code || 'TOKO001', // Gunakan code dari setting jika ada
-              };
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching store info for receipt:', error);
-          // Gunakan environment variables atau default jika API gagal
-          storeInfo = {
-            name: process.env.NEXT_PUBLIC_SHOP_NAME || 'SAKINAH',
-            address: process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Jl. Raya No. 123, Kota Anda',
-            phone: process.env.NEXT_PUBLIC_SHOP_PHONE || '0812-3456-7890',
-            code: 'TOKO001', // Default code
-          };
-        }
-
         const receiptPayload = {
           ...calculation,
           id: result.id,
@@ -474,7 +432,7 @@ export default function KasirTransaksiPage() {
           storeName: storeInfo.name,
           storeAddress: storeInfo.address,
           storePhone: storeInfo.phone,
-          storeCode: storeInfo.code, // Tambahkan storeCode ke payload
+          storeCode: storeInfo.id, // Menggunakan storeInfo dari state
         };
         console.log("Receipt payload:", receiptPayload); // Debug log
 
@@ -607,45 +565,62 @@ export default function KasirTransaksiPage() {
       attendantToSelect = attendants.find(att => att.id === suspendedSale.selectedAttendantId) || null;
     }
 
-    // Fetch full product details for each item in the suspended cart
-    const detailedCartItems = await Promise.all(
-      suspendedSale.cartItems.map(async (item) => {
-        try {
-          const productRes = await fetch(`/api/produk/${item.productId}`);
-          if (!productRes.ok) {
-            throw new Error(`Failed to fetch product details for ID: ${item.productId}`);
-          }
-          const productData = await productRes.json();
-          const fullProduct = productData.product; // Assuming API returns { product: {...} }
+    // OPTIMIZATION: Consolidate product fetching to a single API call.
+    // This assumes a backend endpoint /api/produk/batch exists that
+    // accepts an array of product IDs and returns an array of full product details.
+    // Backend change is REQUIRED for a true performance improvement here.
+    const productIds = suspendedSale.cartItems.map(item => item.productId);
+    let fetchedProductsMap = new Map();
 
-          return {
-            ...item, // Keep existing suspended item details like quantity, note
-            name: fullProduct.name, // Ensure name is up-to-date
-            productCode: fullProduct.productCode, // Ensure productCode is up-to-date
-            stock: fullProduct.stock, // Ensure stock is up-to-date
-            retailPrice: fullProduct.retailPrice,
-            silverPrice: fullProduct.silverPrice,
-            goldPrice: fullProduct.goldPrice,
-            platinumPrice: fullProduct.platinumPrice,
-            category: fullProduct.category?.name || item.category || '', // Use fullProduct.category.name
-            // Keep original price from attendant if needed for display, but calculations use tier prices
-            attendantSellingPrice: item.price,
-          };
-        } catch (error) {
-          console.error(`Error fetching product ${item.productId} for suspended sale:`, error);
-          showNotification(`Gagal memuat detail produk untuk ${item.name || item.productId}. Harga mungkin tidak akurat.`, 'error');
-          // Fallback to original item if fetching fails, might result in incorrect pricing
-          return {
-            ...item,
-            retailPrice: item.price, // Use the price from the suspended item as retail price
-            silverPrice: item.price,
-            goldPrice: item.price,
-            platinumPrice: item.price,
-            attendantSellingPrice: item.price,
-          };
+    if (productIds.length > 0) {
+      try {
+        const batchProductRes = await fetch("/api/produk/batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ productIds }),
+        });
+
+        if (!batchProductRes.ok) {
+          throw new Error("Failed to fetch products in batch.");
         }
-      })
-    );
+        const batchProductData = await batchProductRes.json();
+        batchProductData.products.forEach(product => {
+          fetchedProductsMap.set(product.id, product);
+        });
+      } catch (error) {
+        console.error("Error fetching products in batch:", error);
+        showNotification("Gagal memuat detail beberapa produk. Harga mungkin tidak akurat.", 'error');
+        // Continue with fallback to original item if batch fetch fails
+      }
+    }
+
+    const detailedCartItems = suspendedSale.cartItems.map(item => {
+      const fullProduct = fetchedProductsMap.get(item.productId);
+      if (fullProduct) {
+        return {
+          ...item, // Keep existing suspended item details like quantity, note
+          name: fullProduct.name,
+          productCode: fullProduct.productCode,
+          stock: fullProduct.stock,
+          retailPrice: fullProduct.retailPrice,
+          silverPrice: fullProduct.silverPrice,
+          goldPrice: fullProduct.goldPrice,
+          platinumPrice: fullProduct.platinumPrice,
+          category: fullProduct.category?.name || item.category || '',
+          attendantSellingPrice: item.price, // Keep original price from attendant if needed
+        };
+      } else {
+        // Fallback to original item if individual product or batch fetch fails
+        return {
+          ...item,
+          retailPrice: item.price,
+          silverPrice: item.price,
+          goldPrice: item.price,
+          platinumPrice: item.price,
+          attendantSellingPrice: item.price,
+        };
+      }
+    });
     
     // Set the state
     setCart(detailedCartItems);
@@ -728,16 +703,18 @@ export default function KasirTransaksiPage() {
   }, []);
 
   // Filter attendants based on search term
-  const filteredAttendants = attendants.filter(attendant =>
-    attendant &&
-    attendant.name &&
-    typeof attendant.name === 'string' &&
-    (attendant.status === 'AKTIF' || attendant.status === 'ACTIVE') && // Hanya tampilkan pelayan yang aktif
-    (attendant.name.toLowerCase().includes(attendantSearchTerm.toLowerCase()) ||
-    attendant.code?.toLowerCase().includes(attendantSearchTerm.toLowerCase()) ||
-    attendant.employeeNumber?.toLowerCase().includes(attendantSearchTerm.toLowerCase()) ||
-    attendant.username?.toLowerCase().includes(attendantSearchTerm.toLowerCase()))
-  );
+  const filteredAttendants = useMemo(() => {
+    return attendants.filter(attendant =>
+      attendant &&
+      attendant.name &&
+      typeof attendant.name === 'string' &&
+      (attendant.status === 'AKTIF' || attendant.status === 'ACTIVE') && // Hanya tampilkan pelayan yang aktif
+      (attendant.name.toLowerCase().includes(attendantSearchTerm.toLowerCase()) ||
+      attendant.code?.toLowerCase().includes(attendantSearchTerm.toLowerCase()) ||
+      attendant.employeeNumber?.toLowerCase().includes(attendantSearchTerm.toLowerCase()) ||
+      attendant.username?.toLowerCase().includes(attendantSearchTerm.toLowerCase()))
+    );
+  }, [attendants, attendantSearchTerm]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {

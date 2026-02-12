@@ -24,8 +24,8 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
     }
 
-    const { id } = params; // Distribution ID
-
+        const awaitedParams = await params;
+        const { id } = awaitedParams; // Distribution ID        
     if (!id) {
       return NextResponse.json({ error: 'Distribution ID is required' }, { status: 400 });
     }

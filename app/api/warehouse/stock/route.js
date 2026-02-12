@@ -115,7 +115,8 @@ export async function DELETE(request, { params }) {
     }
 
     // Extract ID from URL
-    const { id } = params;
+    const awaitedParams = await params;
+    const { id } = awaitedParams;
 
     // Get the central warehouse
     // Get or create the central warehouse

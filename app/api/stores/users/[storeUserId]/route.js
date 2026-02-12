@@ -13,7 +13,8 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const storeUserId = params.storeUserId;
+    const awaitedParams = await params;
+    const storeUserId = awaitedParams.storeUserId;
 
     // Ambil informasi storeUser untuk mengetahui toko mana
     const storeUser = await prisma.storeUser.findUnique({

@@ -13,7 +13,8 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const storeId = params.storeId;
+    const awaitedParams = await params;
+    const storeId = awaitedParams.storeId;
 
     // Hanya MANAGER atau ADMIN toko ini yang bisa mengakses
     if (session.user.role !== ROLES.MANAGER) {

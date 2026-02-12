@@ -17,7 +17,8 @@ export async function PUT(request, { params }) {
   }
 
   try {
-    const receivableId = params.id;
+    const awaitedParams = await params;
+    const receivableId = awaitedParams.id;
     const body = await request.json();
     const { amountPaid, paymentMethod = 'CASH', referenceNumber } = body;
 

@@ -13,7 +13,7 @@ export async function PUT(request, { params }) {
   }
 
   try {
-    const { id } = params;
+    const { id } = await params;
     const data = await request.json();
 
     // Get storeId based on user's assigned store
@@ -82,7 +82,7 @@ export async function GET(request, { params }) {
   }
 
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Get storeId based on user's assigned store
     const storeUser = await prisma.storeUser.findFirst({
@@ -129,7 +129,7 @@ export async function DELETE(request, { params }) {
   }
 
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Get storeId based on user's assigned store
     const storeUser = await prisma.storeUser.findFirst({

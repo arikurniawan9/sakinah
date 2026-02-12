@@ -13,9 +13,10 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const awaitedParams = await params;
     const warehouseProduct = await prisma.warehouseProduct.findUnique({
       where: {
-        id: params.id,
+        id: awaitedParams.id,
       },
       include: {
         product: {
@@ -51,7 +52,7 @@ export async function PUT(request, { params }) {
 
     // Dapatkan data warehouse product yang lama untuk mendapatkan jumlah saat ini
     const existingWarehouseProduct = await prisma.warehouseProduct.findUnique({
-      where: { id: params.id },
+      where: { id: awaitedParams.id },
     });
 
     if (!existingWarehouseProduct) {
@@ -84,7 +85,7 @@ export async function PUT(request, { params }) {
     // Update warehouse product
     await prisma.warehouseProduct.update({
       where: {
-        id: params.id,
+        id: awaitedParams.id,
       },
       data: {
         quantity: newQuantity,
@@ -96,7 +97,7 @@ export async function PUT(request, { params }) {
     // Ambil data terbaru untuk response
     const warehouseProductWithDetails = await prisma.warehouseProduct.findUnique({
       where: {
-        id: params.id,
+        id: awaitedParams.id,
       },
       include: {
         product: {
@@ -126,9 +127,11 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const awaitedParams = await params;
+
     // Use findUniqueOrThrow to check if the record exists before deletion
     const warehouseProduct = await prisma.warehouseProduct.findUnique({
-      where: { id: params.id },
+      where: { id: awaitedParams.id },
     });
 
     if (!warehouseProduct) {
@@ -138,7 +141,7 @@ export async function DELETE(request, { params }) {
     // Attempt to delete the warehouse product
     const deletedProduct = await prisma.warehouseProduct.delete({
       where: {
-        id: params.id,
+        id: awaitedParams.id,
       },
     });
 

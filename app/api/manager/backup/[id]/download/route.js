@@ -19,7 +19,8 @@ export async function GET(request, { params }) {
       });
     }
 
-    const fileName = params.id + '.json';
+    const awaitedParams = await params;
+    const fileName = awaitedParams.id + '.json';
     const filePath = path.join(BACKUP_DIR, fileName);
 
     // Periksa apakah file ada

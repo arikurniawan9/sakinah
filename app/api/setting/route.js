@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../../lib/authOptions';
+import initRedisClient from '@/lib/redis';
 
 export async function GET(request) {
   const session = await getServerSession(authOptions);
@@ -29,6 +30,30 @@ export async function GET(request) {
       }, { status: 200 });
     }
 
+    // Generate cache key
+    const cacheKey = `setting:${session.user.storeId}`;
+    let redisClient;
+    try {
+      redisClient = await initRedisClient();
+    } catch (error) {
+      console.warn('Redis not available, proceeding without caching:', error.message);
+    }
+
+    // Try to get cached data
+    let cachedData = null;
+    if (redisClient) {
+      try {
+        const cached = await redisClient.get(cacheKey);
+        if (cached) {
+          cachedData = JSON.parse(cached);
+          console.log('Cache hit for setting');
+          return NextResponse.json(cachedData, { status: 200 });
+        }
+      } catch (error) {
+        console.warn('Cache retrieval failed:', error.message);
+      }
+    }
+
     // Ambil pengaturan toko berdasarkan storeId yang sedang aktif
     let setting = await prisma.setting.findUnique({
       where: { storeId: session.user.storeId }
@@ -44,6 +69,15 @@ export async function GET(request) {
           phone: '',
         }
       });
+    }
+
+    // Cache the response if Redis is available
+    if (redisClient) {
+      try {
+        await redisClient.set(cacheKey, JSON.stringify(setting), { EX: 3600 }); // Cache for 1 hour
+      } catch (error) {
+        console.warn('Cache storage failed:', error.message);
+      }
     }
 
     return NextResponse.json(setting, { status: 200 });
@@ -101,6 +135,16 @@ export async function PUT(request) {
           phone,
         }
       });
+    }
+
+    // Invalidate cache after update
+    const redisClient = await initRedisClient().catch(() => null);
+    if (redisClient) {
+      try {
+        await redisClient.del(`setting:${session.user.storeId}`);
+      } catch (error) {
+        console.warn('Cache deletion failed:', error.message);
+      }
     }
 
     return NextResponse.json(setting, { status: 200 });

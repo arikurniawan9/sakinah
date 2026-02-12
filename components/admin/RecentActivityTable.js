@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { Eye } from 'lucide-react';
+import Link from 'next/link';
 
 const RecentActivityTable = ({ recentActivitiesData, darkMode, loading }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -59,6 +61,11 @@ const RecentActivityTable = ({ recentActivitiesData, darkMode, loading }) => {
                 }`}>
                   Jumlah
                 </th>
+                <th scope="col" className={`px-6 py-3 text-right text-xs font-medium uppercase tracking-wider ${
+                  darkMode ? 'text-gray-300' : 'text-gray-500'
+                }`}>
+                  Aksi
+                </th>
               </tr>
             </thead>
             <tbody className={darkMode ? 'divide-gray-700 bg-gray-800' : 'divide-gray-200 bg-white'}>
@@ -75,6 +82,9 @@ const RecentActivityTable = ({ recentActivitiesData, darkMode, loading }) => {
                   </td>
                   <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-white' : 'text-gray-900'} animate-pulse`}>
                     <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-16"></div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium animate-pulse">
+                    <div className="h-8 w-8 bg-gray-300 dark:bg-gray-700 rounded ml-auto"></div>
                   </td>
                 </tr>
               ))}
@@ -128,12 +138,17 @@ const RecentActivityTable = ({ recentActivitiesData, darkMode, loading }) => {
               }`}>
                 Jumlah
               </th>
+              <th scope="col" className={`px-6 py-3 text-right text-xs font-medium uppercase tracking-wider ${
+                darkMode ? 'text-gray-300' : 'text-gray-500'
+              }`}>
+                Aksi
+              </th>
             </tr>
           </thead>
           <tbody className={darkMode ? 'divide-gray-700 bg-gray-800' : 'divide-gray-200 bg-white'}>
             {currentItems.length === 0 ? (
               <tr>
-                <td colSpan="4" className={`px-6 py-4 text-center text-sm ${
+                <td colSpan="5" className={`px-6 py-4 text-center text-sm ${
                   darkMode ? 'text-gray-400' : 'text-gray-500'
                 }`}>
                   Tidak ada aktivitas terbaru.
@@ -145,7 +160,7 @@ const RecentActivityTable = ({ recentActivitiesData, darkMode, loading }) => {
                   <td className={`px-6 py-4 whitespace-nowrap text-sm ${
                     darkMode ? 'text-gray-300' : 'text-gray-500'
                   }`}>
-                    {new Date(activity.createdAt).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {new Date(activity.createdAt || activity.date).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </td>
                   <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
                     darkMode ? 'text-white' : 'text-gray-900'
@@ -161,6 +176,16 @@ const RecentActivityTable = ({ recentActivitiesData, darkMode, loading }) => {
                     darkMode ? 'text-white' : 'text-gray-900'
                   }`}>
                     Rp {activity.total ? activity.total.toLocaleString('id-ID') : '0'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <Link
+                      href={`/admin/transaksi/riwayat-penjualan?invoice=${activity.invoiceNumber}`}
+                      className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 inline-flex items-center bg-indigo-50 dark:bg-indigo-900/30 p-2 rounded-lg transition-colors"
+                      title="Lihat Detail"
+                    >
+                      <Eye size={18} className="mr-1" />
+                      <span className="hidden sm:inline">Detail</span>
+                    </Link>
                   </td>
                 </tr>
               ))

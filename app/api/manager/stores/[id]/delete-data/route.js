@@ -15,7 +15,7 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    const { id: storeId } = params;
+    const { id: storeId } = await params;
 
     // Ambil password dari header
     const password = request.headers.get('X-Manager-Password');

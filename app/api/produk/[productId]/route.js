@@ -8,7 +8,7 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { productId } = params;
+  const { productId } = await params;
 
   if (!productId) {
     return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });

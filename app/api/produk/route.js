@@ -61,6 +61,7 @@ export async function GET(request) {
     const maxStock = params.maxStock || '';
     const minPrice = params.minPrice || '';
     const maxPrice = params.maxPrice || '';
+    const refresh = searchParams.get('refresh') === 'true';
 
     // Validasi SQL injection pada parameter
     if (!validateSQLInjection(search) || !validateSQLInjection(category) ||
@@ -108,9 +109,11 @@ export async function GET(request) {
     const cacheKey = `products:${storeId}:${page}:${limit}:${search}:${category}:${productCode}:${supplier}:${minStock}:${maxStock}:${minPrice}:${maxPrice}`;
 
     // Coba ambil dari cache dulu
-    const cachedData = await getFromCache(cacheKey);
-    if (cachedData) {
-      return NextResponse.json(JSON.parse(cachedData));
+    if (!refresh) {
+      const cachedData = await getFromCache(cacheKey);
+      if (cachedData) {
+        return NextResponse.json(JSON.parse(cachedData));
+      }
     }
 
     const offset = (page - 1) * limit;
@@ -505,40 +508,37 @@ export async function DELETE(request) {
     const { searchParams } = new URL(request.url);
     let idsToDelete = [];
 
-    try {
-      const body = await request.json();
-
-      // Validasi SQL injection pada body request
-      const jsonString = JSON.stringify(body);
-      if (!validateSQLInjection(jsonString)) {
-        return NextResponse.json({ error: 'Request body mengandung karakter SQL yang berbahaya' }, { status: 400 });
+    // Try to get IDs from body first
+    const contentType = request.headers.get('content-type');
+    const contentLength = parseInt(request.headers.get('content-length') || '0');
+    
+    if (contentLength > 0 && contentType && contentType.includes('application/json')) {
+      try {
+        const body = await request.json();
+        if (body && body.ids && Array.isArray(body.ids)) {
+          idsToDelete = body.ids;
+        }
+      } catch (e) {
+        // Silent catch for parsing errors
       }
-
-      if (body.ids && Array.isArray(body.ids)) {
-        idsToDelete = body.ids;
-      }
-    } catch (e) {
-      // Ignore error if body is empty
     }
 
-    // Validasi parameter query
-    const paramId = searchParams.get('id');
-    if (paramId && !validateSQLInjection(paramId)) {
-      return NextResponse.json({ error: 'Parameter ID mengandung karakter berbahaya' }, { status: 400 });
+    // If not in body, try query param
+    if (idsToDelete.length === 0) {
+      const paramId = searchParams.get('id');
+      if (paramId) {
+        idsToDelete = [paramId];
+      }
     }
 
     if (idsToDelete.length === 0) {
-      if (paramId) idsToDelete = [paramId];
-    }
-
-    if (idsToDelete.length === 0) {
-      return NextResponse.json({ error: 'ID produk harus disediakan' }, { status: 400 });
+      return NextResponse.json({ error: 'Pilih minimal satu produk untuk dihapus (ID tidak ditemukan)' }, { status: 400 });
     }
 
     // Validasi setiap ID untuk mencegah SQL injection
     for (const id of idsToDelete) {
       if (!validateSQLInjection(id)) {
-        return NextResponse.json({ error: 'Salah satu ID produk mengandung karakter berbahaya' }, { status: 400 });
+        return NextResponse.json({ error: 'Format ID produk tidak valid atau berbahaya' }, { status: 400 });
       }
     }
 
@@ -561,23 +561,23 @@ export async function DELETE(request) {
       if (storeUser && storeUser.storeId) {
         storeId = storeUser.storeId;
       } else {
-        return NextResponse.json({ error: 'Admin tidak dikaitkan dengan toko manapun' }, { status: 400 });
+        return NextResponse.json({ error: 'Akun admin Anda belum dikaitkan dengan toko manapun' }, { status: 400 });
       }
     } else if (!storeId) {
-      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
+      return NextResponse.json({ error: 'Sesi toko tidak ditemukan' }, { status: 400 });
     }
 
     // Pastikan produk yang akan dihapus milik toko yang sesuai
     const productsWithSales = await prisma.saleDetail.count({
       where: {
         productId: { in: idsToDelete },
-        product: { storeId: storeId } // Tambahkan filter storeId
+        product: { storeId: storeId }
       },
     });
 
     if (productsWithSales > 0) {
       return NextResponse.json(
-        { error: `Tidak dapat menghapus karena produk masih memiliki riwayat transaksi.` },
+        { error: `Gagal hapus: Beberapa produk terpilih sudah memiliki riwayat transaksi dan tidak boleh dihapus demi integritas data laporan.` },
         { status: 400 }
       );
     }

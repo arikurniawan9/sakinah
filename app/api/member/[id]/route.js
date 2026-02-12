@@ -13,6 +13,8 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     // Dapatkan storeId dari session
     let storeId = session.user.storeId;
 
@@ -49,14 +51,14 @@ export async function GET(request, { params }) {
       // Untuk konteks transaksi atau global, izinkan akses ke member dari toko manapun
       member = await prisma.member.findUnique({
         where: {
-          id: params.id,
+          id: id,
         },
       });
     } else {
       // Untuk konteks administrasi, batasi hanya member dari toko ini
       member = await prisma.member.findUnique({
         where: {
-          id: params.id,
+          id: id,
           storeId: storeId, // Tambahkan filter storeId untuk administrasi
         },
       });

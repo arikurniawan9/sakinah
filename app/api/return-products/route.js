@@ -64,6 +64,8 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
     const status = searchParams.get('status');
+    const searchTerm = searchParams.get('search'); // Retrieve search term
+    const userId = searchParams.get('userId');     // Retrieve userId
     const page = parseInt(searchParams.get('page')) || 1;
     const limit = parseInt(searchParams.get('limit')) || 10;
 
@@ -79,65 +81,72 @@ export async function GET(request) {
       whereClause.status = status;
     }
 
+    // Filter by userId (attendantId or cashierId)
+    if (userId) {
+      // Use direct equality filter for attendantId and cashierId
+      whereClause.OR = [
+        { attendantId: userId },
+        { cashierId: userId },
+      ];
+    }
+
+    // Add search term filtering
+    if (searchTerm) {
+      const searchConditions = [
+        { transactionId: { contains: searchTerm, mode: 'insensitive' } },
+        { reason: { contains: searchTerm, mode: 'insensitive' } },
+        { product: { name: { contains: searchTerm, mode: 'insensitive' } } },
+      ];
+
+      // If OR is already present from userId filter, combine with AND
+      if (whereClause.OR) {
+        whereClause.AND = [
+          { OR: whereClause.OR }, // Existing userId OR conditions
+          { OR: searchConditions } // New searchTerm OR conditions
+        ];
+        delete whereClause.OR; // Remove old OR property if replaced by AND
+      } else {
+        whereClause.OR = searchConditions;
+      }
+    }
+
     console.log('Debug: whereClause:', whereClause);
     
-    // Ambil data dasar saja tanpa include
-    const rawReturns = await prisma.returnProduct.findMany({
+    // Ambil data dengan include yang diperlukan untuk filtering dan tampilan
+    const returnsWithData = await prisma.returnProduct.findMany({
       where: whereClause,
       skip,
       take: limit,
       orderBy: {
         createdAt: 'desc'
+      },
+      include: { // Include relations needed for filtering and later data stitching
+        product: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        attendant: {
+          select: {
+            id: true,
+            name: true,
+          }
+        },
+        cashier: {
+          select: {
+            id: true,
+            name: true,
+          }
+        },
+        store: {
+          select: {
+            id: true,
+            name: true,
+          }
+        }
       }
     });
-
-    console.log('Debug: Raw returns count:', rawReturns.length);
-    
-    // Ambil data terkait secara terpisah dan sederhana
-    const returnIds = rawReturns.map(r => r.id);
-    const storeIds = [...new Set(rawReturns.map(r => r.storeId))];
-    const productIds = [...new Set(rawReturns.map(r => r.productId))];
-    const attendantIds = [...new Set(rawReturns.map(r => r.attendantId))];
-
-    // Ambil data terkait
-    const [stores, products, attendants] = await Promise.all([
-      prisma.store.findMany({
-        where: { id: { in: storeIds } },
-        select: { id: true, name: true }
-      }).catch(() => []),
-      prisma.product.findMany({
-        where: { id: { in: productIds } },
-        select: { id: true, name: true }
-      }).catch(() => []),
-      prisma.user.findMany({
-        where: { id: { in: attendantIds } },
-        select: { id: true, name: true, username: true }
-      }).catch(() => [])
-    ]);
-
-    // Bangun objek lookup untuk efisiensi
-    const storeMap = stores.reduce((acc, store) => {
-      acc[store.id] = store;
-      return acc;
-    }, {});
-
-    const productMap = products.reduce((acc, product) => {
-      acc[product.id] = product;
-      return acc;
-    }, {});
-
-    const attendantMap = attendants.reduce((acc, attendant) => {
-      acc[attendant.id] = attendant;
-      return acc;
-    }, {});
-
-    // Gabungkan data
-    const returnsWithData = rawReturns.map(ret => ({
-      ...ret,
-      store: storeMap[ret.storeId] || null,
-      product: productMap[ret.productId] || null,
-      attendant: attendantMap[ret.attendantId] || null
-    }));
 
     const total = await prisma.returnProduct.count({
       where: whereClause
@@ -152,8 +161,8 @@ export async function GET(request) {
         currentPage: page,
         totalPages: Math.ceil(total / limit),
         totalItems: total,
-        hasNext: page < Math.ceil(total / limit),
-        hasPrev: page > 1
+        hasNext: false,
+        hasPrev: false
       },
       source: 'database'
     });

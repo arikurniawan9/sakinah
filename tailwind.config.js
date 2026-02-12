@@ -31,8 +31,14 @@ module.exports = {
         'fade-in': 'fadeIn 0.5s ease-in',
         'slide-in': 'slideIn 0.3s ease-out',
         'shimmer': 'shimmer 1.5s infinite',
+        'progress-indeterminate': 'progressIndeterminate 2.1s cubic-bezier(0.65, 0.815, 0.735, 0.395) infinite',
       },
       keyframes: {
+        progressIndeterminate: {
+          '0%': { left: '-35%', width: '33%' },
+          '60%': { left: '100%', width: '33%' },
+          '100%': { left: '100%', width: '33%' },
+        },
         fadeIn: {
           '0%': { opacity: '0', transform: 'translateY(10px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },

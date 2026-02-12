@@ -10,7 +10,6 @@ import Breadcrumb from '@/components/Breadcrumb';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import SuccessModal from '@/components/SuccessModal';
 
 export default function CashierReturnProductPage() {
   const { userTheme } = useUserTheme();
@@ -27,18 +26,13 @@ export default function CashierReturnProductPage() {
   const [activeTab, setActiveTab] = useState('search'); // 'search' or 'return'
   
   const searchInputRef = useRef(null);
-  
-  // State untuk modal sukses
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [successDetails, setSuccessDetails] = useState(null);
 
   const breadcrumbItems = [
     { title: 'Kasir', href: '/kasir' },
     { title: 'Retur Produk', href: '/kasir/retur-produk' }
   ];
 
-  // Function to search for invoices
+  // Mock function to search for invoices
   const searchInvoices = async (term) => {
     if (!term.trim()) {
       setSearchResults([]);
@@ -48,20 +42,20 @@ export default function CashierReturnProductPage() {
 
     setLoading(true);
     try {
-      // API call to search for transactions/invoices
-      const response = await fetch(`/api/kasir/transaksi?search=${encodeURIComponent(term)}`);
+      // Simulate API call to search for transactions/invoices
+      const response = await fetch(`/api/transaksi/search?q=${encodeURIComponent(term)}`);
       const result = await response.json();
       
-      if (!response.ok) {
-        throw new Error(result.error || 'Gagal mengambil data transaksi');
+      if (result.success) {
+        setSearchResults(result.transactions || []);
+        setShowSearchResults(true);
+      } else {
+        setSearchResults([]);
+        console.error('Failed to search invoices:', result.message);
       }
-      
-      setSearchResults(result.sales || []);
-      setShowSearchResults(true);
     } catch (error) {
       console.error('Error searching invoices:', error);
       setSearchResults([]);
-      alert(`Error searching invoices: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -81,50 +75,13 @@ export default function CashierReturnProductPage() {
   };
 
   // Handle invoice selection
-  const handleInvoiceSelect = async (invoice) => {
-    // Ambil daftar produk lengkap untuk mencocokkan nama produk dengan ID produk
-    try {
-      const response = await fetch('/api/produk');
-      const productResult = await response.json();
-      const products = productResult.products || [];
-
-      // Buat map dari nama produk ke ID produk
-      const productMap = {};
-      products.forEach(product => {
-        productMap[product.name] = product.id;
-      });
-
-      setInvoiceData(invoice);
-      setReturnItems(invoice.items.map(item => {
-        // Coba cocokkan nama produk dengan ID produk
-        const productName = item.productName || item.name;
-        const productId = item.productId || (item.product && item.product.id) || productMap[productName];
-
-        return {
-          id: `${invoice.id}-${productName}`, // Unique ID combining invoice and product
-          productId: productId,
-          name: productName,
-          price: item.price,
-          quantity: item.quantity,
-          returnQuantity: 0,
-          isSelected: false
-        };
-      }));
-    } catch (error) {
-      console.error('Error fetching products for mapping:', error);
-      // Jika gagal mengambil daftar produk, gunakan data yang tersedia
-      setInvoiceData(invoice);
-      setReturnItems(invoice.items.map(item => ({
-        id: `${invoice.id}-${item.productName || item.name}`, // Unique ID combining invoice and product
-        productId: item.productId || (item.product && item.product.id), // Extract productId from nested object if needed
-        name: item.productName || item.name,
-        price: item.price,
-        quantity: item.quantity,
-        returnQuantity: 0,
-        isSelected: false
-      })));
-    }
-    
+  const handleInvoiceSelect = (invoice) => {
+    setInvoiceData(invoice);
+    setReturnItems(invoice.items.map(item => ({
+      ...item,
+      returnQuantity: 0,
+      isSelected: false
+    })));
     setShowSearchResults(false);
     setActiveTab('return');
   };
@@ -171,53 +128,48 @@ export default function CashierReturnProductPage() {
 
     setLoading(true);
     try {
-      // Kirim permintaan retur untuk setiap item yang dipilih
-      for (const item of selectedItems) {
-        // Pastikan productId valid
-        if (!item.productId) {
-          throw new Error(`Produk tidak valid: ${item.name || 'Unknown'}. Tidak dapat mengirim permintaan retur.`);
-        }
-
-        const returnData = {
-          storeId: session?.user?.storeId, // Ambil storeId dari session
-          transactionId: invoiceData.id,
+      const returnData = {
+        transactionId: invoiceData.id,
+        cashierId: session?.user?.id,
+        items: selectedItems.map(item => ({
           productId: item.productId,
-          attendantId: session?.user?.id, // Gunakan ID kasir sebagai attendantId
-          reason: selectedReason,
-          category: selectedReason, // Gunakan alasan sebagai kategori
-          notes: returnNotes // Tambahkan notes jika diperlukan
-        };
+          quantity: item.returnQuantity,
+          originalPrice: item.price,
+          subtotal: item.price * item.returnQuantity
+        })),
+        reason: selectedReason,
+        notes: returnNotes,
+        status: 'PENDING'
+      };
 
-        console.log('Sending return data:', returnData); // Log untuk debugging
+      const response = await fetch('/api/return-products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(returnData),
+      });
 
-        const response = await fetch('/api/return-products', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(returnData),
-        });
+      const result = await response.json();
 
-        const result = await response.json();
-        console.log('Return API response:', response.status, result); // Log respons API
-
-        if (!response.ok) {
-          throw new Error(`${result.error || result.message || 'Gagal mengirim permintaan retur'} (Status: ${response.status})`);
+      if (result.success) {
+        alert('Permintaan retur berhasil dikirim');
+        // Reset form
+        setInvoiceData(null);
+        setReturnItems([]);
+        setSelectedReason('');
+        setReturnNotes('');
+        setSearchTerm('');
+        setActiveTab('search');
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
         }
-
-        if (!result.success) {
-          throw new Error(result.error || result.message || 'Gagal mengirim permintaan retur');
-        }
+      } else {
+        alert(`Gagal mengirim permintaan retur: ${result.message}`);
       }
-
-      // Tampilkan modal sukses
-      setSuccessMessage('Permintaan retur berhasil dikirim');
-      setSuccessDetails(null);
-      setShowSuccessModal(true);
-      // Form akan direset saat modal ditutup
     } catch (error) {
       console.error('Error submitting return:', error);
-      alert(`Terjadi kesalahan saat mengirim permintaan retur: ${error.message}`);
+      alert('Terjadi kesalahan saat mengirim permintaan retur');
     } finally {
       setLoading(false);
     }
@@ -239,20 +191,6 @@ export default function CashierReturnProductPage() {
       month: 'short',
       year: 'numeric'
     });
-  };
-
-  // Fungsi untuk menutup modal sukses dan mereset form
-  const handleSuccessModalClose = () => {
-    setShowSuccessModal(false);
-    setInvoiceData(null);
-    setReturnItems([]);
-    setSelectedReason('');
-    setReturnNotes('');
-    setSearchTerm('');
-    setActiveTab('search');
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
   };
 
   return (
@@ -339,7 +277,7 @@ export default function CashierReturnProductPage() {
                               {invoice.invoiceNumber || invoice.id}
                             </span>
                             <span className={`text-sm ${userTheme.darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                              {formatCurrency(invoice.totalAmount || invoice.total)}
+                              {formatCurrency(invoice.total)}
                             </span>
                           </div>
                           <div className="flex justify-between items-center text-sm mt-1">
@@ -347,15 +285,7 @@ export default function CashierReturnProductPage() {
                               {invoice.customerName || 'Umum'}
                             </span>
                             <span className={userTheme.darkMode ? 'text-gray-400' : 'text-gray-500'}>
-                              {formatDate(invoice.date || invoice.createdAt)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center text-xs mt-1">
-                            <span className={userTheme.darkMode ? 'text-gray-500' : 'text-gray-400'}>
-                              Kasir: {invoice.cashierName || 'N/A'}
-                            </span>
-                            <span className={userTheme.darkMode ? 'text-gray-500' : 'text-gray-400'}>
-                              Pelayan: {invoice.attendantName || 'N/A'}
+                              {formatDate(invoice.createdAt)}
                             </span>
                           </div>
                         </div>
@@ -399,7 +329,7 @@ export default function CashierReturnProductPage() {
                   <div>
                     <p className={`text-sm ${userTheme.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Tanggal</p>
                     <p className={`font-medium ${userTheme.darkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {formatDate(invoiceData.date || invoiceData.createdAt)}
+                      {formatDate(invoiceData.createdAt)}
                     </p>
                   </div>
                   <div>
@@ -411,19 +341,7 @@ export default function CashierReturnProductPage() {
                   <div>
                     <p className={`text-sm ${userTheme.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total</p>
                     <p className={`font-medium ${userTheme.darkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {formatCurrency(invoiceData.totalAmount || invoiceData.total)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${userTheme.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Kasir</p>
-                    <p className={`font-medium ${userTheme.darkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {invoiceData.cashierName || 'Tidak Tersedia'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${userTheme.darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Pelayan</p>
-                    <p className={`font-medium ${userTheme.darkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {invoiceData.attendantName || 'Tidak Tersedia'}
+                      {formatCurrency(invoiceData.total)}
                     </p>
                   </div>
                 </div>
@@ -570,15 +488,6 @@ export default function CashierReturnProductPage() {
             </div>
           </div>
         )}
-
-        {/* Success Modal */}
-        <SuccessModal
-          isOpen={showSuccessModal}
-          onClose={handleSuccessModalClose}
-          message={successMessage}
-          details={successDetails}
-          darkMode={userTheme.darkMode}
-        />
       </div>
     </ProtectedRoute>
   );

@@ -14,7 +14,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { userId } = params;
+    const { userId } = await params;
     const { targetStoreId, targetRole, removeFromCurrentStore = true } = await request.json();
 
     // Validasi bahwa user dan toko tujuan ada

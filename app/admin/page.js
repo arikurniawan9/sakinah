@@ -1,10 +1,15 @@
 // app/admin/page.js
 'use client';
 
+import dynamic from 'next/dynamic';
 import ProtectedRoute from '../../components/ProtectedRoute';
-import Dashboard from '../../components/admin/Dashboard';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useUserTheme } from '@/components/UserThemeContext';
+
+const Dashboard = dynamic(() => import('../../components/admin/Dashboard'), {
+  ssr: false,
+  loading: () => <div className="animate-pulse h-screen bg-gray-100 dark:bg-gray-800 rounded-xl m-4"></div>
+});
 
 export default function AdminDashboardPage() {
     const { userTheme } = useUserTheme();

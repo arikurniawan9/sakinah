@@ -227,7 +227,8 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Store ID not found in session' }, { status: 400 });
     }
 
-    const { id } = params;
+    const awaitedParams = await params;
+    const { id } = awaitedParams;
     const { name, username, employeeNumber, password, role } = await request.json();
 
     // Validation

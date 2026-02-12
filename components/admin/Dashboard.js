@@ -58,9 +58,6 @@ export default function Dashboard() {
     }
   }, [startDate, endDate]);
 
-  const [pendingDistributions, setPendingDistributions] = useState(0);
-  const [pendingDistributionsLoading, setPendingDistributionsLoading] = useState(true);
-
   const {
     totalSales,
     totalProfit,
@@ -70,31 +67,11 @@ export default function Dashboard() {
     activeEmployeesCount,
     recentActivitiesData,
     bestSellingProducts,
-    salesData, // Assuming useDashboardData returns salesData for the chart
+    salesData,
+    pendingDistributions,
     loading,
     error,
   } = useDashboardData(startDate, endDate);
-
-  useEffect(() => {
-    const fetchPendingDistributions = async () => {
-      try {
-        setPendingDistributionsLoading(true);
-        const response = await fetch('/api/admin/distributions/pending-count');
-        const data = await response.json();
-        if (response.ok) {
-          setPendingDistributions(data.pendingDistributions || 0);
-        }
-      } catch (err) {
-        console.error('Error fetching pending distributions:', err);
-      } finally {
-        setPendingDistributionsLoading(false);
-      }
-    };
-
-    if (status === 'authenticated' && session?.user?.storeId) {
-      fetchPendingDistributions();
-    }
-  }, [status, session]);
 
   if (error) {
     return (
@@ -159,32 +136,79 @@ export default function Dashboard() {
           icon={Package}
           darkMode={darkMode}
           href="/admin/distributions/pending"
-          loading={pendingDistributionsLoading}
+          loading={loading}
           warning={pendingDistributions > 0}
+          bgColorClass={pendingDistributions > 0 ? "bg-gradient-to-br from-orange-500 to-red-600" : "bg-gradient-to-br from-blue-500 to-indigo-600"}
         />
       </div>
 
-      {/* Main Dashboard Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column */}
-        <div className="lg:col-span-2 flex flex-col gap-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <StatCard title="Total Penjualan" value={formatCurrency(totalSales)} icon={DollarSign} darkMode={darkMode} loading={loading} />
-            <StatCard title="Total Keuntungan" value={formatCurrency(totalProfit)} icon={TrendingUp} darkMode={darkMode} loading={loading} />
-            <StatCard title="Total Transaksi" value={totalTransactions} icon={CreditCard} darkMode={darkMode} loading={loading} />
-          </div>
-          <SalesChart salesData={salesData} loading={loading} darkMode={darkMode} />
-          <BestSellingProductsTable products={bestSellingProducts} darkMode={darkMode} loading={loading} />
-        </div>
+      {/* 1. Stat Cards Grid - 3 columns on large screens, 2 on medium, 1 on small */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+        <StatCard 
+          title="Total Penjualan" 
+          value={formatCurrency(totalSales)} 
+          icon={DollarSign} 
+          darkMode={darkMode} 
+          loading={loading}
+          bgColorClass="bg-gradient-to-br from-emerald-500 to-teal-700"
+        />
+        <StatCard 
+          title="Total Keuntungan" 
+          value={formatCurrency(totalProfit)} 
+          icon={TrendingUp} 
+          darkMode={darkMode} 
+          loading={loading}
+          bgColorClass="bg-gradient-to-br from-blue-500 to-cyan-600"
+        />
+        <StatCard 
+          title="Total Transaksi" 
+          value={totalTransactions} 
+          icon={CreditCard} 
+          darkMode={darkMode} 
+          loading={loading}
+          bgColorClass="bg-gradient-to-br from-violet-500 to-purple-700"
+        />
+        <StatCard 
+          title="Total Produk" 
+          value={totalProductsCount} 
+          icon={ShoppingBag} 
+          darkMode={darkMode} 
+          href="/admin/produk" 
+          loading={loading}
+          bgColorClass="bg-gradient-to-br from-pink-500 to-rose-600"
+        />
+        <StatCard 
+          title="Total Member" 
+          value={totalMembersCount} 
+          icon={UserRound} 
+          darkMode={darkMode} 
+          href="/admin/member" 
+          loading={loading}
+          bgColorClass="bg-gradient-to-br from-amber-500 to-orange-600"
+        />
+        <StatCard 
+          title="Karyawan Aktif" 
+          value={activeEmployeesCount} 
+          icon={Users} 
+          darkMode={darkMode} 
+          href="/admin/pelayan" 
+          loading={loading}
+          bgColorClass="bg-gradient-to-br from-sky-500 to-blue-700"
+        />
+      </div>
 
-        {/* Right Column */}
-        <div className="flex flex-col gap-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
-            <StatCard title="Total Produk" value={totalProductsCount} icon={ShoppingBag} darkMode={darkMode} href="/admin/produk" loading={loading} />
-            <StatCard title="Total Member" value={totalMembersCount} icon={UserRound} darkMode={darkMode} href="/admin/member" loading={loading} />
-            <StatCard title="Karyawan Aktif" value={activeEmployeesCount} icon={Users} darkMode={darkMode} href="/admin/pelayan" loading={loading} />
-          </div>
+      {/* 2. Chart Section - Full Width */}
+      <div className="mb-6">
+        <SalesChart salesData={salesData} loading={loading} darkMode={darkMode} />
+      </div>
+
+      {/* 3. Tables Section - Side by Side on XL screens */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2">
           <RecentActivityTable recentActivitiesData={recentActivitiesData} darkMode={darkMode} loading={loading} />
+        </div>
+        <div className="xl:col-span-1">
+          <BestSellingProductsTable products={bestSellingProducts} darkMode={darkMode} loading={loading} />
         </div>
       </div>
     </main>

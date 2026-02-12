@@ -28,7 +28,16 @@ export default function DistributionNotificationsPage() {
         setLoading(true);
         setError('');
 
-        const response = await fetch(`/api/warehouse/distribution?storeId=${session?.user?.storeId}&status=PENDING_ACCEPTANCE`);
+        // Gunakan endpoint yang sesuai berdasarkan role pengguna
+        let apiUrl = '';
+        if (session?.user?.role === 'WAREHOUSE' || session?.user?.role === 'MANAGER') {
+          apiUrl = `/api/warehouse/distribution?storeId=${session?.user?.storeId}&status=PENDING_ACCEPTANCE`;
+        } else {
+          // Untuk role ADMIN, CASHIER, ATTENDANT, gunakan endpoint admin
+          apiUrl = `/api/admin/distributions/pending?storeId=${session?.user?.storeId}`;
+        }
+
+        const response = await fetch(apiUrl);
 
         if (!response.ok) {
           throw new Error('Gagal mengambil data distribusi pending');
@@ -47,18 +56,30 @@ export default function DistributionNotificationsPage() {
     if (session?.user?.storeId) {
       fetchPendingDistributions();
     }
-  }, [session?.user?.storeId]);
+  }, [session?.user?.storeId, session?.user?.role]);
 
   const handleAcceptDistribution = async (distributionId) => {
     try {
-      const response = await fetch(`/api/warehouse/distribution/${distributionId}`, {
-        method: 'PUT',
+      // Gunakan endpoint yang sesuai berdasarkan role
+      let apiUrl = '';
+      let method = 'PUT';
+      let bodyData = {};
+
+      if (session?.user?.role === 'WAREHOUSE' || session?.user?.role === 'MANAGER') {
+        apiUrl = `/api/warehouse/distribution/${distributionId}`;
+        bodyData = { status: 'ACCEPTED' };
+      } else {
+        // Untuk role ADMIN, CASHIER, ATTENDANT, gunakan endpoint admin item-accept
+        apiUrl = `/api/admin/distribution/item-accept`;
+        bodyData = { distributionId: distributionId };
+      }
+
+      const response = await fetch(apiUrl, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          status: 'ACCEPTED',
-        }),
+        body: JSON.stringify(bodyData),
       });
 
       if (!response.ok) {
@@ -68,7 +89,7 @@ export default function DistributionNotificationsPage() {
 
       const result = await response.json();
       toast.success('Distribusi diterima dan stok toko telah diperbarui');
-      
+
       // Refresh the list
       setDistributions(distributions.filter(d => d.id !== distributionId));
     } catch (err) {
@@ -79,14 +100,26 @@ export default function DistributionNotificationsPage() {
 
   const handleRejectDistribution = async (distributionId) => {
     try {
-      const response = await fetch(`/api/warehouse/distribution/${distributionId}`, {
-        method: 'PUT',
+      // Gunakan endpoint yang sesuai berdasarkan role
+      let apiUrl = '';
+      let method = 'PUT';
+      let bodyData = {};
+
+      if (session?.user?.role === 'WAREHOUSE' || session?.user?.role === 'MANAGER') {
+        apiUrl = `/api/warehouse/distribution/${distributionId}`;
+        bodyData = { status: 'REJECTED' };
+      } else {
+        // Untuk role ADMIN, CASHIER, ATTENDANT, gunakan endpoint admin item-reject
+        apiUrl = `/api/admin/distribution/item-reject`;
+        bodyData = { distributionId: distributionId };
+      }
+
+      const response = await fetch(apiUrl, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          status: 'REJECTED',
-        }),
+        body: JSON.stringify(bodyData),
       });
 
       if (!response.ok) {
@@ -215,45 +248,55 @@ export default function DistributionNotificationsPage() {
                   </thead>
                   <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
                     {distributions.map((distribution) => (
+                      // Render setiap item dalam distribusi
+                      distribution.items && distribution.items.length > 0 ? 
+                        distribution.items.map((item, idx) => (
+                          <tr key={`${distribution.id}-${idx}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                            <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                              <div className="flex items-center">
+                                <Package className="h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
+                                <span>{item.productName || 'N/A'}</span>
+                              </div>
+                            </td>
+                            <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                              {formatNumber(item.quantity || 0)}
+                            </td>
+                            <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                              {distribution.distributedByUserName || 'Gudang'}
+                            </td>
+                            <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                              {distribution.distributedAt ? new Date(distribution.distributedAt).toLocaleDateString('id-ID') : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <div className="flex items-center">
+                                {getStatusIcon(distribution.status)}
+                                <span className={`ml-2 ${getStatusBadge(distribution.status)}`}>
+                                  {getStatusText(distribution.status)}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => handleAcceptDistribution(item.id)}
+                                  className="px-3 py-1 rounded-md text-xs font-medium text-white bg-green-600 hover:bg-green-700"
+                                >
+                                  Terima
+                                </button>
+                                <button
+                                  onClick={() => handleRejectDistribution(item.id)}
+                                  className="px-3 py-1 rounded-md text-xs font-medium text-white bg-red-600 hover:bg-red-700"
+                                >
+                                  Tolak
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      : // Jika tidak ada items, tampilkan baris kosong
                       <tr key={distribution.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
-                          <div className="flex items-center">
-                            <Package className="h-4 w-4 mr-2 text-gray-500 dark:text-gray-400" />
-                            <span>{distribution.product?.name || 'N/A'}</span>
-                          </div>
-                        </td>
-                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
-                          {formatNumber(distribution.quantity || 0)}
-                        </td>
-                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>
-                          {distribution.distributedByUser?.name || 'Gudang'}
-                        </td>
-                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          {distribution.distributedAt ? new Date(distribution.distributedAt).toLocaleDateString('id-ID') : 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <div className="flex items-center">
-                            {getStatusIcon(distribution.status)}
-                            <span className={`ml-2 ${getStatusBadge(distribution.status)}`}>
-                              {getStatusText(distribution.status)}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => handleAcceptDistribution(distribution.id)}
-                              className="px-3 py-1 rounded-md text-xs font-medium text-white bg-green-600 hover:bg-green-700"
-                            >
-                              Terima
-                            </button>
-                            <button
-                              onClick={() => handleRejectDistribution(distribution.id)}
-                              className="px-3 py-1 rounded-md text-xs font-medium text-white bg-red-600 hover:bg-red-700"
-                            >
-                              Tolak
-                            </button>
-                          </div>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`} colSpan="6">
+                          Tidak ada item dalam distribusi ini
                         </td>
                       </tr>
                     ))}

@@ -44,7 +44,8 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const productId = params.id;
+  const awaitedParams = await params;
+  const productId = awaitedParams.id;
   const { quantity } = await request.json();
 
   if (!productId) {

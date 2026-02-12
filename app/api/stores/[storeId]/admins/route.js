@@ -14,7 +14,7 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { storeId } = params;
+  const { storeId } = await params;
   const { username, password, employeeNumber, name } = await request.json();
 
   // 2. Validate input

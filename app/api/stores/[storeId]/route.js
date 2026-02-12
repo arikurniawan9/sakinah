@@ -7,7 +7,7 @@ import { ROLES } from '@/lib/constants';
 
 // GET a single store by ID
 export async function GET(request, { params }) {
-  const { storeId } = params;
+  const { storeId } = await params;
 
   try {
     const session = await getServerSession(authOptions);
@@ -51,7 +51,7 @@ export async function GET(request, { params }) {
 
 // UPDATE a store by ID
 export async function PUT(request, { params }) {
-  const { storeId } = params;
+  const { storeId } = await params;
 
   try {
     const session = await getServerSession(authOptions);

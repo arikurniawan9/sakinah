@@ -5,59 +5,21 @@ import { updateMockReturnStatus } from '@/utils/mock-return-data';
 
 const prisma = new PrismaClient();
 
-// Fungsi untuk mengecek apakah database dapat diakses
-async function isDatabaseAccessible() {
-  try {
-    await prisma.$connect();
-    // Coba akses sederhana
-    await prisma.returnProduct.count({ take: 1 });
-    return true;
-  } catch (error) {
-    console.warn('Database not accessible:', error.message);
-    return false;
-  } finally {
-    await prisma.$disconnect();
-  }
-}
-
 // Handler untuk GET request (mengambil detail retur produk berdasarkan ID)
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
-    
+
     if (!id) {
       return NextResponse.json(
-        { 
-          success: false, 
-          message: 'ID retur produk harus disertakan' 
+        {
+          success: false,
+          message: 'ID retur produk harus disertakan'
         },
         { status: 400 }
       );
     }
-    
-    const dbAccessible = await isDatabaseAccessible();
-    
-    if (!dbAccessible) {
-      // Gunakan data mock jika database tidak dapat diakses
-      const mockReturn = await import('@/utils/mock-return-data').then(mod => mod.getMockReturnById(id));
-      
-      if (!mockReturn) {
-        return NextResponse.json(
-          { 
-            success: false, 
-            message: 'Retur produk tidak ditemukan di data mock' 
-          },
-          { status: 404 }
-        );
-      }
-      
-      return NextResponse.json({
-        success: true,
-        data: mockReturn,
-        source: 'mock'
-      });
-    }
-    
+
     const returnProduct = await prisma.returnProduct.findUnique({
       where: { id },
       include: {
@@ -96,17 +58,17 @@ export async function GET(request, { params }) {
         }
       }
     });
-    
+
     if (!returnProduct) {
       return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Retur produk tidak ditemukan' 
+        {
+          success: false,
+          message: 'Retur produk tidak ditemukan'
         },
         { status: 404 }
       );
     }
-    
+
     return NextResponse.json({
       success: true,
       data: returnProduct,
@@ -114,11 +76,11 @@ export async function GET(request, { params }) {
     });
   } catch (error) {
     console.error('Error fetching return product details:', error);
-    
-    // Coba dengan data mock
+
+    // Coba dengan data mock hanya jika terjadi error database
     try {
       const mockReturn = await import('@/utils/mock-return-data').then(mod => mod.getMockReturnById(params.id));
-      
+
       if (mockReturn) {
         return NextResponse.json({
           success: true,
@@ -127,28 +89,24 @@ export async function GET(request, { params }) {
           warning: 'Using mock data due to database error'
         });
       }
-      
+
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           message: 'Terjadi kesalahan saat mengambil detail retur produk',
-          error: error.message 
+          error: error.message
         },
         { status: 500 }
       );
     } catch (mockError) {
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           message: 'Terjadi kesalahan saat mengambil detail retur produk',
-          error: error.message 
+          error: error.message
         },
         { status: 500 }
       );
-    }
-  } finally {
-    if(await isDatabaseAccessible()) {
-      await prisma.$disconnect();
     }
   }
 }
@@ -158,63 +116,39 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
-    
+
     if (!id) {
       return NextResponse.json(
-        { 
-          success: false, 
-          message: 'ID retur produk harus disertakan' 
+        {
+          success: false,
+          message: 'ID retur produk harus disertakan'
         },
         { status: 400 }
       );
     }
-    
+
     const { status, processedById } = body;
-    
+
     if (!status || !processedById) {
       return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Status dan processedById harus disertakan' 
+        {
+          success: false,
+          message: 'Status dan processedById harus disertakan'
         },
         { status: 400 }
       );
     }
-    
+
     if (!['APPROVED', 'REJECTED'].includes(status)) {
       return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Status hanya boleh APPROVED atau REJECTED' 
+        {
+          success: false,
+          message: 'Status hanya boleh APPROVED atau REJECTED'
         },
         { status: 400 }
       );
     }
-    
-    const dbAccessible = await isDatabaseAccessible();
-    
-    if (!dbAccessible) {
-      // Gunakan mock jika database tidak dapat diakses
-      const mockReturn = updateMockReturnStatus(id, status, processedById);
-      
-      if (!mockReturn) {
-        return NextResponse.json(
-          { 
-            success: false, 
-            message: 'Retur produk tidak ditemukan di data mock' 
-          },
-          { status: 404 }
-        );
-      }
-      
-      return NextResponse.json({
-        success: true,
-        data: mockReturn,
-        message: `Retur produk berhasil ${status === 'APPROVED' ? 'disetujui' : 'ditolak'} (menggunakan data mock)`,
-        source: 'mock'
-      });
-    }
-    
+
     // Ambil data retur produk sebelum diperbarui
     const existingReturn = await prisma.returnProduct.findUnique({
       where: { id },
@@ -224,17 +158,17 @@ export async function PUT(request, { params }) {
         store: true
       }
     });
-    
+
     if (!existingReturn) {
       return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Retur produk tidak ditemukan' 
+        {
+          success: false,
+          message: 'Retur produk tidak ditemukan'
         },
         { status: 404 }
       );
     }
-    
+
     // Perbarui status retur produk
     const updatedReturn = await prisma.returnProduct.update({
       where: { id },
@@ -255,12 +189,12 @@ export async function PUT(request, { params }) {
         }
       }
     });
-    
+
     // Jika disetujui, perbarui stok produk
     if (status === 'APPROVED') {
       // Gunakan fungsi khusus untuk menangani pembaruan stok
       await handleReturnStockUpdate(id);
-      
+
       // Catat aktivitas ke audit log
       await prisma.auditLog.create({
         data: {
@@ -291,7 +225,7 @@ export async function PUT(request, { params }) {
         }
       });
     }
-    
+
     // Buat notifikasi untuk pihak terkait
     await prisma.notification.create({
       data: {
@@ -309,7 +243,7 @@ export async function PUT(request, { params }) {
         }
       }
     });
-    
+
     return NextResponse.json({
       success: true,
       data: updatedReturn,
@@ -318,11 +252,11 @@ export async function PUT(request, { params }) {
     });
   } catch (error) {
     console.error('Error updating return product:', error);
-    
-    // Coba dengan data mock
+
+    // Coba dengan data mock hanya jika terjadi error database
     try {
       const mockReturn = updateMockReturnStatus(params.id, body.status, body.processedById);
-      
+
       if (mockReturn) {
         return NextResponse.json({
           success: true,
@@ -332,28 +266,24 @@ export async function PUT(request, { params }) {
           warning: 'Using mock data due to database error'
         });
       }
-      
+
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           message: 'Terjadi kesalahan saat memperbarui status retur produk',
-          error: error.message 
+          error: error.message
         },
         { status: 500 }
       );
     } catch (mockError) {
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           message: 'Terjadi kesalahan saat memperbarui status retur produk',
-          error: error.message 
+          error: error.message
         },
         { status: 500 }
       );
-    }
-  } finally {
-    if(await isDatabaseAccessible()) {
-      await prisma.$disconnect();
     }
   }
 }
@@ -362,48 +292,36 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params;
-    
+
     if (!id) {
       return NextResponse.json(
-        { 
-          success: false, 
-          message: 'ID retur produk harus disertakan' 
+        {
+          success: false,
+          message: 'ID retur produk harus disertakan'
         },
         { status: 400 }
       );
     }
-    
-    const dbAccessible = await isDatabaseAccessible();
-    
-    if (!dbAccessible) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Tidak dapat menghapus data saat database tidak dapat diakses' 
-        },
-        { status: 500 }
-      );
-    }
-    
+
     const existingReturn = await prisma.returnProduct.findUnique({
       where: { id }
     });
-    
+
     if (!existingReturn) {
       return NextResponse.json(
-        { 
-          success: false, 
-          message: 'Retur produk tidak ditemukan' 
+        {
+          success: false,
+          message: 'Retur produk tidak ditemukan'
         },
         { status: 404 }
       );
     }
-    
+
     // Hapus retur produk
     await prisma.returnProduct.delete({
       where: { id }
     });
-    
+
     return NextResponse.json({
       success: true,
       message: 'Retur produk berhasil dihapus'
@@ -411,16 +329,12 @@ export async function DELETE(request, { params }) {
   } catch (error) {
     console.error('Error deleting return product:', error);
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         message: 'Terjadi kesalahan saat menghapus retur produk',
-        error: error.message 
+        error: error.message
       },
       { status: 500 }
     );
-  } finally {
-    if(await isDatabaseAccessible()) {
-      await prisma.$disconnect();
-    }
   }
 }

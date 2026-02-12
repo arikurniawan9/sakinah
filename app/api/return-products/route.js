@@ -10,57 +10,10 @@ import {
 
 const prisma = new PrismaClient();
 
-// Fungsi untuk mengecek apakah database dapat diakses
-async function isDatabaseAccessible() {
-  try {
-    await prisma.$connect();
-    // Coba akses sederhana
-    await prisma.returnProduct.count({ take: 1 });
-    return true;
-  } catch (error) {
-    console.warn('Database not accessible:', error.message);
-    return false;
-  } finally {
-    await prisma.$disconnect();
-  }
-}
 
 export async function GET(request) {
   try {
-    const dbAccessible = await isDatabaseAccessible();
-    
-    if (!dbAccessible) {
-      // Gunakan data mock jika database tidak dapat diakses
-      console.log('Using mock data for return products');
-      
-      const { searchParams } = new URL(request.url);
-      const status = searchParams.get('status');
-      const searchTerm = searchParams.get('searchTerm');
-      
-      const filters = {
-        status: status || 'ALL',
-        searchTerm: searchTerm || ''
-      };
-      
-      const mockData = getMockReturnData(filters);
-      
-      return NextResponse.json({
-        success: true,
-        data: mockData,
-        pagination: {
-          currentPage: 1,
-          totalPages: 1,
-          totalItems: mockData.length,
-          hasNext: false,
-          hasPrev: false
-        },
-        source: 'mock'
-      });
-    }
-    
-    // Jika database dapat diakses, gunakan data asli
-    console.log('Using real database for return products');
-    
+    // Langsung coba akses database tanpa fungsi isDatabaseAccessible()
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
     const status = searchParams.get('status');
@@ -111,7 +64,7 @@ export async function GET(request) {
     }
 
     console.log('Debug: whereClause:', whereClause);
-    
+
     // Ambil data dengan include yang diperlukan untuk filtering dan tampilan
     const returnsWithData = await prisma.returnProduct.findMany({
       where: whereClause,
@@ -153,7 +106,7 @@ export async function GET(request) {
     });
 
     console.log('Debug: Total count:', total);
-    
+
     return NextResponse.json({
       success: true,
       data: returnsWithData,
@@ -169,21 +122,21 @@ export async function GET(request) {
   } catch (error) {
     console.error('Error in GET /api/return-products:', error);
     
-    // Jika terjadi error, coba gunakan data mock
+    // Jika terjadi error database, baru gunakan data mock
     try {
-      console.log('Switching to mock data due to error');
-      
+      console.log('Switching to mock data due to database error');
+
       const { searchParams } = new URL(request.url);
       const status = searchParams.get('status');
       const searchTerm = searchParams.get('searchTerm');
-      
+
       const filters = {
         status: status || 'ALL',
         searchTerm: searchTerm || ''
       };
-      
+
       const mockData = getMockReturnData(filters);
-      
+
       return NextResponse.json({
         success: true,
         data: mockData,
@@ -217,22 +170,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const dbAccessible = await isDatabaseAccessible();
-    
-    if (!dbAccessible) {
-      // Gunakan mock jika database tidak dapat diakses
-      const body = await request.json();
-      const mockReturn = addMockReturn(body);
-      
-      return NextResponse.json({
-        success: true,
-        data: mockReturn,
-        message: 'Retur produk berhasil ditambahkan (menggunakan data mock)',
-        source: 'mock'
-      });
-    }
-    
-    // Gunakan database asli
+    // Gunakan database asli langsung
     const body = await request.json();
 
     const {

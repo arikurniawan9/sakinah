@@ -6,7 +6,6 @@ import { authOptions } from '@/lib/authOptions';
 
 // Fungsi untuk menghasilkan kode pendek unik
 function generateShortCode(prefix = '') {
-  // Generate angka acak 6 digit
   const randomNum = Math.floor(Math.random() * 900000) + 100000;
   return `${prefix}${randomNum}`;
 }
@@ -29,10 +28,8 @@ export async function GET(request) {
 
     let baseWhereClause = {};
     if (!globalSearch) {
-      // Ambil storeId dari session
       let storeId = session.user.storeId;
 
-      // Untuk role ATTENDANT, jika tidak ada storeId, coba dapatkan dari storeUser
       if (!storeId && session.user.role === 'ATTENDANT') {
         const storeUser = await prisma.storeUser.findFirst({
           where: {
@@ -40,17 +37,12 @@ export async function GET(request) {
             role: 'ATTENDANT',
             status: { in: ['AKTIF', 'ACTIVE'] }
           },
-          select: {
-            storeId: true
-          }
+          select: { storeId: true }
         });
-
-        if (storeUser && storeUser.storeId) {
-          storeId = storeUser.storeId;
-        } else {
-          return NextResponse.json({ error: 'Pelayan tidak dikaitkan dengan toko manapun' }, { status: 400 });
-        }
-      } else if (!storeId) {
+        if (storeUser) storeId = storeUser.storeId;
+      }
+      
+      if (!storeId) {
         return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
       }
       baseWhereClause.storeId = storeId;
@@ -78,9 +70,9 @@ export async function GET(request) {
           phone: true,
           code: true,
           membershipType: true,
-          storeId: true, // Tambahkan storeId untuk menampilkan informasi toko
-          createdAt: true, // Tambahkan createdAt untuk menampilkan tanggal dibuat
-          address: true, // Tambahkan address untuk menampilkan alamat
+          storeId: true,
+          createdAt: true,
+          address: true,
         },
         skip,
         take: limit,
@@ -89,13 +81,8 @@ export async function GET(request) {
       prisma.member.count({ where: whereClause }),
     ]);
 
-    // Periksa apakah permintaan datang dari komponen pemilihan member
-    const requestUrl = new URL(request.url);
-    const isSimple = requestUrl.searchParams.get('simple'); // Jika ada parameter simple, kembalikan hanya array members
-
-    if (isSimple) {
-      return NextResponse.json(members);
-    }
+    const isSimple = searchParams.get('simple');
+    if (isSimple) return NextResponse.json(members);
 
     return NextResponse.json({
       members,
@@ -119,127 +106,76 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { name, phone, address, membershipType, code, global } = body;
+    let { name, phone, address, membershipType, code } = body;
 
-    // Special handling for "Pelanggan Umum" which doesn't need a valid phone number
-    const isPelangganUmum = (name === 'Pelanggan Umum' && code === 'UMUM');
-
-    // 1. Validasi input dasar
-    if (!name) {
-      return NextResponse.json(
-        { error: 'Nama wajib diisi' }, 
-        { status: 400 }
-      );
-    }
-    // Only validate phone if it's not the special "Pelanggan Umum"
-    if (!isPelangganUmum && !phone) {
-      return NextResponse.json(
-        { error: 'Nomor telepon wajib diisi' }, 
-        { status: 400 }
-      );
-    }
+    const isPelangganUmum = (code === 'UMUM' || name === 'Pelanggan Umum');
     
-    // 2. Validasi format nomor telepon
-    // Only validate phone format if it's not the special "Pelanggan Umum"
-    if (!isPelangganUmum && !/^\d{10,15}$/.test(phone)) {
-      return NextResponse.json(
-        { error: 'Format nomor telepon tidak valid' }, 
-        { status: 400 }
-      );
+    if (isPelangganUmum) {
+      phone = '0000000000'; // Default phone for UMUM to satisfy unique constraint
     }
 
-    // 3. Tentukan storeId dari sesi pengguna (untuk mencatat toko pembuatan member)
-    let storeId;
+    if (!name) return NextResponse.json({ error: 'Nama wajib diisi' }, { status: 400 });
+    if (!phone) return NextResponse.json({ error: 'Nomor telepon wajib diisi' }, { status: 400 });
+    
+    if (!isPelangganUmum && !/^\d{10,15}$/.test(phone)) {
+      return NextResponse.json({ error: 'Format nomor telepon tidak valid' }, { status: 400 });
+    }
 
-    // Cek dulu apakah storeId langsung tersedia di session (untuk beberapa role seperti MANAGER)
-    if (session.user.storeId) {
-      storeId = session.user.storeId;
-    } else {
-      // Jika tidak langsung tersedia, cari relasi user dengan toko
+    let storeId = session.user.storeId;
+    if (!storeId) {
       const storeUser = await prisma.storeUser.findFirst({
-        where: {
-          userId: session.user.id,
-          status: { in: ['AKTIF', 'ACTIVE'] },
-        },
-        select: {
-          storeId: true
-        }
+        where: { userId: session.user.id, status: { in: ['AKTIF', 'ACTIVE'] } },
+        select: { storeId: true }
+      });
+      if (storeUser) storeId = storeUser.storeId;
+    }
+
+    if (!storeId) return NextResponse.json({ error: 'User tidak memiliki akses ke toko manapun' }, { status: 400 });
+
+    // UPSERT for Pelanggan Umum to avoid conflicts
+    if (isPelangganUmum) {
+      const existingUmum = await prisma.member.findFirst({
+        where: { storeId, code: 'UMUM' }
       });
 
-      if (!storeUser) {
-        return NextResponse.json(
-          { error: 'User tidak memiliki akses ke toko manapun' },
-          { status: 400 }
-        );
-      }
-      storeId = storeUser.storeId;
+      if (existingUmum) return NextResponse.json(existingUmum, { status: 200 });
+
+      const newUmum = await prisma.member.create({
+        data: {
+          name: 'Pelanggan Umum',
+          phone: '0000000000',
+          code: 'UMUM',
+          membershipType: 'RETAIL',
+          storeId
+        }
+      });
+      return NextResponse.json(newUmum, { status: 201 });
     }
 
-    // Jika tidak ada storeId, hentikan proses
-    if (!storeId) {
-        return NextResponse.json(
-            { error: 'Tidak dapat menentukan toko untuk pengguna ini.' },
-            { status: 403 }
-        );
-    }
-
-    // 4. Cek apakah nomor telepon sudah terdaftar DI TOKO YANG SAMA
+    // Standard member creation
     const existingMember = await prisma.member.findUnique({
-      where: { 
-        phone_storeId: {
-          phone: phone,
-          storeId: storeId,
-        },
-      },
+      where: { phone_storeId: { phone, storeId } },
     });
 
-    if (existingMember) {
-      return NextResponse.json(
-        { error: 'Nomor telepon sudah terdaftar di toko ini' }, 
-        { status: 400 }
-      );
-    }
+    if (existingMember) return NextResponse.json({ error: 'Nomor telepon sudah terdaftar di toko ini' }, { status: 400 });
 
-    // 5. Generate kode unik untuk member
     let uniqueCode;
     let attempt = 0;
-    const maxAttempts = 10; // Maximum attempts to generate unique code
-
     do {
       uniqueCode = generateShortCode('MEM');
+      const exists = await prisma.member.findFirst({ where: { code: uniqueCode, storeId } });
+      if (!exists) break;
       attempt++;
-
-      // Check if code already exists for this store
-      const existingCode = await prisma.member.findFirst({
-        where: {
-          code: uniqueCode,
-          storeId: storeId
-        }
-      });
-
-      if (!existingCode) {
-        break; // Found unique code
-      }
-    } while (attempt < maxAttempts);
-
-    if (attempt >= maxAttempts) {
-      return NextResponse.json(
-        { error: 'Gagal membuat kode unik, silakan coba lagi' },
-        { status: 500 }
-      );
-    }
-
-    // Konversi membershipType ke huruf kapital untuk konsistensi internal
-    const normalizedMembershipType = (membershipType || 'SILVER').toUpperCase();
+    } while (attempt < 10);
 
     const newMember = await prisma.member.create({
       data: {
         name,
         phone,
         address: address || null,
-        membershipType: normalizedMembershipType, // Gunakan format kapital untuk menyimpan
+        membershipType: (membershipType || 'SILVER').toUpperCase(),
         code: uniqueCode,
-        storeId: storeId // Assign to the appropriate store
+        storeId
       },
     });
 
@@ -250,214 +186,45 @@ export async function POST(request) {
   }
 }
 
-// DELETE: Menghapus member
 export async function DELETE(request) {
   const session = await getServerSession(authOptions);
-
-  if (!session || session.user.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
+    let storeId = session.user.storeId;
+
+    if (!storeId) {
+      const su = await prisma.storeUser.findFirst({ where: { userId: session.user.id, status: { in: ['AKTIF', 'ACTIVE'] } } });
+      storeId = su?.storeId;
+    }
 
     if (id) {
-      // Dapatkan storeId dari sesi
-      let storeId = session.user.storeId;
-
-      // Untuk role ATTENDANT, jika tidak ada storeId, coba dapatkan dari storeUser
-      if (!storeId && session.user.role === 'ATTENDANT') {
-        const storeUser = await prisma.storeUser.findFirst({
-          where: {
-            userId: session.user.id,
-            role: 'ATTENDANT',
-            status: { in: ['AKTIF', 'ACTIVE'] }
-          },
-          select: {
-            storeId: true
-          }
-        });
-
-        if (storeUser && storeUser.storeId) {
-          storeId = storeUser.storeId;
-        } else {
-          return NextResponse.json({ error: 'Pelayan tidak dikaitkan dengan toko manapun' }, { status: 400 });
-        }
-      } else if (!storeId) {
-        return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
-      }
-
-      // Hapus satu member dari toko yang sesuai
-      const member = await prisma.member.findUnique({
-        where: {
-          id,
-          storeId: storeId, // Pastikan hanya menghapus member dari toko yang sesuai
-        },
-      });
-
-      if (!member) {
-        return NextResponse.json({ error: 'Member not found' }, { status: 404 });
-      }
-
-      await prisma.member.delete({
-        where: {
-          id,
-          storeId: storeId, // Pastikan hanya menghapus member dari toko yang sesuai
-        },
-      });
-
-      return NextResponse.json({ message: 'Member deleted successfully' });
+      await prisma.member.delete({ where: { id, storeId } });
+      return NextResponse.json({ message: 'Member deleted' });
     } else {
-      // Hapus multiple members
-      const body = await request.json();
-      const { ids } = body;
-
-      if (!ids || !Array.isArray(ids) || ids.length === 0) {
-        return NextResponse.json({ error: 'No member IDs provided' }, { status: 400 });
-      }
-
-      // Dapatkan storeId dari sesi
-      let storeId = session.user.storeId;
-
-      // Untuk role ATTENDANT, jika tidak ada storeId, coba dapatkan dari storeUser
-      if (!storeId && session.user.role === 'ATTENDANT') {
-        const storeUser = await prisma.storeUser.findFirst({
-          where: {
-            userId: session.user.id,
-            role: 'ATTENDANT',
-            status: { in: ['AKTIF', 'ACTIVE'] }
-          },
-          select: {
-            storeId: true
-          }
-        });
-
-        if (storeUser && storeUser.storeId) {
-          storeId = storeUser.storeId;
-        } else {
-          return NextResponse.json({ error: 'Pelayan tidak dikaitkan dengan toko manapun' }, { status: 400 });
-        }
-      } else if (!storeId) {
-        return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
-      }
-
-      // Hapus multiple members sekaligus hanya dari toko yang sesuai
-      const deletedMembers = await prisma.member.deleteMany({
-        where: {
-          id: {
-            in: ids,
-          },
-          storeId: storeId, // Pastikan hanya menghapus member dari toko yang sesuai
-        },
-      });
-
-      return NextResponse.json({
-        message: `${deletedMembers.count} member(s) deleted successfully`,
-      });
+      const { ids } = await request.json();
+      await prisma.member.deleteMany({ where: { id: { in: ids }, storeId } });
+      return NextResponse.json({ message: 'Members deleted' });
     }
   } catch (error) {
-    console.error('Error deleting member:', error);
-    return NextResponse.json({ error: 'Failed to delete member' }, { status: 500 });
+    return NextResponse.json({ error: 'Delete failed' }, { status: 500 });
   }
 }
 
-// PUT: Mengupdate member
 export async function PUT(request) {
   const session = await getServerSession(authOptions);
-
-  if (!session || session.user.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!session || !['ADMIN', 'MANAGER'].includes(session.user.role)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const body = await request.json();
-    const { id, name, phone, address, membershipType } = body;
-
-    if (!id || !name || !phone) {
-      return NextResponse.json(
-        { error: 'ID, nama, dan nomor telepon wajib diisi' },
-        { status: 400 }
-      );
-    }
-
-    // Validasi format nomor telepon
-    if (!/^\d{10,15}$/.test(phone)) {
-      return NextResponse.json(
-        { error: 'Format nomor telepon tidak valid' },
-        { status: 400 }
-      );
-    }
-
-    // Dapatkan storeId dari session
-    let storeId = session.user.storeId;
-
-    // Untuk role ADMIN, jika tidak ada storeId, coba dapatkan dari storeUser
-    if (!storeId && session.user.role === 'ADMIN') {
-      const storeUser = await prisma.storeUser.findFirst({
-        where: {
-          userId: session.user.id,
-          role: 'ADMIN',
-          status: { in: ['AKTIF', 'ACTIVE'] }
-        },
-        select: {
-          storeId: true
-        }
-      });
-
-      if (storeUser && storeUser.storeId) {
-        storeId = storeUser.storeId;
-      } else {
-        return NextResponse.json({ error: 'Admin tidak dikaitkan dengan toko manapun' }, { status: 400 });
-      }
-    } else if (!storeId) {
-      return NextResponse.json({ error: 'User is not associated with a store' }, { status: 400 });
-    }
-
-    // Cek apakah member ada di toko yang sesuai
-    const existingMember = await prisma.member.findUnique({
-      where: {
-        id,
-        storeId: storeId, // Hanya cari member di toko yang sesuai
-      },
-    });
-
-    if (!existingMember) {
-      return NextResponse.json({ error: 'Member not found' }, { status: 404 });
-    }
-
-    // Cek apakah nomor telepon yang baru sudah digunakan oleh member lain di toko yang sama (kecuali member itu sendiri)
-    const phoneConflict = await prisma.member.findFirst({
-      where: {
-        phone: phone,
-        storeId: existingMember.storeId,
-        id: { not: id }, // Tidak termasuk member yang sedang diupdate
-      },
-    });
-
-    if (phoneConflict) {
-      return NextResponse.json(
-        { error: 'Nomor telepon sudah terdaftar di toko ini' },
-        { status: 400 }
-      );
-    }
-
-    // Konversi membershipType ke huruf kapital untuk konsistensi internal
-    const normalizedMembershipType = (membershipType || 'SILVER').toUpperCase();
-
-    const updatedMember = await prisma.member.update({
+    const { id, name, phone, address, membershipType } = await request.json();
+    const updated = await prisma.member.update({
       where: { id },
-      data: {
-        name,
-        phone,
-        address: address || null,
-        membershipType: normalizedMembershipType, // Gunakan format kapital untuk menyimpan
-      },
+      data: { name, phone, address, membershipType: membershipType?.toUpperCase() }
     });
-
-    return NextResponse.json(updatedMember);
+    return NextResponse.json(updated);
   } catch (error) {
-    console.error('Error updating member:', error);
-    return NextResponse.json({ error: 'Failed to update member' }, { status: 500 });
+    return NextResponse.json({ error: 'Update failed' }, { status: 500 });
   }
 }

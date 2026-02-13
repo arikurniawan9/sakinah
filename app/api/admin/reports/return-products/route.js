@@ -18,8 +18,6 @@ export async function GET(request) {
     const timeRange = searchParams.get('timeRange') || 'monthly';
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-    const search = searchParams.get('search'); // Added for search term
-    const userId = searchParams.get('userId'); // Added for user ID filtering
 
     // Build date filter based on time range
     let dateFilter = {};
@@ -51,6 +49,7 @@ export async function GET(request) {
         transaction: {
           include: {
             saleDetails: true,
+            cashier: true,
           },
         },
         product: {
@@ -59,7 +58,6 @@ export async function GET(request) {
           }
         },
         attendant: true,
-        cashier: true,
       }
     });
 
@@ -71,9 +69,7 @@ export async function GET(request) {
     // Calculate total value (based on product prices in transactions)
     let totalValue = 0;
     returnProducts.forEach(rp => {
-      // Ensure transaction and its saleDetails exist before accessing them
       if (rp.transaction && rp.transaction.saleDetails) {
-        // Find the corresponding sale detail to get the price
         const saleDetail = rp.transaction.saleDetails.find(sd => sd.productId === rp.productId);
         if (saleDetail) {
           totalValue += saleDetail.price * saleDetail.quantity;
@@ -81,7 +77,7 @@ export async function GET(request) {
       }
     });
 
-    // Calculate average processing time (difference between createdAt and returnDate)
+    // Calculate average processing time (difference between createdAt and updatedAt)
     let totalProcessingTime = 0;
     let processedReturns = 0;
     returnProducts.forEach(rp => {
@@ -96,7 +92,7 @@ export async function GET(request) {
     // Group by category
     const categoryCounts = {};
     returnProducts.forEach(rp => {
-      const categoryName = rp.product?.category?.name || 'Unknown Category';
+      const categoryName = rp.product?.category?.name || 'Kategori Tidak Diketahui';
       categoryCounts[categoryName] = (categoryCounts[categoryName] || 0) + 1;
     });
 
@@ -109,7 +105,7 @@ export async function GET(request) {
     // Group by attendant
     const attendantCounts = {};
     returnProducts.forEach(rp => {
-      const attendantName = rp.attendant.name;
+      const attendantName = rp.attendant?.name || 'Nama Tidak Tersedia';
       if (!attendantCounts[attendantName]) {
         attendantCounts[attendantName] = { returns: 0, approved: 0, rejected: 0 };
       }

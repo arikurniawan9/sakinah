@@ -14,12 +14,11 @@ const prisma = new PrismaClient();
 
 export async function GET(request) {
   try {
-    // Langsung coba akses database tanpa fungsi isDatabaseAccessible()
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
     const status = searchParams.get('status');
-    const searchTerm = searchParams.get('search'); // Retrieve search term
-    const userId = searchParams.get('userId');     // Retrieve userId
+    const searchTerm = searchParams.get('search'); 
+    const userId = searchParams.get('userId');     
     const page = parseInt(searchParams.get('page')) || 1;
     const limit = parseInt(searchParams.get('limit')) || 10;
 
@@ -35,17 +34,14 @@ export async function GET(request) {
       whereClause.status = status;
     }
 
-    // Filter by userId (attendantId or cashierId)
     if (userId) {
-      // Use direct equality filter for attendantId and cashierId
       whereClause.OR = [
         { attendantId: userId },
         { transaction: { cashierId: userId } },
-        { transaction: { attendantId: userId } }, // Added this to match the person who served
+        { transaction: { attendantId: userId } },
       ];
     }
 
-    // Add search term filtering
     if (searchTerm) {
       const searchConditions = [
         { transactionId: { contains: searchTerm, mode: 'insensitive' } },
@@ -55,21 +51,17 @@ export async function GET(request) {
         { attendant: { employeeNumber: { contains: searchTerm, mode: 'insensitive' } } },
       ];
 
-      // If OR is already present from userId filter, combine with AND
       if (whereClause.OR) {
         whereClause.AND = [
-          { OR: whereClause.OR }, // Existing userId OR conditions
-          { OR: searchConditions } // New searchTerm OR conditions
+          { OR: whereClause.OR },
+          { OR: searchConditions }
         ];
-        delete whereClause.OR; // Remove old OR property if replaced by AND
+        delete whereClause.OR;
       } else {
         whereClause.OR = searchConditions;
       }
     }
 
-    console.log('Debug: whereClause:', whereClause);
-
-    // Ambil data dengan include yang diperlukan untuk filtering dan tampilan
     const returnsWithData = await prisma.returnProduct.findMany({
       where: whereClause,
       skip,
@@ -77,17 +69,19 @@ export async function GET(request) {
       orderBy: {
         createdAt: 'desc'
       },
-      include: { // Include relations needed for filtering and later data stitching
+      include: { 
         product: {
           select: {
             id: true,
             name: true,
+            productCode: true,
           },
         },
         attendant: {
           select: {
             id: true,
             name: true,
+            employeeNumber: true,
           }
         },
         transaction: {
@@ -122,8 +116,6 @@ export async function GET(request) {
       where: whereClause
     });
 
-    console.log('Debug: Total count:', total);
-
     return NextResponse.json({
       success: true,
       data: returnsWithData,
@@ -139,10 +131,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('Error in GET /api/return-products:', error);
     
-    // Jika terjadi error database, baru gunakan data mock
     try {
-      console.log('Switching to mock data due to database error');
-
       const { searchParams } = new URL(request.url);
       const status = searchParams.get('status');
       const searchTerm = searchParams.get('searchTerm');
@@ -187,7 +176,6 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    // Gunakan database asli langsung
     const body = await request.json();
 
     const {
@@ -200,7 +188,6 @@ export async function POST(request) {
       category = 'OTHERS'
     } = body;
 
-    // Validasi input
     if (!storeId || !transactionId || !productId || !attendantId || !reason) {
       return NextResponse.json(
         {
@@ -211,7 +198,6 @@ export async function POST(request) {
       );
     }
 
-    // Cek apakah transaksi dan produk ada
     const [existingTransaction, existingProduct, existingAttendant, existingStore] = await Promise.all([
       prisma.sale.findUnique({ where: { id: transactionId } }),
       prisma.product.findUnique({ where: { id: productId } }),
@@ -259,10 +245,8 @@ export async function POST(request) {
       );
     }
 
-    // Generate invoice number for the return
     const invoiceNumber = await generateReturnInvoiceNumber(storeId);
 
-    // Buat data retur produk baru
     const newReturn = await prisma.returnProduct.create({
       data: {
         storeId,
@@ -278,14 +262,12 @@ export async function POST(request) {
       }
     });
 
-    // Ambil data terkait untuk respons
     const [product, store, attendant] = await Promise.all([
       prisma.product.findUnique({ where: { id: productId }, select: { name: true } }),
       prisma.store.findUnique({ where: { id: storeId }, select: { name: true } }),
       prisma.user.findUnique({ where: { id: attendantId }, select: { name: true } })
     ]);
 
-    // Buat notifikasi untuk admin
     await prisma.notification.create({
       data: {
         type: 'RETURN_REQUEST',
@@ -295,7 +277,7 @@ export async function POST(request) {
         severity: 'HIGH',
         data: {
           returnId: newReturn.id,
-          invoiceNumber: newReturn.invoiceNumber, // Include invoice number
+          invoiceNumber: newReturn.invoiceNumber, 
           transactionId,
           productId,
           productName: product.name
@@ -303,7 +285,6 @@ export async function POST(request) {
       }
     });
 
-    // Gabungkan data untuk respons
     const returnWithDetails = {
       ...newReturn,
       store,

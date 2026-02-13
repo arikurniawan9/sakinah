@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 export default function ReturnProductDetailPage() {
   const { userTheme } = useUserTheme();
@@ -27,6 +28,10 @@ export default function ReturnProductDetailPage() {
   const [returnData, setReturnData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+
+  // State untuk modal konfirmasi
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState(null);
 
   const breadcrumbItems = [
     { title: 'Admin', href: '/admin' },
@@ -59,11 +64,9 @@ export default function ReturnProductDetailPage() {
       return;
     }
 
-    const actionText = status === 'APPROVED' ? 'menyetujui' : 'menolak';
-    if (!confirm(`Apakah Anda yakin ingin ${actionText} permintaan retur ini?`)) return;
-
     setProcessing(true);
     try {
+      const actionText = status === 'APPROVED' ? 'menyetujui' : 'menolak';
       const response = await fetch(`/api/return-products/${params.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -84,6 +87,7 @@ export default function ReturnProductDetailPage() {
       toast.error('Terjadi kesalahan sistem');
     } finally {
       setProcessing(false);
+      setShowConfirmModal(false);
     }
   };
 
@@ -151,7 +155,10 @@ export default function ReturnProductDetailPage() {
               <div className="flex gap-3">
                 <Button 
                   disabled={processing}
-                  onClick={() => handleAction('REJECTED')}
+                  onClick={() => {
+                    setPendingStatus('REJECTED');
+                    setShowConfirmModal(true);
+                  }}
                   variant="outline" 
                   className="bg-white hover:bg-red-50 text-red-600 border-red-200 py-6 px-6 rounded-2xl font-bold"
                 >
@@ -159,7 +166,10 @@ export default function ReturnProductDetailPage() {
                 </Button>
                 <Button 
                   disabled={processing}
-                  onClick={() => handleAction('APPROVED')}
+                  onClick={() => {
+                    setPendingStatus('APPROVED');
+                    setShowConfirmModal(true);
+                  }}
                   className="bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-200 py-6 px-8 rounded-2xl font-bold"
                 >
                   <CheckCircle className="w-5 h-5 mr-2" /> Setujui Retur
@@ -294,7 +304,7 @@ export default function ReturnProductDetailPage() {
 
             {/* Right Column: Attendant Info & Audit Trail */}
             <div className="space-y-8">
-              {/* Attendant Card (NOW WITH REAL DATA) */}
+              {/* Attendant Card */}
               <Card className="border-none shadow-lg rounded-[2rem] overflow-hidden bg-white dark:bg-gray-800 ring-1 ring-black/5">
                 <CardHeader className="bg-gray-900 text-white p-6">
                   <CardTitle className="text-lg flex items-center gap-2">
@@ -347,6 +357,19 @@ export default function ReturnProductDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal Konfirmasi */}
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={() => handleAction(pendingStatus)}
+        title={pendingStatus === 'APPROVED' ? 'Setujui Permintaan Retur' : 'Tolak Permintaan Retur'}
+        message={`Apakah Anda yakin ingin ${pendingStatus === 'APPROVED' ? 'menyetujui' : 'menolak'} permintaan retur ${returnData.invoiceNumber} ini? Tindakan ini akan ${pendingStatus === 'APPROVED' ? 'mengembalikan stok produk' : 'membatalkan proses retur'}.`}
+        confirmText={pendingStatus === 'APPROVED' ? 'Ya, Setujui' : 'Ya, Tolak'}
+        cancelText="Batal"
+        variant={pendingStatus === 'APPROVED' ? 'success' : 'danger'}
+        isLoading={processing}
+      />
     </ProtectedRoute>
   );
 }

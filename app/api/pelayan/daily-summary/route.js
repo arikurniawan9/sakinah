@@ -24,18 +24,19 @@ export async function GET(request) {
   tomorrow.setDate(tomorrow.getDate() + 1);
 
   try {
-    // Fetch transactions for today by the attendant
-    const transactions = await prisma.transaction.findMany({
+    // Fetch transactions (Sales) for today by the attendant
+    // In our schema, the model is called 'Sale'
+    const transactions = await prisma.sale.findMany({
       where: {
         attendantId: attendantId,
         createdAt: {
           gte: today,
           lt: tomorrow,
         },
-        status: 'COMPLETED', // Only consider completed transactions for statistics
+        status: 'PAID', // In our schema default status is PAID
       },
       include: {
-        items: {
+        saleDetails: {
           include: {
             product: true,
           },
@@ -48,18 +49,16 @@ export async function GET(request) {
     let todayRevenue = 0;
 
     transactions.forEach(transaction => {
-      transaction.items.forEach(item => {
-        todayItems += item.quantity;
-        todayRevenue += item.quantity * item.price;
-      });
+      if (transaction.saleDetails) {
+        transaction.saleDetails.forEach(item => {
+          todayItems += item.quantity || 0;
+          todayRevenue += (item.quantity || 0) * (item.price || 0);
+        });
+      }
     });
 
-    // For conversion rate, we might need more context (e.g., total lists created vs. completed sales).
-    // For now, let's make a simple assumption or leave it as a placeholder.
-    // A proper conversion rate would require tracking "lists created" vs. "lists completed as sales".
-    // For demo/initial implementation, we can make it proportional or a fixed high number for completed sales.
-    const todayConversion = todaySales > 0 ? 100 : 0; // If there are sales, conversion is 100% for completed ones. More complex logic needed for actual lead conversion.
-
+    // Simple conversion logic for now
+    const todayConversion = todaySales > 0 ? 100 : 0;
 
     return NextResponse.json({
       dailySummary: {

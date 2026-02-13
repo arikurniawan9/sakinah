@@ -13,12 +13,21 @@ export async function GET(request) {
   }
 
   try {
+    const { searchParams } = new URL(request.url);
+    const attendantId = searchParams.get('attendantId');
+
+    const whereClause = {
+      storeId: session.user.storeId,
+    };
+
+    if (attendantId) {
+      whereClause.selectedAttendantId = attendantId;
+    }
+
     const suspendedSales = await prisma.suspendedSale.findMany({
-      where: {
-        storeId: session.user.storeId, // Filter by store of the current user
-      },
+      where: whereClause,
       include: {
-        member: { // Include the related Member model
+        member: {
           select: {
             name: true,
             membershipType: true,

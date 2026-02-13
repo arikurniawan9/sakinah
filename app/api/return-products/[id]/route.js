@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 // Handler untuk GET request (mengambil detail retur produk berdasarkan ID)
 export async function GET(request, { params }) {
   try {
-    const { id } = await params;
+    const { id } = await params; // Unwrapping params correctly
 
     if (!id) {
       return NextResponse.json(
@@ -42,7 +42,7 @@ export async function GET(request, { params }) {
                 id: true,
                 name: true,
                 username: true,
-                code: true
+                employeeNumber: true
               }
             },
             cashier: {
@@ -50,7 +50,7 @@ export async function GET(request, { params }) {
                 id: true,
                 name: true,
                 username: true,
-                code: true
+                employeeNumber: true
               }
             }
           }
@@ -61,7 +61,7 @@ export async function GET(request, { params }) {
             id: true,
             name: true,
             username: true,
-            code: true,
+            employeeNumber: true,
             _count: {
               select: {
                 attendantSales: true
@@ -87,13 +87,13 @@ export async function GET(request, { params }) {
       ...returnProduct,
       attendant: returnProduct.attendant ? {
         ...returnProduct.attendant,
-        code: returnProduct.attendant.code || returnProduct.attendant.employeeNumber || returnProduct.attendant.id?.substring(0, 5) || '-'
+        code: returnProduct.attendant.employeeNumber || returnProduct.attendant.id?.substring(0, 5) || '-'
       } : null,
       transaction: returnProduct.transaction ? {
         ...returnProduct.transaction,
         cashier: returnProduct.transaction.cashier ? {
           ...returnProduct.transaction.cashier,
-          code: returnProduct.transaction.cashier.code || returnProduct.transaction.cashier.employeeNumber || returnProduct.transaction.cashier.id?.substring(0, 5) || '-'
+          code: returnProduct.transaction.cashier.employeeNumber || returnProduct.transaction.cashier.id?.substring(0, 5) || '-'
         } : null,
         member: returnProduct.transaction.member ? {
           ...returnProduct.transaction.member,
@@ -110,9 +110,9 @@ export async function GET(request, { params }) {
   } catch (error) {
     console.error('Error fetching return product details:', error);
 
-    // Coba dengan data mock hanya jika terjadi error database
     try {
-      const mockReturn = await import('@/utils/mock-return-data').then(mod => mod.getMockReturnById(params.id));
+      const { id } = await params; // Unwrapping params again in catch for safety
+      const mockReturn = await import('@/utils/mock-return-data').then(mod => mod.getMockReturnById(id));
 
       if (mockReturn) {
         return NextResponse.json({
@@ -147,7 +147,7 @@ export async function GET(request, { params }) {
 // Handler untuk PUT request (memperbarui retur produk, seperti menyetujui atau menolak)
 export async function PUT(request, { params }) {
   try {
-    const { id } = await params;
+    const { id } = await params; // Unwrapping params correctly
     const body = await request.json();
 
     if (!id) {
@@ -233,10 +233,8 @@ export async function PUT(request, { params }) {
 
     // Jika disetujui, perbarui stok produk
     if (status === 'APPROVED') {
-      // Gunakan fungsi khusus untuk menangani pembaruan stok
       await handleReturnStockUpdate(id);
 
-      // Catat aktivitas ke audit log
       await prisma.auditLog.create({
         data: {
           storeId: existingReturn.storeId,
@@ -251,7 +249,6 @@ export async function PUT(request, { params }) {
         }
       });
     } else if (status === 'REJECTED') {
-      // Catat aktivitas ke audit log
       await prisma.auditLog.create({
         data: {
           storeId: existingReturn.storeId,
@@ -273,7 +270,7 @@ export async function PUT(request, { params }) {
         type: 'RETURN_STATUS_UPDATE',
         title: `Status Retur Produk Diubah`,
         message: `Status retur produk untuk ${existingReturn.product.name} telah diubah menjadi ${status}`,
-        userId: existingReturn.attendantId, // Kirim notifikasi ke pelayan yang membuat permintaan
+        userId: existingReturn.attendantId, 
         storeId: existingReturn.storeId,
         severity: status === 'APPROVED' ? 'INFO' : 'WARNING',
         data: {
@@ -294,9 +291,9 @@ export async function PUT(request, { params }) {
   } catch (error) {
     console.error('Error updating return product:', error);
 
-    // Coba dengan data mock hanya jika terjadi error database
     try {
-      const mockReturn = updateMockReturnStatus(params.id, body.status, body.processedById);
+      const { id } = await params;
+      const mockReturn = updateMockReturnStatus(id, body.status, body.processedById);
 
       if (mockReturn) {
         return NextResponse.json({
@@ -332,7 +329,7 @@ export async function PUT(request, { params }) {
 // Handler untuk DELETE request (menghapus retur produk)
 export async function DELETE(request, { params }) {
   try {
-    const { id } = await params;
+    const { id } = await params; // Unwrapping params correctly
 
     if (!id) {
       return NextResponse.json(

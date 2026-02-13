@@ -145,7 +145,6 @@ const Sidebar = ({ children }) => {
     { title: "Riwayat Penjualan", href: "/admin/transaksi/riwayat-penjualan", icon: History, type: 'item', roles: ['ADMIN'] },
     { title: "Notifikasi Distribusi", href: "/admin/distribution-notifications", icon: Package, type: 'item', roles: ['ADMIN'] },
     { title: "Retur Produk", href: "/admin/retur-produk", icon: PackageX, type: 'item', roles: ['ADMIN'] },
-    { title: "Notifikasi Retur", href: "/admin/notifikasi-retur", icon: Bell, type: 'item', roles: ['ADMIN'] },
     { title: "Debug Retur API", href: "/admin/debug-return-api", icon: Activity, type: 'item', roles: ['ADMIN'] },
     { title: "Keuangan", type: 'heading', roles: ['ADMIN'] },
     { title: "Pengeluaran", href: "/admin/pengeluaran", icon: DollarSign, type: 'item', roles: ['ADMIN'] },

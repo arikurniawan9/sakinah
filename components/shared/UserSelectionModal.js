@@ -1,9 +1,9 @@
 // components/shared/UserSelectionModal.js
 // Modal for selecting users with search functionality
-// Search works on name, username, and code fields
-// Displays user code if available, otherwise shows username
-// Supports auto-selection when exact code is found or only one result remains
-// Supports barcode scanner input: automatically selects user when exact code is scanned
+// Search works on name, username, and employeeNumber fields
+// Displays employeeNumber if available, otherwise shows username
+// Supports auto-selection when exact employeeNumber is found or only one result remains
+// Supports barcode scanner input: automatically selects user when exact employeeNumber is scanned
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -14,8 +14,6 @@ export default function UserSelectionModal({ isOpen, onClose, users, onSelectUse
   const [searchTerm, setSearchTerm] = useState('');
   const [lastKeyTime, setLastKeyTime] = useState(0);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
-  // State untuk mendeteksi input dari barcode scanner
-  // Scanner menginput karakter sangat cepat, berbeda dengan input keyboard manual
 
   const filteredUsers = useMemo(() => {
     // Filter hanya pengguna dengan role ATTENDANT
@@ -27,7 +25,7 @@ export default function UserSelectionModal({ isOpen, onClose, users, onSelectUse
     return attendantUsers.filter(user =>
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.code && user.code.toLowerCase().includes(searchTerm.toLowerCase()))
+      (user.employeeNumber && user.employeeNumber.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [users, searchTerm]);
 
@@ -112,12 +110,12 @@ export default function UserSelectionModal({ isOpen, onClose, users, onSelectUse
           </div>
         </div>
 
-        {/* Search - can search by name or code */}
+        {/* Search - can search by name or employeeNumber */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="relative">
             <input
               type="text"
-              placeholder="Cari nama atau kode pelayan..."
+              placeholder="Cari nama atau nomor pegawai..."
               className={`w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
                 darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'
               }`}
@@ -131,40 +129,32 @@ export default function UserSelectionModal({ isOpen, onClose, users, onSelectUse
                 setSearchTerm(value);
 
                 // Deteksi input cepat (khas scanner barcode)
-                // Scanner biasanya menginput seluruh kode dalam waktu singkat
                 const isLikelyScannerInput = timeDiff < 30 && value.length > 1;
 
-                // Jika ini kemungkinan input dari scanner dan panjangnya cukup untuk kode
                 if (isLikelyScannerInput && value.length >= 3) {
-                  // Cek apakah sudah ada user dengan kode yang cocok
-                  const exactCodeMatch = users.find(user =>
-                    user.code && user.code.toLowerCase() === value.toLowerCase()
+                  const exactMatch = users.find(user =>
+                    user.employeeNumber && user.employeeNumber.toLowerCase() === value.toLowerCase()
                   );
 
-                  if (exactCodeMatch) {
-                    // Jika ada kode yang cocok secara tepat, langsung pilih
+                  if (exactMatch) {
                     setTimeout(() => {
-                      handleSelect(exactCodeMatch);
-                    }, 10); // Delay kecil agar input benar-benar terisi
+                      handleSelect(exactMatch);
+                    }, 10);
                   }
                 }
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  // Cek apakah pencarian cocok dengan kode secara tepat
-                  const exactCodeMatch = users.find(user =>
-                    user.code && user.code.toLowerCase() === searchTerm.toLowerCase()
+                  const exactMatch = users.find(user =>
+                    user.employeeNumber && user.employeeNumber.toLowerCase() === searchTerm.toLowerCase()
                   );
 
-                  if (exactCodeMatch) {
-                    // Jika ada kode yang cocok secara tepat, langsung pilih
-                    handleSelect(exactCodeMatch);
+                  if (exactMatch) {
+                    handleSelect(exactMatch);
                   } else if (filteredUsers.length === 1) {
-                    // Jika hanya ada satu hasil pencarian, pilih itu
                     handleSelect(filteredUsers[0]);
                   }
                 } else if (e.key.length === 1) {
-                  // Jika ini karakter biasa (bukan Enter, dll), update timer untuk deteksi scanner
                   setLastKeyTime(Date.now());
                 }
               }}
@@ -195,11 +185,10 @@ export default function UserSelectionModal({ isOpen, onClose, users, onSelectUse
                     <div className={`p-2 rounded-full mr-4 ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
                         <User className={`h-5 w-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                     </div>
-                    {/* Display user code if available, otherwise username */}
                     <div>
                         <div className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{user.name}</div>
                         <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          {user.code ? `Kode: ${user.code}` : `@${user.username}`} • {user.role}
+                          {user.employeeNumber ? `No. Pegawai: ${user.employeeNumber}` : `@${user.username}`} • {user.role}
                         </div>
                     </div>
                   </button>

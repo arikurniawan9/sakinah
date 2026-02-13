@@ -42,7 +42,6 @@ Fitur ini telah diimplementasikan secara lengkap tetapi menggunakan sistem fallb
 - `/admin/retur-produk`: Halaman utama untuk manajemen retur produk
 - `/admin/retur-produk/tambah`: Formulir untuk membuat retur produk baru
 - `/admin/retur-produk/[id]`: Halaman detail retur produk
-- `/admin/notifikasi-retur`: Halaman untuk melihat notifikasi retur
 - `/admin/debug-return-api`: Halaman untuk debugging API
 
 ## Solusi untuk Masalah Database

@@ -30,11 +30,6 @@ export default function PelayanCard({ attendant, onEdit, onDelete, darkMode }) {
             <p className={`flex items-center ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
               <AtSign className="h-4 w-4 mr-2 text-gray-400" /> {attendant.username}
             </p>
-            {attendant.code && (
-              <p className={`flex items-center ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                <User className="h-4 w-4 mr-2 text-gray-400" /> {attendant.code}
-              </p>
-            )}
             {attendant.employeeNumber && (
               <p className={`flex items-center ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                 <Shield className="h-4 w-4 mr-2 text-gray-400" /> {attendant.employeeNumber}

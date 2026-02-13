@@ -27,7 +27,6 @@ Fitur retur produk adalah sistem yang memungkinkan administrator untuk mengelola
 - Tren bulanan jumlah retur
 - Analisis kinerja pelayan berdasarkan retur
 
-### 5. Notifikasi Retur (`/admin/notifikasi-retur`)
 - Daftar permintaan retur yang menunggu persetujuan
 - Filter berdasarkan status dan prioritas
 - Tautan cepat untuk meninjau dan menindaklanjuti retur

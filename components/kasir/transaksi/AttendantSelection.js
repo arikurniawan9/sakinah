@@ -31,8 +31,7 @@ const AttendantSelection = ({ selectedAttendant, onSelectAttendant, onRemoveAtte
         // Periksa apakah ada pelayan yang cocok dengan searchTerm
         const matchedAttendant = attendants.find(attendant =>
           (attendant.status === 'AKTIF' || attendant.status === 'ACTIVE') && // Hanya pelayan aktif
-          (attendant.code?.toLowerCase() === attendantSearchTerm.toLowerCase() ||
-          attendant.employeeNumber?.toLowerCase() === attendantSearchTerm.toLowerCase() ||
+          (attendant.employeeNumber?.toLowerCase() === attendantSearchTerm.toLowerCase() ||
           attendant.username?.toLowerCase() === attendantSearchTerm.toLowerCase())
         );
 
@@ -63,7 +62,6 @@ const AttendantSelection = ({ selectedAttendant, onSelectAttendant, onRemoveAtte
     typeof attendant.name === 'string' &&
     (attendant.status === 'AKTIF' || attendant.status === 'ACTIVE') && // Hanya tampilkan pelayan yang aktif
     (attendant.name.toLowerCase().includes(attendantSearchTerm.toLowerCase()) ||
-    attendant.code?.toLowerCase().includes(attendantSearchTerm.toLowerCase()) ||
     attendant.employeeNumber?.toLowerCase().includes(attendantSearchTerm.toLowerCase()) ||
     attendant.username?.toLowerCase().includes(attendantSearchTerm.toLowerCase()))
   );
@@ -115,42 +113,35 @@ const AttendantSelection = ({ selectedAttendant, onSelectAttendant, onRemoveAtte
                 <input
                   ref={inputRef}
                   type="text"
-                  placeholder="Cari nama/kode pelayan atau scan kode..."
+                  placeholder="Cari nama/ID pelayan atau scan barcode..."
                   value={attendantSearchTerm}
                   onChange={(e) => {
-                    // Update searchTerm sesuai dengan nilai field
                     const newValue = e.target.value;
                     setAttendantSearchTerm(newValue);
 
-                    // Hapus timer lama jika ada
                     if (scanTimeout) {
                       clearTimeout(scanTimeout);
                     }
 
-                    // Deteksi apakah inputan mungkin dari scanner barcode berdasarkan panjang dan kecepatan input
-                    // Jika panjang input cocok dengan kode pelayan, cek kecocokan
                     if (newValue) {
                       const newTimeout = setTimeout(() => {
-                        // Periksa apakah ada pelayan yang cocok dengan nilai yang telah diketik
                         const matchedAttendant = attendants.find(attendant =>
-                          (attendant.status === 'AKTIF' || attendant.status === 'ACTIVE') && // Hanya pelayan aktif
-                          (attendant.code?.toLowerCase() === newValue.toLowerCase() ||
-                          attendant.employeeNumber?.toLowerCase() === newValue.toLowerCase() ||
+                          (attendant.status === 'AKTIF' || attendant.status === 'ACTIVE') && 
+                          (attendant.employeeNumber?.toLowerCase() === newValue.toLowerCase() ||
                           attendant.username?.toLowerCase() === newValue.toLowerCase())
                         );
 
                         if (matchedAttendant) {
                           onSelectAttendant(matchedAttendant);
-                          onToggle(false); // Tutup modal setelah pemilihan
-                          setAttendantSearchTerm(''); // Reset search term
+                          onToggle(false); 
+                          setAttendantSearchTerm(''); 
                         }
-                      }, 100); // Delay 100ms untuk menunggu apakah input dari scanner selesai
+                      }, 100); 
 
                       setScanTimeout(newTimeout);
                     }
                   }}
                   onKeyDown={(e) => {
-                    // Mencegah perilaku default Enter saat di handle oleh event keyboard
                     if (e.key === 'Enter') {
                       e.preventDefault();
                     }
@@ -165,7 +156,7 @@ const AttendantSelection = ({ selectedAttendant, onSelectAttendant, onRemoveAtte
                 </div>
               </div>
               <div className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                Scan kode pelayan atau ketik untuk mencari
+                Scan barcode pelayan atau ketik untuk mencari
               </div>
             </div>
             <div className="flex-1 p-4 overflow-y-auto styled-scrollbar">
@@ -176,7 +167,7 @@ const AttendantSelection = ({ selectedAttendant, onSelectAttendant, onRemoveAtte
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {filteredAttendants
-                    .filter(attendant => attendant && attendant.id) // Hanya proses attendant yang valid
+                    .filter(attendant => attendant && attendant.id) 
                     .map(attendant => (
                     <button
                       key={attendant.id}
@@ -187,9 +178,9 @@ const AttendantSelection = ({ selectedAttendant, onSelectAttendant, onRemoveAtte
                           : 'bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-offset-white focus:ring-purple-500'
                       }`}
                     >
-                      <p className="font-semibold truncate">{attendant.name || 'Nama tidak tersedia'}</p>
-                      <p className={`text-xs truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        {attendant.code || attendant.employeeNumber || attendant.username || '...'}
+                      <p className="font-semibold truncate text-xs">{attendant.name || 'Nama tidak tersedia'}</p>
+                      <p className={`text-[10px] truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        {attendant.employeeNumber || attendant.username || '...'}
                       </p>
                     </button>
                   ))}

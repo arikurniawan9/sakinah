@@ -1,6 +1,4 @@
 // components/warehouse/distribution/DistributionDetails.js
-// Component for distribution details including store selection, attendant selection, and notes
-// Attendant selection shows code if available, and search works on name and code
 'use client';
 
 import { Users, FileText, Send } from 'lucide-react';
@@ -43,7 +41,7 @@ const DistributionDetails = ({
           </select>
         </div>
 
-        {/* User Selector Button - Only ATTENDANT users will be shown for distribution */}
+        {/* User Selector Button */}
         <div>
           <label className={`flex items-center text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
             <Users className="h-4 w-4 mr-2" />
@@ -56,7 +54,7 @@ const DistributionDetails = ({
               darkMode ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-900'
             }`}
           >
-            <span>{selectedWarehouseUser ? selectedWarehouseUser.code ? `${selectedWarehouseUser.name} (${selectedWarehouseUser.code})` : selectedWarehouseUser.name : 'Pilih Pelayan'}</span>
+            <span>{selectedWarehouseUser ? selectedWarehouseUser.employeeNumber ? `${selectedWarehouseUser.name} (${selectedWarehouseUser.employeeNumber})` : selectedWarehouseUser.name : 'Pilih Pelayan'}</span>
             <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>

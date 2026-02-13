@@ -23,45 +23,55 @@ export default function EditReturnProductPage() {
     { title: `Edit #${params.id}`, href: `/admin/retur-produk/${params.id}/edit` }
   ];
 
-  // Mock data loading
+  // Fetch data from API
   useEffect(() => {
-    // In a real application, this would fetch from an API
     const fetchData = async () => {
-      setLoading(true);
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Mock data for the specific return
-      const mockReturn = {
-        id: params.id,
-        transactionId: 'INV-001',
-        productId: 'PROD-001',
-        productName: 'Sabun Mandi Lux',
-        customerName: 'Budi Santoso',
-        attendantId: 'ATT-001',
-        attendantName: 'Ahmad Kurniawan',
-        reason: 'Produk rusak saat diterima, kemasan penyok dan sabun mulai mencair',
-        category: 'PRODUCT_DEFECT'
-      };
-      
-      setReturnData(mockReturn);
-      setLoading(false);
+      try {
+        setLoading(true);
+
+        const response = await fetch(`/api/return-products/${params.id}`);
+        const result = await response.json();
+
+        if (result.success) {
+          setReturnData(result.data);
+        } else {
+          console.error('Failed to fetch return data:', result.message);
+        }
+      } catch (error) {
+        console.error('Error fetching return data:', error);
+      } finally {
+        setLoading(false);
+      }
     };
-    
+
     fetchData();
   }, [params.id]);
 
   const handleSubmit = async (data) => {
-    // In a real application, this would be an API call to update the return
-    console.log('Updating return data:', data);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Redirect back to the returns detail page
-    router.push(`/admin/retur-produk/${params.id}`);
-    router.refresh(); // Refresh to show updated data
+    try {
+      const response = await fetch(`/api/return-products/${params.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('Retur produk berhasil diperbarui');
+        // Redirect back to the returns detail page
+        router.push(`/admin/retur-produk/${params.id}`);
+        router.refresh(); // Refresh to show updated data
+      } else {
+        console.error('Failed to update return:', result.message);
+        alert(`Gagal memperbarui retur: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error updating return:', error);
+      alert('Terjadi kesalahan saat memperbarui retur');
+    }
   };
 
   const handleCancel = () => {
@@ -125,10 +135,11 @@ export default function EditReturnProductPage() {
         </div>
 
         <div className="max-w-4xl">
-          <ReturnProductForm 
-            onSubmit={handleSubmit} 
+          <ReturnProductForm
+            onSubmit={handleSubmit}
             onCancel={handleCancel}
             initialData={returnData}
+            isEditing={true}
           />
         </div>
       </div>

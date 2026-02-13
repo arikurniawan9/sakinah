@@ -10,17 +10,18 @@ import { Label } from '@/components/ui/Label';
 import { useUserTheme } from '@/components/UserThemeContext';
 import { PackageX, User, Package, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
 
-export default function ReturnProductForm({ onSubmit, onCancel, initialData = null }) {
+export default function ReturnProductForm({ onSubmit, onCancel, initialData = null, isEditing = false }) {
   const { userTheme } = useUserTheme();
   const [formData, setFormData] = useState({
     transactionId: initialData?.transactionId || '',
     productId: initialData?.productId || '',
-    productName: initialData?.productName || '',
-    customerName: initialData?.customerName || '',
+    productName: initialData?.product?.name || initialData?.productName || '',
+    customerName: initialData?.transaction?.member?.name || 'Umum',
     attendantId: initialData?.attendantId || '',
-    attendantName: initialData?.attendantName || '',
+    attendantName: initialData?.attendant?.name || initialData?.attendantName || '',
     reason: initialData?.reason || '',
-    category: initialData?.category || 'OTHERS'
+    category: initialData?.category || 'OTHERS',
+    status: initialData?.status || 'PENDING'
   });
 
   const handleSubmit = async (e) => {
@@ -28,15 +29,33 @@ export default function ReturnProductForm({ onSubmit, onCancel, initialData = nu
 
     // Panggil API untuk menyimpan data retur
     try {
-      const response = await fetch('/api/return-products', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+      let response;
+      let result;
+      
+      if (isEditing && initialData?.id) {
+        // Mode edit
+        response = await fetch(`/api/return-products/${initialData.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...formData,
+            id: initialData.id // Pastikan ID tidak berubah
+          }),
+        });
+      } else {
+        // Mode create
+        response = await fetch('/api/return-products', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        });
+      }
 
-      const result = await response.json();
+      result = await response.json();
 
       if (result.success) {
         onSubmit(result.data); // Kirim data hasil ke parent component
@@ -61,10 +80,12 @@ export default function ReturnProductForm({ onSubmit, onCancel, initialData = nu
     <Card className={userTheme.darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}>
       <CardHeader>
         <CardTitle className={userTheme.darkMode ? 'text-white' : 'text-gray-900'}>
-          Formulir Retur Produk
+          {isEditing ? 'Edit Retur Produk' : 'Formulir Retur Produk'}
         </CardTitle>
         <CardDescription>
-          Isi formulir berikut untuk membuat permintaan retur produk baru
+          {isEditing 
+            ? 'Edit informasi permintaan retur produk' 
+            : 'Isi formulir berikut untuk membuat permintaan retur produk baru'}
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
@@ -202,7 +223,7 @@ export default function ReturnProductForm({ onSubmit, onCancel, initialData = nu
             Batal
           </Button>
           <Button type="submit">
-            Simpan Retur
+            {isEditing ? 'Perbarui Retur' : 'Simpan Retur'}
           </Button>
         </CardFooter>
       </form>

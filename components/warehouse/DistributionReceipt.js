@@ -43,21 +43,13 @@ const DistributionReceipt = forwardRef(({ distributionData }, ref) => {
     });
   };
 
-  // If distributionData.items is available (from API with all items), use it.
-  // Otherwise, we have a single record that needs to be treated as one item.
-  // Handle both individual distribution records and grouped distribution records
-  // For individual records, we might have just one item with all the details
-  // For grouped records, we have an items array
   let allItems = [];
 
   if (distributionData.items && Array.isArray(distributionData.items) && distributionData.items.length > 0) {
-    // This is a grouped distribution with multiple items
     allItems = distributionData.items;
   } else if (distributionData.items && Array.isArray(distributionData.items) && distributionData.items.length === 0) {
-    // This is a grouped distribution but with no items (edge case)
     allItems = [];
   } else {
-    // This is an individual distribution record, treat the record itself as an item
     allItems = [distributionData];
   }
 
@@ -78,7 +70,6 @@ const DistributionReceipt = forwardRef(({ distributionData }, ref) => {
         WebkitPrintColorAdjust: 'exact'
       }}
     >
-      {/* Header */}
       <div className="text-center mb-2">
         <h1 className="text-sm font-bold mb-1">STRUK DISTRIBUSI PRODUK</h1>
         <p className="text-xs">SAKINAH</p>
@@ -86,7 +77,6 @@ const DistributionReceipt = forwardRef(({ distributionData }, ref) => {
         <p className="text-xs">Telp: 0812-3456-7890</p>
       </div>
 
-      {/* Distribution Info */}
       <div className="my-2 border-t border-b border-gray-300 py-1">
         <div className="flex justify-between text-xs">
           <span>No. Faktur</span>
@@ -108,7 +98,7 @@ const DistributionReceipt = forwardRef(({ distributionData }, ref) => {
           <span>Pelayan Gudang</span>
           <span>
             {distributionData?.distributedByUser?.name || distributionData?.distributedByName || 'N/A'}
-            {distributionData?.distributedByUser?.code && ` (${distributionData.distributedByUser.code})`}
+            {distributionData?.distributedByUser?.employeeNumber && ` (${distributionData.distributedByUser.employeeNumber})`}
           </span>
         </div>
         <div className="flex justify-between text-xs">
@@ -121,7 +111,6 @@ const DistributionReceipt = forwardRef(({ distributionData }, ref) => {
         </div>
       </div>
 
-      {/* Items - If we can't get items as an array from the distribution, we'll try to handle the single item case */}
       <div className="my-2">
         <h2 className="font-bold text-xs mb-1">DAFTAR PRODUK</h2>
         <div className="space-y-0.5">
@@ -147,7 +136,6 @@ const DistributionReceipt = forwardRef(({ distributionData }, ref) => {
         </div>
       </div>
 
-      {/* Total - Calculate based on available data */}
       <div className="border-t border-gray-300 pt-1">
         <div className="flex justify-between font-bold text-xs">
           <span>Total Barang:</span>
@@ -163,7 +151,6 @@ const DistributionReceipt = forwardRef(({ distributionData }, ref) => {
         </div>
       </div>
 
-      {/* Notes */}
       {distributionData?.notes && (
         <div className="mt-2 pt-1 border-t border-gray-300">
           <div className="text-xs">
@@ -172,7 +159,6 @@ const DistributionReceipt = forwardRef(({ distributionData }, ref) => {
         </div>
       )}
 
-      {/* Footer */}
       <div className="mt-3 text-center text-xs">
         <p>Terima kasih atas kepercayaan Anda</p>
         <p className="mt-1">Dicetak: {formatDate(new Date().toISOString())}</p>

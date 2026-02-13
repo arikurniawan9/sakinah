@@ -38,7 +38,7 @@ const PelayanTable = ({
             <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
               darkMode ? 'text-gray-300' : 'text-pastel-purple-700'
             }`}>
-              Kode
+              Kode Karyawan
             </th>
             <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
               darkMode ? 'text-gray-300' : 'text-pastel-purple-700'
@@ -68,16 +68,6 @@ const PelayanTable = ({
             <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
               darkMode ? 'text-gray-300' : 'text-pastel-purple-700'
             }`}>
-              Tanggal Dibuat
-            </th>
-            <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-              darkMode ? 'text-gray-300' : 'text-pastel-purple-700'
-            }`}>
-              Tanggal Diubah
-            </th>
-            <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-              darkMode ? 'text-gray-300' : 'text-pastel-purple-700'
-            }`}>
               Aksi
             </th>
           </tr>
@@ -87,7 +77,7 @@ const PelayanTable = ({
         }`}>
           {attendants.length === 0 ? (
             <tr>
-              <td colSpan="7" className={`px-6 py-4 text-center text-sm ${
+              <td colSpan="8" className={`px-6 py-4 text-center text-sm ${
                 darkMode ? 'text-gray-400' : 'text-pastel-purple-700'
               }`}>
                 {loading ? 'Memuat data...' : 'Tidak ada data pelayan ditemukan'}
@@ -114,7 +104,7 @@ const PelayanTable = ({
                 <td className={`px-6 py-4 text-sm ${
                   darkMode ? 'text-gray-300' : 'text-gray-600'
                 }`}>
-                  {attendant.code || '-'}
+                  {attendant.employeeNumber || '-'}
                 </td>
                 <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
                   darkMode ? 'text-white' : 'text-gray-900'
@@ -154,16 +144,6 @@ const PelayanTable = ({
                   }`}>
                     {attendant.role}
                   </span>
-                </td>
-                <td className={`px-6 py-4 whitespace-nowrap text-sm ${
-                  darkMode ? 'text-gray-300' : 'text-gray-600'
-                }`}>
-                  {new Date(attendant.createdAt).toLocaleDateString('id-ID')}
-                </td>
-                <td className={`px-6 py-4 whitespace-nowrap text-sm ${
-                  darkMode ? 'text-gray-300' : 'text-gray-600'
-                }`}>
-                  {new Date(attendant.updatedAt).toLocaleDateString('id-ID')}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <Tooltip content="Edit pelayan">

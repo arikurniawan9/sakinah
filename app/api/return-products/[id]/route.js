@@ -25,7 +25,12 @@ export async function GET(request, { params }) {
       include: {
         store: true,
         transaction: {
-          include: {
+          select: {
+            id: true,
+            invoiceNumber: true,
+            date: true,
+            total: true,
+            status: true,
             saleDetails: {
               include: {
                 product: true
@@ -36,14 +41,16 @@ export async function GET(request, { params }) {
               select: {
                 id: true,
                 name: true,
-                username: true
+                username: true,
+                code: true
               }
             },
             cashier: {
               select: {
                 id: true,
                 name: true,
-                username: true
+                username: true,
+                code: true
               }
             }
           }
@@ -53,7 +60,13 @@ export async function GET(request, { params }) {
           select: {
             id: true,
             name: true,
-            username: true
+            username: true,
+            code: true,
+            _count: {
+              select: {
+                attendantSales: true
+              }
+            }
           }
         }
       }
@@ -69,9 +82,29 @@ export async function GET(request, { params }) {
       );
     }
 
+    // Transform data to ensure codes are always present (logic fallback)
+    const transformedData = {
+      ...returnProduct,
+      attendant: returnProduct.attendant ? {
+        ...returnProduct.attendant,
+        code: returnProduct.attendant.code || returnProduct.attendant.employeeNumber || returnProduct.attendant.id?.substring(0, 5) || '-'
+      } : null,
+      transaction: returnProduct.transaction ? {
+        ...returnProduct.transaction,
+        cashier: returnProduct.transaction.cashier ? {
+          ...returnProduct.transaction.cashier,
+          code: returnProduct.transaction.cashier.code || returnProduct.transaction.cashier.employeeNumber || returnProduct.transaction.cashier.id?.substring(0, 5) || '-'
+        } : null,
+        member: returnProduct.transaction.member ? {
+          ...returnProduct.transaction.member,
+          code: returnProduct.transaction.member.code || returnProduct.transaction.member.id?.substring(0, 5) || '-'
+        } : null
+      } : null
+    };
+
     return NextResponse.json({
       success: true,
-      data: returnProduct,
+      data: transformedData,
       source: 'database'
     });
   } catch (error) {
@@ -178,7 +211,15 @@ export async function PUT(request, { params }) {
       },
       include: {
         store: true,
-        transaction: true,
+        transaction: {
+          select: {
+            id: true,
+            invoiceNumber: true,
+            date: true,
+            total: true,
+            status: true
+          }
+        },
         product: true,
         attendant: {
           select: {

@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { 
-  getMockReturnData, 
-  getMockReturnById, 
-  addMockReturn, 
+import { generateReturnInvoiceNumber } from '@/utils/invoiceNumber';
+import {
+  getMockReturnData,
+  getMockReturnById,
+  addMockReturn,
   updateMockReturnStatus,
-  getMockReturnStats 
+  getMockReturnStats
 } from '@/utils/mock-return-data';
 
 const prisma = new PrismaClient();
@@ -39,7 +40,8 @@ export async function GET(request) {
       // Use direct equality filter for attendantId and cashierId
       whereClause.OR = [
         { attendantId: userId },
-        { cashierId: userId },
+        { transaction: { cashierId: userId } },
+        { transaction: { attendantId: userId } }, // Added this to match the person who served
       ];
     }
 
@@ -49,6 +51,8 @@ export async function GET(request) {
         { transactionId: { contains: searchTerm, mode: 'insensitive' } },
         { reason: { contains: searchTerm, mode: 'insensitive' } },
         { product: { name: { contains: searchTerm, mode: 'insensitive' } } },
+        { attendant: { name: { contains: searchTerm, mode: 'insensitive' } } },
+        { attendant: { employeeNumber: { contains: searchTerm, mode: 'insensitive' } } },
       ];
 
       // If OR is already present from userId filter, combine with AND
@@ -86,10 +90,23 @@ export async function GET(request) {
             name: true,
           }
         },
-        cashier: {
+        transaction: {
           select: {
             id: true,
-            name: true,
+            invoiceNumber: true,
+            date: true,
+            total: true,
+            status: true,
+            member: {
+              select: {
+                name: true
+              }
+            },
+            cashier: {
+              select: {
+                name: true
+              }
+            }
           }
         },
         store: {
@@ -179,6 +196,7 @@ export async function POST(request) {
       productId,
       attendantId,
       reason,
+      notes,
       category = 'OTHERS'
     } = body;
 
@@ -241,14 +259,19 @@ export async function POST(request) {
       );
     }
 
+    // Generate invoice number for the return
+    const invoiceNumber = await generateReturnInvoiceNumber(storeId);
+
     // Buat data retur produk baru
     const newReturn = await prisma.returnProduct.create({
       data: {
         storeId,
+        invoiceNumber,
         transactionId,
         productId,
         attendantId,
         reason,
+        notes,
         category,
         returnDate: new Date(),
         status: 'PENDING'
@@ -272,6 +295,7 @@ export async function POST(request) {
         severity: 'HIGH',
         data: {
           returnId: newReturn.id,
+          invoiceNumber: newReturn.invoiceNumber, // Include invoice number
           transactionId,
           productId,
           productName: product.name

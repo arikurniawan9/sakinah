@@ -99,3 +99,65 @@ export function generateDistributionInvoiceNumberWithStoreCodeSimple(storeCode) 
 
   return `DIST-${dateStr}-${formattedStoreCode}-${timestamp}`;
 }
+
+/**
+ * Generate invoice number for return products
+ * Format: RET-YYYYMMDD-XXXXX
+ * Where XXXXX is the sequential number for that store on that date
+ */
+export async function generateReturnInvoiceNumber(storeId) {
+  const now = new Date();
+  const dateStr = now.getFullYear().toString() +
+                  String(now.getMonth() + 1).padStart(2, '0') +
+                  String(now.getDate()).padStart(2, '0');
+
+  // Get Prisma instance to find the highest sequence number for this store on this date
+  let prisma;
+  try {
+    const prismaModule = await import('@/lib/prisma');
+    prisma = prismaModule.default;
+  } catch (error) {
+    // Fallback untuk skenario di mana import dinamis tidak bekerja
+    const { PrismaClient } = await import('@prisma/client');
+    prisma = new PrismaClient();
+  }
+
+  // Find all return products for this store that have invoice numbers starting with RET-YYYYMMDD
+  // We don't filter by date in createdAt because the invoice numbers were retroactively assigned
+  const existingReturns = await prisma.returnProduct.findMany({
+    where: {
+      storeId: storeId,
+      invoiceNumber: {
+        startsWith: `RET-${dateStr}-`
+      }
+    },
+    select: {
+      invoiceNumber: true
+    }
+  });
+
+  // Extract sequence numbers and find the highest one
+  let maxSeqNum = 0;
+  existingReturns.forEach(ret => {
+    // Extract the sequence part from the invoice number (the last 5 digits after the date)
+    const parts = ret.invoiceNumber.split('-');
+    if (parts.length >= 3) {
+      const seqPart = parts[parts.length - 1]; // Get the last part
+      // If it contains only digits, parse it as integer
+      if (/^\d+$/.test(seqPart)) {
+        const seqNum = parseInt(seqPart, 10);
+        if (seqNum > maxSeqNum) {
+          maxSeqNum = seqNum;
+        }
+      }
+    }
+  });
+
+  // Generate the next sequential number (001, 002, etc.)
+  const nextSeqNum = String(maxSeqNum + 1).padStart(5, '0');
+
+  // Generate the final invoice number
+  const invoiceNumber = `RET-${dateStr}-${nextSeqNum}`;
+  
+  return invoiceNumber;
+}

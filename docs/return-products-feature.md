@@ -68,7 +68,6 @@ Mengambil statistik retur produk.
 - `/admin/retur-produk`: Halaman utama untuk manajemen retur produk
 - `/admin/retur-produk/tambah`: Formulir untuk membuat retur produk baru
 - `/admin/retur-produk/[id]`: Halaman detail retur produk
-- `/admin/notifikasi-retur`: Halaman untuk melihat notifikasi retur
 
 ### 4. Integrasi Stok
 - Saat retur disetujui, stok produk otomatis bertambah
@@ -97,4 +96,3 @@ Statistik retur produk tersedia di halaman utama `/admin/retur-produk`.
 
 ## Notifikasi
 - Sistem otomatis membuat notifikasi saat retur baru dibuat
-- Admin dapat melihat notifikasi di `/admin/notifikasi-retur`

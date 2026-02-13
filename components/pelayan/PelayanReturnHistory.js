@@ -119,6 +119,19 @@ const PelayanReturnHistory = ({ darkMode, attendantId, onDataLoad }) => {
     }
   };
 
+  const getCategoryLabel = (category) => {
+    switch (category) {
+      case 'ERROR_BY_ATTENDANT':
+        return 'Kesalahan Pelayan';
+      case 'PRODUCT_DEFECT':
+        return 'Produk Cacat';
+      case 'WRONG_SELECTION':
+        return 'Salah Pilih';
+      default:
+        return 'Lainnya';
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -236,7 +249,7 @@ const PelayanReturnHistory = ({ darkMode, attendantId, onDataLoad }) => {
                   <div className="flex items-center text-sm mb-1">
                     <Package className="h-4 w-4 mr-2 text-gray-400" />
                     <span className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
-                      Transaksi: {item.transactionId}
+                      Transaksi: {item.transaction?.invoiceNumber || item.transactionId}
                     </span>
                   </div>
 
@@ -250,17 +263,30 @@ const PelayanReturnHistory = ({ darkMode, attendantId, onDataLoad }) => {
                   <div className="flex items-center text-sm mb-2">
                     <User className="h-4 w-4 mr-2 text-gray-400" />
                     <span className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
-                      Kategori: {item.category === 'PRODUCT_DEFECT' ? 'Produk Cacat' : 
-                                item.category === 'WRONG_SELECTION' ? 'Salah Pilih' : 
-                                item.category === 'ERROR_BY_ATTENDANT' ? 'Kesalahan Pelayan' : 
-                                'Lainnya'}
+                      Kasir: {item.transaction?.cashier?.name || 'Kasir tidak ditemukan'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center text-sm mb-2">
+                    <User className="h-4 w-4 mr-2 text-gray-400" />
+                    <span className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
+                      Kode Pelayan: {item.attendant?.code || item.attendantId || 'N/A'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center text-sm mb-2">
+                    <User className="h-4 w-4 mr-2 text-gray-400" />
+                    <span className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
+                      Kategori: {getCategoryLabel(item.category)}
                     </span>
                   </div>
 
                   <div className={`text-sm p-2 rounded ${
                     darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
                   }`}>
-                    <span className="font-medium">Alasan:</span> {item.reason}
+                    <span className="font-medium">Alasan:</span> {(item.reason === 'PRODUCT_DEFECT' || item.reason === 'ERROR_BY_ATTENDANT' || item.reason === 'WRONG_SELECTION')
+                      ? getCategoryLabel(item.reason)
+                      : item.reason}
                   </div>
                 </div>
 

@@ -91,19 +91,27 @@ export async function GET(request) {
     const transformedSales = sales.map(sale => ({
       id: sale.id,
       invoiceNumber: sale.invoiceNumber,
+      // Cashier Info
       cashierName: sale.cashier?.name || 'Unknown',
+      cashierCode: sale.cashier?.code || sale.cashier?.employeeNumber || sale.cashier?.id?.substring(0, 5) || '-',
+      // Attendant Info
       attendantName: sale.attendant?.name || null,
-      customerName: sale.member?.name || '-', // Using member as customer
+      attendantCode: sale.attendant?.code || sale.attendant?.employeeNumber || sale.attendant?.id?.substring(0, 5) || '-',
+      attendantId: sale.attendant?.id || null,
+      // Customer Info
+      customerName: sale.member?.name || '-',
+      customerCode: sale.member?.code || sale.member?.id?.substring(0, 5) || '-',
       date: sale.date,
       totalAmount: sale.total,
-      discount: sale.discount || 0, // Member discount
-      additionalDiscount: sale.additionalDiscount || 0, // Additional discount
-      tax: sale.tax || 0, // Tax if applicable
-      payment: sale.payment || 0, // Amount paid
-      change: sale.change || 0, // Change given
+      discount: sale.discount || 0,
+      additionalDiscount: sale.additionalDiscount || 0,
+      tax: sale.tax || 0,
+      payment: sale.payment || 0,
+      change: sale.change || 0,
       status: sale.status || 'completed',
       paymentMethod: sale.paymentMethod || 'CASH',
       items: sale.saleDetails.map(detail => ({
+        productId: detail.productId || detail.product?.id,
         productName: detail.product?.name || 'Unknown Product',
         quantity: detail.quantity,
         price: detail.price,

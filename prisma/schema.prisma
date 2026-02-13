@@ -13,26 +13,25 @@ model User {
   name                   String
   username               String                  @unique
   employeeNumber         String?                 @unique
-  code                   String?                 @unique
   gender                 String?
   address                String?
   phone                  String?
-  email                  String?
   status                 String                  @default("AKTIF")
   password               String
   role                   String
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
+  email                  String?
   auditLogs              AuditLog[]
   expenses               Expense[]
+  notifications          Notification[]
   purchases              Purchase[]              @relation("PurchaseUser")
+  returnProducts         ReturnProduct[]
   attendantSales         Sale[]                  @relation("AttendantSales")
   cashierSales           Sale[]                  @relation("CashierSales")
   storeUsers             StoreUser[]
   tempCarts              TempCart[]              @relation("AttendantTempCarts")
   warehouseDistributions WarehouseDistribution[] @relation("DistributionUser")
-  notifications          Notification[]
-  returnProducts         ReturnProduct[]
 }
 
 model Category {
@@ -57,24 +56,24 @@ model Product {
   productCode            String
   stock                  Int                     @default(0)
   purchasePrice          Int
-  retailPrice            Int // Harga eceran/pelanggan umum
-  silverPrice            Int // Harga member silver
-  goldPrice              Int // Harga member gold
-  platinumPrice          Int // Harga member platinum/partai
   supplierId             String
   image                  String?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
   description            String?
+  retailPrice            Int
+  silverPrice            Int
+  goldPrice              Int
+  platinumPrice          Int
   category               Category                @relation(fields: [categoryId], references: [id])
   store                  Store                   @relation(fields: [storeId], references: [id])
   supplier               Supplier                @relation(fields: [supplierId], references: [id])
   purchaseItems          PurchaseItem[]
+  returnProducts         ReturnProduct[]
   salesDetails           SaleDetail[]
   tempCarts              TempCart[]
   warehouseDistributions WarehouseDistribution[]
   WarehouseProduct       WarehouseProduct[]
-  returnProducts         ReturnProduct[]
 
   @@unique([productCode, storeId])
   @@index([storeId])
@@ -109,7 +108,7 @@ model Member {
   name           String
   phone          String
   address        String?
-  membershipType String // SILVER, GOLD, PLATINUM (PLATINUM also means partai)
+  membershipType String
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   store          Store           @relation(fields: [storeId], references: [id])
@@ -139,12 +138,12 @@ model Sale {
   paymentMethod   String          @default("CASH")
   referenceNumber String?
   receivable      Receivable?
+  returnProducts  ReturnProduct[]
   attendant       User?           @relation("AttendantSales", fields: [attendantId], references: [id], onDelete: Restrict)
   cashier         User            @relation("CashierSales", fields: [cashierId], references: [id])
   member          Member?         @relation(fields: [memberId], references: [id], onDelete: Restrict)
   store           Store           @relation(fields: [storeId], references: [id])
   saleDetails     SaleDetail[]
-  returnProducts  ReturnProduct[]
 
   @@unique([invoiceNumber, storeId])
   @@index([storeId])
@@ -181,9 +180,9 @@ model SaleDetail {
   saleId    String
   productId String
   quantity  Int
-  price     Int // Harga satuan yang digunakan saat transaksi
+  price     Int
+  subtotal  Int
   discount  Int     @default(0)
-  subtotal  Int // Jumlah subtotal (harga * jumlah - diskon)
   product   Product @relation(fields: [productId], references: [id])
   sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
   store     Store   @relation(fields: [storeId], references: [id])
@@ -254,11 +253,11 @@ model SuspendedSale {
   cartItems           String
   memberId            String?
   notes               String?
+  createdAt           DateTime @default(now())
   additionalDiscount  Int?     @default(0)
   selectedAttendantId String?
-  createdAt           DateTime @default(now())
-  store               Store    @relation(fields: [storeId], references: [id])
   member              Member?  @relation(fields: [memberId], references: [id])
+  store               Store    @relation(fields: [storeId], references: [id])
 
   @@index([storeId])
 }
@@ -349,10 +348,12 @@ model Store {
   expenses               Expense[]
   expenseCategories      ExpenseCategory[]
   members                Member[]
+  notifications          Notification[]
   products               Product[]
   purchases              Purchase[]
   purchaseItems          PurchaseItem[]
   receivables            Receivable[]
+  returnProducts         ReturnProduct[]
   sales                  Sale[]
   saleDetails            SaleDetail[]
   settings               Setting?
@@ -361,8 +362,6 @@ model Store {
   suspendedSales         SuspendedSale[]
   tempCarts              TempCart[]
   warehouseDistributions WarehouseDistribution[]
-  notifications          Notification[]
-  returnProducts         ReturnProduct[]
 }
 
 model StoreUser {
@@ -412,7 +411,6 @@ model WarehouseProduct {
 
 model WarehouseDistribution {
   id                String    @id @default(cuid())
-  invoiceNumber     String?
   warehouseId       String
   storeId           String
   productId         String
@@ -425,6 +423,7 @@ model WarehouseDistribution {
   distributedBy     String
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+  invoiceNumber     String?
   distributedByUser User      @relation("DistributionUser", fields: [distributedBy], references: [id])
   product           Product   @relation(fields: [productId], references: [id])
   store             Store     @relation(fields: [storeId], references: [id])
@@ -437,7 +436,6 @@ model WarehouseDistribution {
   @@index([invoiceNumber])
 }
 
-// Model for Notifications
 model Notification {
   id             String    @id @default(cuid())
   type           String
@@ -451,10 +449,8 @@ model Notification {
   acknowledgedAt DateTime?
   createdAt      DateTime  @default(now())
   expiresAt      DateTime?
-
-  // Relations
-  user  User?  @relation(fields: [userId], references: [id])
-  store Store? @relation(fields: [storeId], references: [id])
+  store          Store?    @relation(fields: [storeId], references: [id])
+  user           User?     @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([storeId])
@@ -470,19 +466,20 @@ model ReturnProduct {
   productId     String
   attendantId   String
   reason        String?
-  category      String   @default("OTHERS") // Options: ERROR_BY_ATTENDANT, PRODUCT_DEFECT, WRONG_SELECTION, OTHERS
+  category      String   @default("OTHERS")
   returnDate    DateTime @default(now())
-  status        String   @default("PENDING") // Options: PENDING, APPROVED, REJECTED
+  status        String   @default("PENDING")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
-  // Relations
-  store       Store   @relation(fields: [storeId], references: [id])
-  transaction Sale    @relation(fields: [transactionId], references: [id])
-  product     Product @relation(fields: [productId], references: [id])
-  attendant   User    @relation(fields: [attendantId], references: [id])
+  invoiceNumber String?
+  notes         String?
+  attendant     User     @relation(fields: [attendantId], references: [id])
+  product       Product  @relation(fields: [productId], references: [id])
+  store         Store    @relation(fields: [storeId], references: [id])
+  transaction   Sale     @relation(fields: [transactionId], references: [id])
 
   @@index([storeId])
+  @@index([invoiceNumber])
   @@index([transactionId])
   @@index([productId])
   @@index([attendantId])

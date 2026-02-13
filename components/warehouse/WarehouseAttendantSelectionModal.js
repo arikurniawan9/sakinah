@@ -1,77 +1,61 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { UserCheck, X, Scan, User } from 'lucide-react'; // Added User for consistency
+import { UserCheck, X, Scan, User } from 'lucide-react'; 
 
 const WarehouseAttendantSelectionModal = ({
   selectedAttendant,
   onSelectAttendant,
-  attendants, // Pass attendants directly from parent or fetch inside
+  attendants, 
   darkMode,
   isOpen,
-  onToggle // Function to open/close the modal
+  onToggle 
 }) => {
   const [attendantSearchTerm, setAttendantSearchTerm] = useState('');
   const inputRef = useRef(null);
 
-  // Filter attendants based on search term
   const filteredAttendants = attendants.filter(attendant =>
     attendant &&
     attendant.name &&
     typeof attendant.name === 'string' &&
-    (attendant.status === 'AKTIF' || attendant.status === 'ACTIVE') && // Only active attendants
+    (attendant.status === 'AKTIF' || attendant.status === 'ACTIVE') && 
     (attendant.name.toLowerCase().includes(attendantSearchTerm.toLowerCase()) ||
-    attendant.code?.toLowerCase().includes(attendantSearchTerm.toLowerCase()) ||
     attendant.employeeNumber?.toLowerCase().includes(attendantSearchTerm.toLowerCase()) ||
     attendant.username?.toLowerCase().includes(attendantSearchTerm.toLowerCase()))
   );
 
   const handleSelect = (attendant) => {
     onSelectAttendant(attendant);
-    onToggle(false); // Close modal on selection
+    onToggle(false); 
     setAttendantSearchTerm('');
   };
 
-  // Focus the input when modal opens
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
     }
   }, [isOpen]);
 
-  // Handle ESC key press to close modal
   useEffect(() => {
     if (!isOpen) return;
-
     const handleEscKey = (event) => {
-      if (event.key === 'Escape') {
-        onToggle(false);
-      }
+      if (event.key === 'Escape') onToggle(false);
     };
-
     document.addEventListener('keydown', handleEscKey);
-    return () => {
-      document.removeEventListener('keydown', handleEscKey);
-    };
+    return () => document.removeEventListener('keydown', handleEscKey);
   }, [isOpen, onToggle]);
 
-  // Handle barcode scanning - simplified from cashier version for warehouse context, just search
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       const matchedAttendant = attendants.find(attendant =>
         (attendant.status === 'AKTIF' || attendant.status === 'ACTIVE') &&
-        (attendant.code?.toLowerCase() === attendantSearchTerm.toLowerCase() ||
-        attendant.employeeNumber?.toLowerCase() === attendantSearchTerm.toLowerCase() ||
+        (attendant.employeeNumber?.toLowerCase() === attendantSearchTerm.toLowerCase() ||
         attendant.username?.toLowerCase() === attendantSearchTerm.toLowerCase())
       );
-
-      if (matchedAttendant) {
-        handleSelect(matchedAttendant);
-      }
+      if (matchedAttendant) handleSelect(matchedAttendant);
     }
   };
-
 
   return (
     <>
@@ -84,7 +68,7 @@ const WarehouseAttendantSelectionModal = ({
                 <input
                   ref={inputRef}
                   type="text"
-                  placeholder="Cari nama/kode pelayan atau scan kode..."
+                  placeholder="Cari nama/ID pelayan atau scan..."
                   value={attendantSearchTerm}
                   onChange={(e) => setAttendantSearchTerm(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -96,9 +80,6 @@ const WarehouseAttendantSelectionModal = ({
                 <div className="absolute right-3 top-4 flex items-center">
                   <Scan size={16} className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                 </div>
-              </div>
-              <div className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                Scan kode pelayan atau ketik untuk mencari
               </div>
             </div>
             <div className="flex-1 p-4 overflow-y-auto styled-scrollbar">
@@ -120,9 +101,9 @@ const WarehouseAttendantSelectionModal = ({
                           : 'bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-offset-white focus:ring-purple-500'
                       }`}
                     >
-                      <p className="font-semibold truncate">{attendant.name || 'Nama tidak tersedia'}</p>
-                      <p className={`text-xs truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        {attendant.code || attendant.employeeNumber || attendant.username || '...'}
+                      <p className="font-semibold truncate text-xs">{attendant.name || 'Nama tidak tersedia'}</p>
+                      <p className={`text-[10px] truncate ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        {attendant.employeeNumber || attendant.username || '...'}
                       </p>
                     </button>
                   ))}

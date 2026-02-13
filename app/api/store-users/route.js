@@ -70,7 +70,7 @@ export async function GET(request) {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
           { username: { contains: search, mode: 'insensitive' } },
-          { code: { contains: search, mode: 'insensitive' } },
+          { employeeNumber: { contains: search, mode: 'insensitive' } },
         ],
       };
     }
@@ -84,7 +84,6 @@ export async function GET(request) {
             name: true,
             username: true,
             employeeNumber: true,
-            code: true,
             address: true,
             phone: true,
             status: true,
@@ -154,7 +153,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Store ID not found in session' }, { status: 400 });
     }
 
-    const { name, username, employeeNumber, code, password, role, address, phone } = body;
+    const { name, username, employeeNumber, password, role, address, phone } = body;
 
     // Validation
     if (!name || !username || !password || !role) {
@@ -185,20 +184,20 @@ export async function POST(request) {
       );
     }
 
-    // Check if code already exists for this store (multi-tenant)
-    if (code) {
-      const existingUserCode = await prisma.storeUser.findFirst({
+    // Check if employeeNumber already exists for this store (multi-tenant)
+    if (employeeNumber) {
+      const existingEmployeeNumber = await prisma.storeUser.findFirst({
         where: {
           storeId: storeId,
           user: {
-            code: code.trim()
+            employeeNumber: employeeNumber.trim()
           }
         }
       });
 
-      if (existingUserCode) {
+      if (existingEmployeeNumber) {
         return NextResponse.json(
-          { error: 'Kode pengguna sudah digunakan di toko ini' },
+          { error: 'Nomor pegawai sudah digunakan di toko ini' },
           { status: 400 }
         );
       }
@@ -213,7 +212,6 @@ export async function POST(request) {
         name: name.trim(),
         username: username.trim(),
         employeeNumber: employeeNumber ? employeeNumber.trim() : null,
-        code: code ? code.trim() : null, // Use the provided code if available
         password: hashedPassword,
         address,
         phone,
@@ -273,7 +271,7 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Store ID not found in session' }, { status: 400 });
     }
 
-    const { id, name, username, employeeNumber, password, role, code } = body;
+    const { id, name, username, employeeNumber, password, role } = body;
 
     // Validation
     if (!id) {
@@ -329,21 +327,21 @@ export async function PUT(request) {
       );
     }
 
-    // Check if code already exists for this store (excluding current user) (multi-tenant)
-    if (code) {
-      const existingUserCode = await prisma.storeUser.findFirst({
+    // Check if employeeNumber already exists for this store (excluding current user) (multi-tenant)
+    if (employeeNumber) {
+      const existingEmployeeNumber = await prisma.storeUser.findFirst({
         where: {
           storeId: storeId,
           userId: { not: id }, // Exclude current user
           user: {
-            code: code.trim()
+            employeeNumber: employeeNumber.trim()
           }
         }
       });
 
-      if (existingUserCode) {
+      if (existingEmployeeNumber) {
         return NextResponse.json(
-          { error: 'Kode pengguna sudah digunakan di toko ini' },
+          { error: 'Nomor pegawai sudah digunakan di toko ini' },
           { status: 400 }
         );
       }
@@ -355,7 +353,6 @@ export async function PUT(request) {
       name: name.trim(),
       username: username.trim(),
       employeeNumber: employeeNumber ? employeeNumber.trim() : null,
-      code: code ? code.trim() : null,
       address: address || null, // Add address field
       phone: phone || null, // Add phone field
       role: role, // Also update role in User table to match store role
